@@ -1,0 +1,24 @@
+# ── Core ──────────────────────────────────────────────────────────────────────
+Django==5.1.4
+djangorestframework==3.15.2
+
+# ── Authentication ─────────────────────────────────────────────────────────────
+djangorestframework-simplejwt==5.3.1
+
+# ── Database ───────────────────────────────────────────────────────────────────
+psycopg2-binary==2.9.12
+
+# ── Configuration ──────────────────────────────────────────────────────────────
+python-decouple==3.8
+
+# ── CORS ───────────────────────────────────────────────────────────────────────
+django-cors-headers==4.6.0
+
+# ── Password hashing (argon2id — OWASP A04) ────────────────────────────────────
+argon2-cffi==23.1.0
+
+# ── Rate limiting (OWASP A06) ──────────────────────────────────────────────────
+# Built-in via DRF throttling; no extra package needed for this scaffold
+
+# ── Security auditing ──────────────────────────────────────────────────────────
+# Run: pip-audit  (install separately: pip install pip-audit)
