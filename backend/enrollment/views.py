@@ -5,6 +5,7 @@ import os
 from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError, transaction
+from django.db.models import Count
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework import generics, status
@@ -16,6 +17,8 @@ from rest_framework.views import APIView
 from authentication.models import AuditLog
 from authentication.permissions import (
     IsAdmin,
+    IsEncoderRegistrarOrAdmin,
+    IsRegistrar,
     IsRegistrarOrAdmin,
     IsStudent,
     IsStudentOrRegistrarOrAdmin,
@@ -24,10 +27,12 @@ from authentication.permissions import (
 
 from announcements.models import Announcement
 
-from .models import AcademicTerm, Block, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
+from .models import AcademicTerm, Block, BlockExpansionRequest, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
 from .serializers import (
     AcademicTermSerializer,
     AdminSubjectSerializer,
+    BlockExpansionRequestSerializer,
+    BlockSerializer,
     CurriculumDocumentSerializer,
     DepartmentSerializer,
     EnrollmentRequestSerializer,
@@ -180,8 +185,11 @@ class AcademicTermListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        role = self.request.user.role
+        if role in ('registrar', 'admin'):
+            return AcademicTerm.objects.all().order_by('-year', 'semester')
         qs = AcademicTerm.objects.filter(is_active=True)
-        if self.request.user.role == 'student':
+        if role == 'student':
             qs = qs.filter(enrollment_open=True)
         return qs
 
@@ -221,16 +229,23 @@ class CurrentTermView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        expected_year, expected_semester = current_regular_term_parts()
-        term = get_current_regular_term()
-        semester_display = dict(AcademicTerm.SEMESTER_CHOICES).get(expected_semester)
-        data = {
-            'year': expected_year,
-            'semester': expected_semester,
-            'semester_display': semester_display,
-            'label': f'{semester_display} {expected_year}' if expected_year and semester_display else 'No regular term this month',
-            'term': AcademicTermSerializer(term).data if term else None,
-        }
+        # Always use the admin-designated active term (is_active=True).
+        # The old calendar-based calculation ignored what the admin set.
+        term = AcademicTerm.objects.filter(is_active=True).first()
+        if not term:
+            return Response({
+                'id': None,
+                'year': None,
+                'semester': None,
+                'semester_display': None,
+                'is_active': False,
+                'enrollment_open': False,
+                'label': 'No active term set.',
+                'term': None,
+            })
+        data = AcademicTermSerializer(term).data
+        data['label'] = f"{term.get_semester_display()} {term.year}"
+        data['term'] = data.copy()  # keep nested 'term' key for backwards compat
         return Response(data)
 
 
@@ -459,13 +474,56 @@ class RegistrarReviewView(APIView):
         return Response({'message': f'Enrollment request {enrollment.status}.'})
 
 
-class RegistrarPendingEnrollmentListView(generics.ListAPIView):
-    """GET /api/enrollment/pending/ — list pre-enrollment applications (registrar/admin)."""
-    serializer_class   = PendingEnrollmentListSerializer
+class EnrollmentBlockAssignView(APIView):
+    """PATCH /api/enrollment/requests/<pk>/block/ — registrar assigns or clears the block for an enrollment."""
     permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
 
+    def patch(self, request, pk):
+        from django.shortcuts import get_object_or_404
+        enrollment = get_object_or_404(
+            EnrollmentRequest.objects.select_related('block'),
+            pk=pk,
+        )
+        block_id = request.data.get('block_id')
+
+        if block_id is None:
+            enrollment.block = None
+        else:
+            try:
+                block = Block.objects.get(pk=int(block_id))
+            except (Block.DoesNotExist, ValueError, TypeError):
+                return Response({'error': 'Block not found.'}, status=status.HTTP_404_NOT_FOUND)
+            enrollment.block = block
+
+        enrollment.save(update_fields=['block'])
+        _audit(
+            request.user, request.user.role,
+            'enrollment_block_assigned', request.path, get_client_ip(request), 'success',
+            {'enrollment_id': str(enrollment.id), 'block': str(block_id)},
+        )
+        return Response({
+            'block_id':   enrollment.block_id,
+            'block_name': enrollment.block.name if enrollment.block_id else None,
+        })
+
+
+class RegistrarPendingEnrollmentListView(generics.ListAPIView):
+    """
+    GET /api/enrollment/pending/ — list freshman/transferee admission applications.
+    Reviewed by the Department Encoder (scoped to their department's programs);
+    registrar/admin see all.
+    """
+    serializer_class   = PendingEnrollmentListSerializer
+    permission_classes = [IsAuthenticated, IsEncoderRegistrarOrAdmin]
+
     def get_queryset(self):
-        qs = PendingEnrollment.objects.select_related('program', 'academic_term', 'reviewed_by')
+        qs = (PendingEnrollment.objects
+              .select_related('program', 'program__department', 'academic_term', 'reviewed_by')
+              .prefetch_related('documents'))
+        # A department encoder only sees applications for programs in their department.
+        user = self.request.user
+        if user.role == 'department_encoder':
+            qs = qs.filter(program__department_id=user.department_id)
         status_filter = self.request.query_params.get('status')
         if status_filter in ('pending', 'approved', 'rejected', 'activated'):
             qs = qs.filter(status=status_filter)
@@ -476,15 +534,31 @@ class RegistrarPendingEnrollmentListView(generics.ListAPIView):
 
 
 class RegistrarPendingEnrollmentReviewView(APIView):
-    """PATCH /api/enrollment/pending/<uuid>/review/ — approve or reject a pre-enrollment."""
-    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    """
+    PATCH /api/enrollment/pending/<uuid>/review/ — approve or reject a freshman/
+    transferee admission application. Reviewed by the Department Encoder (scoped to
+    their department); registrar/admin may also review. Approval does NOT create an
+    account or activation link — the applicant is only notified that they qualify for
+    the entrance exam; the student ID and account come later, after they are enrolled.
+    """
+    permission_classes = [IsAuthenticated, IsEncoderRegistrarOrAdmin]
 
     def patch(self, request, pk):
         ip = get_client_ip(request)
         try:
-            pending = PendingEnrollment.objects.select_related('academic_term', 'program').get(pk=pk)
+            pending = PendingEnrollment.objects.select_related('academic_term', 'program', 'program__department').get(pk=pk)
         except PendingEnrollment.DoesNotExist:
-            return Response({'error': 'Pre-enrollment not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Application not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # A department encoder may only review applications for their own department.
+        user = request.user
+        if user.role == 'department_encoder':
+            dept_id = pending.program.department_id if pending.program_id else None
+            if dept_id != user.department_id:
+                return Response(
+                    {'error': 'This application belongs to another department.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         if pending.status != 'pending':
             return Response(
@@ -500,16 +574,9 @@ class RegistrarPendingEnrollmentReviewView(APIView):
         pending.remarks     = serializer.validated_data.get('remarks', '')
         pending.reviewed_by = request.user
         pending.reviewed_at = timezone.now()
-
-        if new_status == 'approved':
-            import uuid as _uuid
-            pending.activation_token         = _uuid.uuid4()
-            pending.activation_token_expires = timezone.now() + timedelta(days=7)
-
         pending.save()
 
-        if new_status == 'approved':
-            _send_activation_email(pending)
+        _send_admission_decision_email(pending, new_status)
 
         _audit(
             request.user, request.user.role,
@@ -517,7 +584,7 @@ class RegistrarPendingEnrollmentReviewView(APIView):
             {'pre_enrollment_id': str(pending.id), 'email': pending.email},
         )
 
-        return Response({'message': f'Pre-enrollment application {new_status}.'})
+        return Response({'message': f'Application {new_status}.'})
 
 
 class PublicPreEnrollUploadView(APIView):
@@ -617,23 +684,44 @@ class RegistrarPreEnrollFollowupView(APIView):
         return Response({'message': f'Follow-up email sent to {pending.email}.'})
 
 
-def _send_activation_email(pending):
+def _send_admission_decision_email(pending, decision):
+    """
+    Notify a freshman/transferee applicant of the Department Encoder's decision.
+    Approval does NOT create an account — it only invites them to the entrance exam.
+    """
     from django.conf import settings as _settings
     from django.core.mail import send_mail
     import logging
     _logger = logging.getLogger('security')
-    frontend_url = getattr(_settings, 'FRONTEND_URL', 'http://localhost:5173')
-    activation_link = f"{frontend_url}/activate/{pending.activation_token}"
-    subject = "Your NEMSU Cantilan Pre-Enrollment Has Been Approved"
-    body = (
-        f"Dear {pending.full_name},\n\n"
-        f"Your pre-enrollment application (Ref: {pending.reference_number}) has been approved by the Registrar.\n\n"
-        f"You may now create your student account by clicking the link below:\n\n"
-        f"  {activation_link}\n\n"
-        f"This link will expire in 7 days. Do not share it with anyone.\n\n"
-        f"After creating your account, you will be able to log in to your student dashboard.\n\n"
-        f"— NEMSU Cantilan Registrar's Office"
-    )
+
+    dept = pending.program.department.name if (pending.program_id and pending.program.department_id) else 'the department'
+    program = pending.program.name if pending.program_id else 'your chosen program'
+
+    if decision == 'approved':
+        subject = "NEMSU Cantilan — You Qualify for the Entrance Examination"
+        body = (
+            f"Dear {pending.full_name},\n\n"
+            f"Your application (Ref: {pending.reference_number}) for {program} has been "
+            f"reviewed and approved by {dept}.\n\n"
+            f"You are now qualified to take the college entrance examination. Please wait "
+            f"for the schedule and further instructions from the department, and bring the "
+            f"original copies of your submitted documents on exam day.\n\n"
+            f"Please note: you are not yet officially enrolled. Your student ID and portal "
+            f"account will be issued once you have completed enrollment.\n\n"
+            f"— NEMSU Cantilan Admissions"
+        )
+    else:
+        reason = f"\n\nReason: {pending.remarks}" if pending.remarks else ''
+        subject = "NEMSU Cantilan — Update on Your Admission Application"
+        body = (
+            f"Dear {pending.full_name},\n\n"
+            f"Thank you for your interest in {program}. After review by {dept}, we regret "
+            f"to inform you that your application (Ref: {pending.reference_number}) was not "
+            f"approved at this time.{reason}\n\n"
+            f"If you have questions or wish to reapply, please contact the department.\n\n"
+            f"— NEMSU Cantilan Admissions"
+        )
+
     try:
         send_mail(
             subject=subject,
@@ -643,7 +731,7 @@ def _send_activation_email(pending):
             fail_silently=False,
         )
     except Exception:
-        _logger.error('Failed to send activation email to %s', pending.email, exc_info=True)
+        _logger.error('Failed to send admission decision email to %s', pending.email, exc_info=True)
 
 
 class EnrollmentTermStatusView(APIView):
@@ -661,7 +749,7 @@ class EnrollmentTermStatusView(APIView):
             )
 
         try:
-            term = AcademicTerm.objects.get(pk=pk, is_active=True)
+            term = AcademicTerm.objects.get(pk=pk)
         except AcademicTerm.DoesNotExist:
             return Response(
                 {'error': 'Academic term not found.'},
@@ -689,15 +777,54 @@ class AdminTermListCreateView(generics.ListCreateAPIView):
     """GET/POST /api/enrollment/admin/terms/"""
     serializer_class = AcademicTermSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
-    queryset = AcademicTerm.objects.all()
+    queryset = AcademicTerm.objects.all().order_by('-year', 'semester')
+
+    def perform_create(self, serializer):
+        with transaction.atomic():
+            if serializer.validated_data.get('is_active') is True:
+                AcademicTerm.objects.update(is_active=False)
+            instance = serializer.save()
+        _audit(
+            self.request.user, self.request.user.role,
+            'academic_term_created', self.request.path,
+            get_client_ip(self.request), 'success',
+            {'term_id': instance.pk, 'term': str(instance)},
+        )
 
 
-class AdminTermDetailView(generics.RetrieveUpdateAPIView):
-    """GET/PATCH /api/enrollment/admin/terms/<pk>/ — PUT is blocked (A01)."""
+class AdminTermDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PATCH/DELETE /api/enrollment/admin/terms/<pk>/ — PUT is blocked (A01)."""
     serializer_class = AcademicTermSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
     queryset = AcademicTerm.objects.all()
-    http_method_names = ['get', 'patch', 'head', 'options']
+    http_method_names = ['get', 'patch', 'delete', 'head', 'options']
+
+    def perform_update(self, serializer):
+        with transaction.atomic():
+            if serializer.validated_data.get('is_active') is True:
+                AcademicTerm.objects.exclude(pk=serializer.instance.pk).update(is_active=False)
+            serializer.save()
+        _audit(
+            self.request.user, self.request.user.role,
+            'academic_term_updated', self.request.path,
+            get_client_ip(self.request), 'success',
+            {'term_id': serializer.instance.pk, 'term': str(serializer.instance)},
+        )
+
+    def perform_destroy(self, instance):
+        if instance.enrollment_requests.exists():
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            raise DRFValidationError(
+                'This term cannot be deleted because students have enrollment records linked to it. '
+                'Deactivate it instead.'
+            )
+        _audit(
+            self.request.user, self.request.user.role,
+            'academic_term_deleted', self.request.path,
+            get_client_ip(self.request), 'success',
+            {'term_id': instance.pk, 'term': str(instance)},
+        )
+        instance.delete()
 
 
 class AdminSubjectListCreateView(generics.ListCreateAPIView):
@@ -991,3 +1118,194 @@ class AdminCurriculumDocumentDeleteView(APIView):
         doc.file.delete(save=False)
         doc.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ── Admin — Reports ────────────────────────────────────────────────────────────
+
+class AdminEnrollmentSummaryReportView(APIView):
+    """GET /api/enrollment/admin/reports/enrollment-summary/?term=<id>"""
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        term_id = request.query_params.get('term')
+        if not term_id or not term_id.isdigit():
+            return Response(
+                {'error': 'term query parameter is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            term = AcademicTerm.objects.get(pk=int(term_id))
+        except AcademicTerm.DoesNotExist:
+            return Response({'error': 'Academic term not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        qs = EnrollmentRequest.objects.filter(academic_term=term)
+
+        # Aggregate by program + status, then pivot into one row per program
+        by_program_raw = (
+            qs.values('program__code', 'program__name', 'status')
+            .annotate(count=Count('id'))
+        )
+        program_map = {}
+        for row in by_program_raw:
+            key = row['program__code'] or '__none__'
+            if key not in program_map:
+                program_map[key] = {
+                    'program_code': row['program__code'] or '—',
+                    'program_name': row['program__name'] or 'No Program',
+                    'pending': 0, 'approved': 0, 'rejected': 0, 'total': 0,
+                }
+            s = row['status']
+            if s in ('pending', 'approved', 'rejected'):
+                program_map[key][s] += row['count']
+            program_map[key]['total'] += row['count']
+
+        # Aggregate by year level + status, then pivot
+        by_year_raw = (
+            qs.values('year_level', 'status')
+            .annotate(count=Count('id'))
+        )
+        year_labels = {1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year'}
+        year_map = {}
+        for row in by_year_raw:
+            yl = row['year_level'] or 0
+            if yl not in year_map:
+                year_map[yl] = {
+                    'year_level': yl,
+                    'year_level_display': year_labels.get(yl, 'Unknown'),
+                    'pending': 0, 'approved': 0, 'rejected': 0, 'total': 0,
+                }
+            s = row['status']
+            if s in ('pending', 'approved', 'rejected'):
+                year_map[yl][s] += row['count']
+            year_map[yl]['total'] += row['count']
+
+        by_status_raw = qs.values('status').annotate(count=Count('id'))
+        by_status = {'pending': 0, 'approved': 0, 'rejected': 0}
+        for row in by_status_raw:
+            if row['status'] in by_status:
+                by_status[row['status']] = row['count']
+
+        return Response({
+            'term': AcademicTermSerializer(term).data,
+            'total': qs.count(),
+            'by_status': by_status,
+            'by_program': sorted(program_map.values(), key=lambda x: x['program_code']),
+            'by_year_level': sorted(year_map.values(), key=lambda x: x['year_level']),
+        })
+
+
+# ── Block Management ────────────────────────────────────────────────────────────
+
+class BlockListView(generics.ListAPIView):
+    """GET /api/enrollment/blocks/?term=<id>&program=<id>&year_level=<n>"""
+    serializer_class   = BlockSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Block.objects.select_related('program', 'academic_term')
+        p  = self.request.query_params
+        if p.get('term',       '').isdigit(): qs = qs.filter(academic_term_id=int(p['term']))
+        if p.get('program',    '').isdigit(): qs = qs.filter(program_id=int(p['program']))
+        if p.get('year_level', '').isdigit(): qs = qs.filter(year_level=int(p['year_level']))
+        return qs.order_by('program__code', 'year_level', 'name')
+
+
+class BlockDetailView(APIView):
+    """GET /api/enrollment/blocks/<pk>/ — block detail + enrolled student list"""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+
+    def get(self, request, pk):
+        from django.shortcuts import get_object_or_404
+        block = get_object_or_404(
+            Block.objects.select_related('program', 'academic_term'), pk=pk
+        )
+        data = BlockSerializer(block).data
+        enrollments = (
+            block.enrollment_requests
+            .filter(status='approved')
+            .select_related('student')
+            .order_by('student__full_name')
+        )
+        data['students'] = [
+            {
+                'enrollment_id': str(e.id),
+                'student_name':  e.student.full_name,
+                'student_id':    getattr(e.student, 'student_id', '') or '',
+                'year_level':    e.get_year_level_display(),
+            }
+            for e in enrollments
+        ]
+        return Response(data)
+
+
+class BlockExpansionRequestListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/enrollment/block-expansion-requests/  — admin + registrar
+    POST /api/enrollment/block-expansion-requests/  — registrar only
+    """
+    serializer_class = BlockExpansionRequestSerializer
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsRegistrar()]
+        return [IsAuthenticated(), IsRegistrarOrAdmin()]
+
+    def get_queryset(self):
+        qs = BlockExpansionRequest.objects.select_related(
+            'block__program', 'block__academic_term', 'requested_by', 'reviewed_by'
+        )
+        s = self.request.query_params.get('status')
+        if s:
+            qs = qs.filter(status=s)
+        return qs
+
+    def perform_create(self, serializer):
+        block = serializer.validated_data['block']
+        serializer.save(
+            requested_by=self.request.user,
+            current_capacity=block.capacity,
+        )
+        _audit(
+            self.request.user, self.request.user.role,
+            'block_expansion_requested', self.request.path,
+            get_client_ip(self.request), 'success',
+            {'block_id': block.pk, 'block': str(block), 'requested': serializer.validated_data['requested_capacity']},
+        )
+
+
+class BlockExpansionRequestDetailView(generics.RetrieveUpdateAPIView):
+    """
+    GET   /api/enrollment/block-expansion-requests/<pk>/ — admin + registrar
+    PATCH /api/enrollment/block-expansion-requests/<pk>/ — admin only
+    """
+    serializer_class     = BlockExpansionRequestSerializer
+    http_method_names    = ['get', 'patch', 'head', 'options']
+
+    def get_queryset(self):
+        return BlockExpansionRequest.objects.select_related(
+            'block__program', 'block__academic_term', 'requested_by', 'reviewed_by'
+        )
+
+    def get_permissions(self):
+        if self.request.method == 'PATCH':
+            return [IsAuthenticated(), IsAdmin()]
+        return [IsAuthenticated(), IsRegistrarOrAdmin()]
+
+    def perform_update(self, serializer):
+        new_status = serializer.validated_data.get('status')
+        instance   = serializer.instance
+        with transaction.atomic():
+            if new_status == 'approved' and instance.status != 'approved':
+                block = Block.objects.select_for_update().get(pk=instance.block_id)
+                block.capacity = instance.requested_capacity
+                block.save(update_fields=['capacity'])
+            serializer.save(
+                reviewed_by=self.request.user,
+                reviewed_at=timezone.now(),
+            )
+        _audit(
+            self.request.user, self.request.user.role,
+            f'block_expansion_{new_status or "updated"}', self.request.path,
+            get_client_ip(self.request), 'success',
+            {'request_id': instance.pk, 'block': str(instance.block), 'new_status': new_status},
+        )

@@ -30,6 +30,8 @@ import FacultyProfile from './pages/faculty/FacultyProfile';
 import FacultyRoster from './pages/faculty/FacultyRoster';
 import FacultySchedule from './pages/faculty/FacultySchedule';
 import RegistrarShell from './components/layout/RegistrarShell';
+import EncoderShell from './components/layout/EncoderShell';
+import EncoderApplications from './pages/encoder/EncoderApplications';
 import RegistrarDashboard from './pages/registrar/RegistrarDashboard';
 import RegistrarEnrollmentRequests from './pages/registrar/RegistrarEnrollmentRequests';
 import RegistrarRegistrations from './pages/registrar/RegistrarRegistrations';
@@ -114,6 +116,13 @@ export default function App() {
             <Route path="academic-data" element={<AdminPrograms />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="*"             element={<Navigate to="dashboard" replace />} />
+          </Route>
+
+          {/* ── Department Encoder routes ─────────────────────────── */}
+          <Route path="/encoder" element={<RequireRole roles={['department_encoder']}><EncoderShell /></RequireRole>}>
+            <Route index               element={<Navigate to="applications" replace />} />
+            <Route path="applications" element={<EncoderApplications />} />
+            <Route path="*"            element={<Navigate to="applications" replace />} />
           </Route>
 
           {/* ── Admin routes ──────────────────────────────────────── */}

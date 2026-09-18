@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import AcademicTerm, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
+from .models import AcademicTerm, Block, BlockExpansionRequest, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
 
 
 class AcademicTermSerializer(serializers.ModelSerializer):
@@ -117,9 +117,11 @@ class EnrollmentRequestSerializer(serializers.ModelSerializer):
     student_id = serializers.CharField(source='student.student_id', read_only=True)
     student_email = serializers.CharField(source='student.institutional_email', read_only=True)
     year_level_display = serializers.CharField(source='get_year_level_display', read_only=True)
+    program_id = serializers.IntegerField(source='program.id', read_only=True)
     program_code = serializers.CharField(source='program.code', read_only=True)
     program_name = serializers.CharField(source='program.name', read_only=True)
-    block_name = serializers.CharField(source='block.name', read_only=True)
+    block_id = serializers.SerializerMethodField()
+    block_name = serializers.SerializerMethodField()
     total_units = serializers.SerializerMethodField()
 
     student_type_display = serializers.CharField(source='get_student_type_display', read_only=True)
@@ -129,11 +131,18 @@ class EnrollmentRequestSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'student_name', 'student_id', 'student_email',
             'academic_term', 'year_level', 'year_level_display',
-            'program_code', 'program_name', 'block_name',
+            'program_id', 'program_code', 'program_name',
+            'block_id', 'block_name',
             'student_type', 'student_type_display',
             'subjects', 'status', 'remarks',
             'submitted_at', 'processed_at', 'total_units',
         ]
+
+    def get_block_id(self, obj):
+        return obj.block_id
+
+    def get_block_name(self, obj):
+        return obj.block.name if obj.block_id else None
 
     def get_total_units(self, obj):
         return float(sum(s.units for s in obj.subjects.all()))
@@ -146,7 +155,7 @@ class StudentOwnEnrollmentSerializer(serializers.ModelSerializer):
     year_level_display = serializers.CharField(source='get_year_level_display', read_only=True)
     program_code = serializers.CharField(source='program.code', read_only=True)
     program_name = serializers.CharField(source='program.name', read_only=True)
-    block_name = serializers.CharField(source='block.name', read_only=True)
+    block_name = serializers.SerializerMethodField()
     student_type_display = serializers.CharField(source='get_student_type_display', read_only=True)
     total_units = serializers.SerializerMethodField()
 
@@ -158,6 +167,9 @@ class StudentOwnEnrollmentSerializer(serializers.ModelSerializer):
             'student_type', 'student_type_display',
             'subjects', 'status', 'remarks', 'submitted_at', 'processed_at', 'total_units',
         ]
+
+    def get_block_name(self, obj):
+        return obj.block.name if obj.block_id else None
 
     def get_total_units(self, obj):
         return float(sum(s.units for s in obj.subjects.all()))
@@ -305,31 +317,6 @@ class PendingEnrollmentCreateSerializer(serializers.Serializer):
         return value.strip()
 
 
-class PendingEnrollmentListSerializer(serializers.ModelSerializer):
-    student_type_display = serializers.CharField(source='get_student_type_display', read_only=True)
-    status_display       = serializers.CharField(source='get_status_display', read_only=True)
-    program_name         = serializers.CharField(source='program.name', read_only=True)
-    program_code         = serializers.CharField(source='program.code', read_only=True)
-    term_display         = serializers.SerializerMethodField()
-    full_name            = serializers.CharField(read_only=True)
-
-    class Meta:
-        model = PendingEnrollment
-        fields = [
-            'id', 'reference_number', 'student_type', 'student_type_display',
-            'first_name', 'last_name', 'middle_name', 'suffix', 'full_name',
-            'email', 'contact_number', 'date_of_birth', 'sex',
-            'program_name', 'program_code', 'year_level',
-            'status', 'status_display', 'remarks',
-            'term_display', 'created_at', 'reviewed_at',
-        ]
-
-    def get_term_display(self, obj):
-        if obj.academic_term:
-            return f"{obj.academic_term.get_semester_display()} {obj.academic_term.year}"
-        return None
-
-
 class PreEnrollmentDocumentSerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
 
@@ -344,6 +331,34 @@ class PreEnrollmentDocumentSerializer(serializers.ModelSerializer):
         return obj.file.url
 
 
+class PendingEnrollmentListSerializer(serializers.ModelSerializer):
+    student_type_display = serializers.CharField(source='get_student_type_display', read_only=True)
+    status_display       = serializers.CharField(source='get_status_display', read_only=True)
+    program_name         = serializers.CharField(source='program.name', read_only=True)
+    program_code         = serializers.CharField(source='program.code', read_only=True)
+    department_name      = serializers.CharField(source='program.department.name', read_only=True, default=None)
+    department_code      = serializers.CharField(source='program.department.code', read_only=True, default=None)
+    term_display         = serializers.SerializerMethodField()
+    full_name            = serializers.CharField(read_only=True)
+    documents            = PreEnrollmentDocumentSerializer(many=True, read_only=True)
+    reviewed_by_name     = serializers.CharField(source='reviewed_by.full_name', read_only=True, default=None)
+
+    class Meta:
+        model = PendingEnrollment
+        fields = [
+            'id', 'reference_number', 'student_type', 'student_type_display',
+            'first_name', 'last_name', 'middle_name', 'suffix', 'full_name',
+            'email', 'contact_number', 'date_of_birth', 'sex',
+            'program_name', 'program_code', 'department_name', 'department_code', 'year_level',
+            'status', 'status_display', 'remarks',
+            'term_display', 'created_at', 'reviewed_at', 'reviewed_by_name', 'documents',
+        ]
+
+    def get_term_display(self, obj):
+        if obj.academic_term:
+            return f"{obj.academic_term.get_semester_display()} {obj.academic_term.year}"
+        return None
+
 class PendingEnrollmentReviewSerializer(serializers.Serializer):
     status  = serializers.ChoiceField(choices=['approved', 'rejected'])
     remarks = serializers.CharField(required=False, allow_blank=True, max_length=1000)
@@ -354,3 +369,69 @@ class PendingEnrollmentReviewSerializer(serializers.Serializer):
                 {'remarks': 'A reason is required when rejecting a pre-enrollment application.'}
             )
         return data
+
+
+class BlockSerializer(serializers.ModelSerializer):
+    program_code       = serializers.CharField(source='program.code',  read_only=True)
+    program_name       = serializers.CharField(source='program.name',  read_only=True)
+    term_label         = serializers.SerializerMethodField()
+    year_level_display = serializers.CharField(source='get_year_level_display', read_only=True)
+    enrolled_count     = serializers.SerializerMethodField()
+    available_slots    = serializers.SerializerMethodField()
+    fill_pct           = serializers.SerializerMethodField()
+    is_full            = serializers.SerializerMethodField()
+
+    def get_term_label(self, obj):
+        return f"{obj.academic_term.get_semester_display()} {obj.academic_term.year}"
+
+    def get_enrolled_count(self, obj):
+        return obj.enrollment_requests.filter(status='approved').count()
+
+    def get_available_slots(self, obj):
+        return max(0, obj.capacity - self.get_enrolled_count(obj))
+
+    def get_fill_pct(self, obj):
+        if obj.capacity == 0:
+            return 0
+        return round(self.get_enrolled_count(obj) / obj.capacity * 100)
+
+    def get_is_full(self, obj):
+        return self.get_available_slots(obj) == 0
+
+    class Meta:
+        model  = Block
+        fields = [
+            'id', 'name', 'program', 'program_code', 'program_name',
+            'academic_term', 'term_label', 'year_level', 'year_level_display',
+            'capacity', 'enrolled_count', 'available_slots', 'fill_pct', 'is_full',
+        ]
+
+
+class BlockExpansionRequestSerializer(serializers.ModelSerializer):
+    block_name               = serializers.CharField(source='block.name',                       read_only=True)
+    block_program_code       = serializers.CharField(source='block.program.code',               read_only=True)
+    block_program_name       = serializers.CharField(source='block.program.name',               read_only=True)
+    block_year_level_display = serializers.CharField(source='block.get_year_level_display',     read_only=True)
+    term_label               = serializers.SerializerMethodField()
+    requested_by_name        = serializers.CharField(source='requested_by.full_name',           read_only=True)
+    reviewed_by_name         = serializers.CharField(source='reviewed_by.full_name',            read_only=True)
+    block_enrolled_count     = serializers.SerializerMethodField()
+
+    def get_term_label(self, obj):
+        t = obj.block.academic_term
+        return f"{t.get_semester_display()} {t.year}"
+
+    def get_block_enrolled_count(self, obj):
+        return obj.block.enrollment_requests.filter(status='approved').count()
+
+    class Meta:
+        model  = BlockExpansionRequest
+        fields = [
+            'id', 'block', 'block_name', 'block_program_code', 'block_program_name',
+            'block_year_level_display', 'term_label', 'block_enrolled_count',
+            'requested_by', 'requested_by_name',
+            'current_capacity', 'requested_capacity', 'reason',
+            'status', 'admin_note',
+            'created_at', 'reviewed_at', 'reviewed_by', 'reviewed_by_name',
+        ]
+        read_only_fields = ['requested_by', 'current_capacity', 'status', 'reviewed_at', 'reviewed_by']

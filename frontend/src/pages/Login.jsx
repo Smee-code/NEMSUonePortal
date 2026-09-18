@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ROLE_HOME = {
-  student:   '/student/dashboard',
-  faculty:   '/faculty/dashboard',
-  registrar: '/registrar/dashboard',
-  admin:     '/admin/dashboard',
+  student:            '/student/dashboard',
+  faculty:            '/faculty/dashboard',
+  registrar:          '/registrar/dashboard',
+  department_encoder: '/encoder/applications',
+  admin:              '/admin/dashboard',
 };
 
 export default function Login() {
