@@ -44,7 +44,6 @@ import RegistrarDocuments from './pages/registrar/RegistrarDocuments';
 import RegistrarSchedule from './pages/registrar/RegistrarSchedule';
 import StudentShell from './components/layout/StudentShell';
 import StudentDashboard    from './pages/student/StudentDashboard';
-import StudentEnrollment   from './pages/student/StudentEnrollment';
 import StudentGrades       from './pages/student/StudentGrades';
 import StudentSchedule     from './pages/student/StudentSchedule';
 import StudentDocuments    from './pages/student/StudentDocuments';
@@ -74,7 +73,6 @@ export default function App() {
           <Route path="/student" element={<RequireRole roles={['student']}><StudentShell /></RequireRole>}>
             <Route index                element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"     element={<StudentDashboard />} />
-            <Route path="enrollment"    element={<StudentEnrollment />} />
             <Route path="grades"        element={<StudentGrades />} />
             <Route path="schedule"      element={<StudentSchedule />} />
             <Route path="curriculum"    element={<StudentCurriculum />} />
