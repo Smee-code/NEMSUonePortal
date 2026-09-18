@@ -57,6 +57,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 
+    # A placeholder student is created when an instructor imports a class-list row
+    # whose IDNO has no real account yet. It holds the student's ID + name so the
+    # course roster and grades work immediately; it links to the real account when
+    # that student later registers and the Registrar approves (matched by student_id).
+    is_placeholder = models.BooleanField(default=False)
+
     # Registrar validation of student self-registration.
     # 'approved' by default so existing rows and admin-created staff are unaffected;
     # only public student registration sets this to 'pending'.

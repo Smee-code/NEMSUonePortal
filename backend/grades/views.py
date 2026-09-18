@@ -5,6 +5,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -94,8 +95,9 @@ class FacultyStudentGradeListView(APIView):
     throttle_classes = [FacultyStudentGradeReadThrottle]
 
     def get(self, request):
-        assignment_id = request.query_params.get('assignment')
-        if not assignment_id or not assignment_id.isdigit():
+        # Accept both `assignment` and `assignment_id` for backwards compatibility.
+        assignment_id = request.query_params.get('assignment') or request.query_params.get('assignment_id')
+        if not assignment_id or not str(assignment_id).isdigit():
             return Response(
                 {'error': 'assignment query parameter is required.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -111,37 +113,31 @@ class FacultyStudentGradeListView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        enrolled = EnrollmentSubject.objects.filter(
-            enrollment__academic_term=assignment.academic_term,
-            enrollment__status='approved',
-            subject=assignment.subject,
-        ).select_related('enrollment__student')
-
-        student_ids = [es.enrollment.student_id for es in enrolled]
-
-        grade_map = {
-            gr.student_id: gr
-            for gr in GradeRecord.objects.filter(
-                teaching_assignment=assignment,
-                student_id__in=student_ids,
-            )
-        }
+        # The roster is the set of students the instructor added to this course
+        # (one GradeRecord per student in the course), not the old subject-selection
+        # enrollment. Grades are encoded on these same records.
+        records = (
+            GradeRecord.objects
+            .filter(teaching_assignment=assignment)
+            .select_related('student')
+            .order_by('student__full_name', 'student__student_id')
+        )
 
         result = []
-        for es in enrolled:
-            student = es.enrollment.student
-            record = grade_map.get(student.id)
+        for record in records:
+            student = record.student
             result.append({
                 'student_uuid': str(student.id),
                 'student_name': student.full_name,
                 'student_id_no': student.student_id,
-                'grade_record_id': str(record.id) if record else None,
-                'midterm_grade': str(record.midterm_grade) if record and record.midterm_grade is not None else '',
-                'final_grade': str(record.final_grade) if record and record.final_grade is not None else '',
-                'grade': record.grade if record else '',
-                'remarks': record.remarks if record else '',
-                'is_submitted': record.is_submitted if record else False,
-                'encoded_at': record.encoded_at.isoformat() if record else None,
+                'is_placeholder': student.is_placeholder,
+                'grade_record_id': str(record.id),
+                'midterm_grade': str(record.midterm_grade) if record.midterm_grade is not None else '',
+                'final_grade': str(record.final_grade) if record.final_grade is not None else '',
+                'grade': record.grade,
+                'remarks': record.remarks,
+                'is_submitted': record.is_submitted,
+                'encoded_at': record.encoded_at.isoformat() if record.encoded_at else None,
             })
 
         # G-07: audit student PII access (RA 10173)
@@ -834,3 +830,138 @@ class FacultyTeachingAssignmentDeleteView(APIView):
         )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ── Instructor-driven roster: class-list import + individual add ───────────────
+
+class _CourseRosterBase(APIView):
+    """Shared helpers for adding students to a course (TeachingAssignment)."""
+    permission_classes = [IsAuthenticated, IsFaculty]
+
+    def _get_course(self, request, pk):
+        return TeachingAssignment.objects.select_related('subject', 'academic_term').get(
+            pk=pk, faculty=request.user
+        )
+
+    def _add_student(self, course, user):
+        """Create the course roster row (GradeRecord) for a student if absent.
+        Returns 'added', 'already', or 'elsewhere' (already has this subject/term
+        in another section)."""
+        existing = GradeRecord.objects.filter(
+            student=user, subject=course.subject, academic_term=course.academic_term
+        ).first()
+        if existing:
+            if existing.teaching_assignment_id == course.id:
+                return 'already'
+            return 'elsewhere'
+        GradeRecord.objects.create(
+            student=user,
+            subject=course.subject,
+            academic_term=course.academic_term,
+            teaching_assignment=course,
+        )
+        return 'added'
+
+
+class FacultyCourseImportView(_CourseRosterBase):
+    """POST /api/grades/faculty/courses/<pk>/import/ — upload a class list (.xlsx/.csv)."""
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, pk):
+        from .rostering import parse_classlist, resolve_student
+        ip = get_client_ip(request)
+        try:
+            course = self._get_course(request, pk)
+        except TeachingAssignment.DoesNotExist:
+            return Response({'error': 'Course not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        upload = request.FILES.get('file')
+        if not upload:
+            return Response({'error': 'No file was uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        if upload.size > 5 * 1024 * 1024:
+            return Response({'error': 'File is too large (max 5 MB).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            rows = parse_classlist(upload)
+        except Exception:
+            logger.error('Class-list parse failed', exc_info=True)
+            return Response({'error': 'Could not read the file. Upload a valid .xlsx or .csv class list.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if rows is None:
+            return Response({'error': 'Could not find the IDNO and Name columns in the file.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        added = already = elsewhere = matched = placeholders = 0
+        seen = set()
+        with transaction.atomic():
+            for idno, name in rows:
+                if idno in seen:
+                    continue
+                seen.add(idno)
+                user, created = resolve_student(idno, name)
+                if created:
+                    placeholders += 1
+                elif not user.is_placeholder:
+                    matched += 1
+                outcome = self._add_student(course, user)
+                if outcome == 'added':
+                    added += 1
+                elif outcome == 'already':
+                    already += 1
+                else:
+                    elsewhere += 1
+
+        _audit(request.user, request.user.role, 'course_classlist_imported',
+               f'assignment:{course.id}', ip, 'success',
+               {'subject': course.subject.code, 'section': course.section,
+                'rows': len(rows), 'added': added})
+
+        return Response({
+            'total_rows':   len(rows),
+            'added':        added,
+            'already':      already,
+            'elsewhere':    elsewhere,
+            'new_placeholders': placeholders,
+            'matched_accounts': matched,
+            'message': f'{added} student(s) added to {course.subject.code}'
+                       + (f' [{course.section}]' if course.section else '') + '.',
+        }, status=status.HTTP_200_OK)
+
+
+class FacultyCourseAddStudentView(_CourseRosterBase):
+    """POST /api/grades/faculty/courses/<pk>/add-student/ — add one student by IDNO + name."""
+
+    def post(self, request, pk):
+        from .rostering import resolve_student
+        ip = get_client_ip(request)
+        try:
+            course = self._get_course(request, pk)
+        except TeachingAssignment.DoesNotExist:
+            return Response({'error': 'Course not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        student_id = (request.data.get('student_id') or '').strip()
+        name = (request.data.get('name') or '').strip()
+        if not student_id:
+            return Response({'error': 'Student ID (IDNO) is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user, created = resolve_student(student_id, name)
+        outcome = self._add_student(course, user)
+        if outcome == 'already':
+            return Response({'error': f'{user.student_id} is already in this course.'},
+                            status=status.HTTP_409_CONFLICT)
+        if outcome == 'elsewhere':
+            return Response({'error': f'{user.student_id} already has {course.subject.code} in this term under another section.'},
+                            status=status.HTTP_409_CONFLICT)
+
+        _audit(request.user, request.user.role, 'course_student_added',
+               f'assignment:{course.id}', ip, 'success',
+               {'subject': course.subject.code, 'student_id': user.student_id,
+                'placeholder': created})
+
+        return Response({
+            'student_uuid':  str(user.id),
+            'student_name':  user.full_name,
+            'student_id_no': user.student_id,
+            'is_placeholder': user.is_placeholder,
+            'message': f'{user.full_name or user.student_id} added.',
+        }, status=status.HTTP_201_CREATED)

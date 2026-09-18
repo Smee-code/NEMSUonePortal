@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from authentication.models import AuditLog
 from authentication.permissions import IsFaculty, IsRegistrarOrAdmin, IsStudent, get_client_ip
 from enrollment.models import AcademicTerm, EnrollmentRequest, EnrollmentSubject
-from grades.models import TeachingAssignment
+from grades.models import GradeRecord, TeachingAssignment
 
 from .models import ClassSchedule
 from .serializers import (
@@ -150,11 +150,8 @@ class FacultyScheduleView(APIView):
 
         result = []
         for ta in ta_qs:
-            student_count = EnrollmentSubject.objects.filter(
-                enrollment__academic_term=ta.academic_term,
-                enrollment__status='approved',
-                subject=ta.subject,
-            ).count()
+            # Roster size = students the instructor added to this course.
+            student_count = GradeRecord.objects.filter(teaching_assignment=ta).count()
 
             result.append({
                 'teaching_assignment_id': ta.id,
