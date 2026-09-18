@@ -74,8 +74,30 @@ class UserRegistrationSerializer(serializers.Serializer):
             validated_data.get('middle_name', ''),
             validated_data['last_name'],
         )
+        student_id = validated_data['student_id']
+
+        # If an instructor already imported this student ID as a placeholder (they were
+        # on a class list before registering), claim that record in place so all their
+        # course roster rows and grades carry over to the real account. student_id is
+        # unique, so we must reuse the row rather than create a second one.
+        placeholder = User.objects.filter(
+            student_id__iexact=student_id, is_placeholder=True
+        ).first()
+        if placeholder:
+            placeholder.institutional_email = validated_data['institutional_email']
+            placeholder.full_name = full_name
+            placeholder.contact_number = validated_data.get('contact_number', '')
+            placeholder.set_password(validated_data['password'])
+            placeholder.role = 'student'
+            placeholder.is_placeholder = False
+            placeholder.is_verified = False
+            placeholder.is_active = False
+            placeholder.registration_status = User.REG_PENDING
+            placeholder.save()
+            return placeholder
+
         return User.objects.create_user(
-            student_id=validated_data['student_id'],
+            student_id=student_id,
             institutional_email=validated_data['institutional_email'],
             full_name=full_name,
             contact_number=validated_data.get('contact_number', ''),
