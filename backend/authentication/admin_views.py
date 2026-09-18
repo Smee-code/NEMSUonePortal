@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from .models import AuditLog, User
 from .permissions import IsAdmin, IsRegistrarOrAdmin, get_client_ip
 from .serializers import (
+    AdminUserCreateSerializer,
     AdminUserListSerializer,
     AdminUserUpdateSerializer,
     AuditLogSerializer,
@@ -86,15 +87,19 @@ class RegistrarStudentListView(generics.ListAPIView):
 
 # ── User management ───────────────────────────────────────────────────────────
 
-class AdminUserListView(generics.ListAPIView):
-    """GET /api/auth/admin/users/ — paginated user list with filters."""
+class AdminUserListView(generics.ListCreateAPIView):
+    """
+    GET  /api/auth/admin/users/ — paginated user list with filters.
+    POST /api/auth/admin/users/ — create a staff account (faculty / registrar /
+                                  department_encoder / admin).
+    """
     serializer_class   = AdminUserListSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
     throttle_classes   = [AdminUserListThrottle]
     pagination_class   = AdminPagination
 
     def get_queryset(self):
-        qs = User.objects.all()
+        qs = User.objects.select_related('department')
         p  = self.request.query_params
 
         if p.get('role'):
@@ -123,6 +128,22 @@ class AdminUserListView(generics.ListAPIView):
             {'filters': dict(request.query_params)},
         )
         return response
+
+    def create(self, request, *args, **kwargs):
+        ip = get_client_ip(request)
+        serializer = AdminUserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        _audit(
+            request.user, request.user.role,
+            'admin_user_created', f'user:{user.id}', ip, 'success',
+            {
+                'target_user': str(user.id),
+                'role': user.role,
+                'department': user.department.code if user.department_id else None,
+            },
+        )
+        return Response(AdminUserListSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
 class AdminUserDetailView(APIView):
@@ -171,6 +192,23 @@ class AdminUserDetailView(APIView):
             changes['role'] = {'from': user.role, 'to': data['role']}
             user.role = data['role']
             update_fields.append('role')
+
+        if 'department' in data:
+            new_dept = data['department']  # Department instance or None
+            old_code = user.department.code if user.department_id else None
+            new_code = new_dept.code if new_dept else None
+            if old_code != new_code:
+                changes['department'] = {'from': old_code, 'to': new_code}
+                user.department = new_dept
+                update_fields.append('department')
+
+        # A department encoder must always be bound to a department.
+        effective_role = user.role
+        if effective_role == 'department_encoder' and user.department_id is None:
+            return Response(
+                {'department': 'A department encoder must be assigned to a department.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if data.get('unlock') and (user.failed_login_attempts > 0 or user.locked_until):
             changes['unlock'] = True
@@ -239,7 +277,7 @@ class AdminStatsView(APIView):
 
         user_counts = {
             r: User.objects.filter(role=r).count()
-            for r in ['student', 'faculty', 'registrar', 'admin']
+            for r in ['student', 'faculty', 'registrar', 'department_encoder', 'admin']
         }
         user_counts['total']      = sum(user_counts.values())
         user_counts['locked']     = User.objects.filter(locked_until__gt=timezone.now()).count()

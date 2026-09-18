@@ -42,6 +42,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('student', 'Student'),
         ('faculty', 'Faculty'),
         ('registrar', 'Registrar'),
+        ('department_encoder', 'Department Encoder'),
         ('admin', 'Admin'),
     ]
 

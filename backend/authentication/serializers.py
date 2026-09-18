@@ -289,6 +289,8 @@ class RegistrarStudentListSerializer(serializers.ModelSerializer):
 
 class AdminUserListSerializer(serializers.ModelSerializer):
     is_locked = serializers.SerializerMethodField()
+    department_code = serializers.CharField(source='department.code', read_only=True, default=None)
+    department_name = serializers.CharField(source='department.name', read_only=True, default=None)
 
     class Meta:
         model = User
@@ -296,6 +298,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
             'id', 'student_id', 'institutional_email', 'full_name', 'contact_number',
             'role', 'is_active', 'is_verified', 'is_staff', 'date_joined',
             'failed_login_attempts', 'locked_until', 'is_locked',
+            'department_code', 'department_name',
         ]
         read_only_fields = fields
 
@@ -303,12 +306,86 @@ class AdminUserListSerializer(serializers.ModelSerializer):
         return obj.is_locked()
 
 
+# Roles an admin is allowed to assign/create through the management interface.
+ADMIN_ASSIGNABLE_ROLES = ['student', 'faculty', 'registrar', 'department_encoder', 'admin']
+
+
 class AdminUserUpdateSerializer(serializers.Serializer):
     is_active = serializers.BooleanField(required=False)
-    role = serializers.ChoiceField(
-        choices=['student', 'faculty', 'registrar', 'admin'], required=False
-    )
+    role = serializers.ChoiceField(choices=ADMIN_ASSIGNABLE_ROLES, required=False)
+    # Department assignment (by code). Empty string clears it.
+    department = serializers.CharField(required=False, allow_blank=True)
     unlock = serializers.BooleanField(required=False, default=False)
+
+    def validate_department(self, value):
+        from enrollment.models import Department
+        if value in (None, ''):
+            return None
+        try:
+            return Department.objects.get(code__iexact=value.strip())
+        except Department.DoesNotExist:
+            raise serializers.ValidationError(f"No department with code '{value}'.")
+
+
+class AdminUserCreateSerializer(serializers.Serializer):
+    """Admin creates a staff account (faculty / registrar / department_encoder / admin)."""
+    institutional_email = serializers.EmailField()
+    student_id = serializers.CharField(max_length=20)
+    full_name = serializers.CharField(max_length=255)
+    contact_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    role = serializers.ChoiceField(choices=ADMIN_ASSIGNABLE_ROLES)
+    department = serializers.CharField(required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_institutional_email(self, value):
+        value = value.strip().lower()
+        if User.objects.filter(institutional_email__iexact=value).exists():
+            raise serializers.ValidationError('A user with this email already exists.')
+        return value
+
+    def validate_student_id(self, value):
+        value = value.strip()
+        if User.objects.filter(student_id__iexact=value).exists():
+            raise serializers.ValidationError('A user with this ID already exists.')
+        return value
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def validate(self, attrs):
+        from enrollment.models import Department
+        dept_code = (attrs.get('department') or '').strip()
+        dept = None
+        if dept_code:
+            try:
+                dept = Department.objects.get(code__iexact=dept_code)
+            except Department.DoesNotExist:
+                raise serializers.ValidationError({'department': f"No department with code '{dept_code}'."})
+        # A department encoder must be bound to exactly one department.
+        if attrs['role'] == 'department_encoder' and dept is None:
+            raise serializers.ValidationError(
+                {'department': 'A department encoder must be assigned to a department.'}
+            )
+        attrs['department_obj'] = dept
+        return attrs
+
+    def create(self, validated_data):
+        dept = validated_data.pop('department_obj', None)
+        validated_data.pop('department', None)
+        password = validated_data.pop('password')
+        user = User.objects.create_user(
+            institutional_email=validated_data['institutional_email'],
+            student_id=validated_data['student_id'],
+            full_name=validated_data['full_name'],
+            password=password,
+            role=validated_data['role'],
+            contact_number=validated_data.get('contact_number', ''),
+            department=dept,
+            is_verified=True,   # staff accounts created by admin are pre-verified
+            is_active=True,
+        )
+        return user
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
