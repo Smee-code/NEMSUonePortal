@@ -8,6 +8,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.core.mail import send_mail
+from django.conf import settings
+
 from .models import AuditLog, User
 from .permissions import IsAdmin, IsRegistrarOrAdmin, get_client_ip
 from .serializers import (
@@ -16,6 +19,8 @@ from .serializers import (
     AdminUserUpdateSerializer,
     AuditLogSerializer,
     RegistrarStudentListSerializer,
+    RegistrationRequestSerializer,
+    RegistrationReviewSerializer,
 )
 from .throttles import (
     AdminAuditLogThrottle,
@@ -83,6 +88,117 @@ class RegistrarStudentListView(generics.ListAPIView):
             {'filters': dict(request.query_params)},
         )
         return response
+
+
+# ── Registrar: student registration validation ────────────────────────────────
+
+class RegistrationRequestListView(generics.ListAPIView):
+    """
+    GET /api/auth/registrar/registrations/ — student self-registrations awaiting
+    Registrar validation. Defaults to pending; ?status=approved|rejected|all.
+    """
+    serializer_class   = RegistrationRequestSerializer
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    throttle_classes   = [AdminUserListThrottle]
+    pagination_class   = AdminPagination
+
+    def get_queryset(self):
+        p = self.request.query_params
+        status_filter = (p.get('status') or 'pending').lower()
+        qs = User.objects.filter(role='student')
+        if status_filter in ('pending', 'approved', 'rejected'):
+            qs = qs.filter(registration_status=status_filter)
+        # 'all' → no status filter (still students only)
+
+        q = (p.get('search') or '')[:100].strip()
+        if q:
+            qs = qs.filter(
+                Q(full_name__icontains=q) |
+                Q(student_id__icontains=q) |
+                Q(institutional_email__icontains=q)
+            ).distinct()
+
+        return qs.select_related('registration_reviewed_by').order_by('-date_joined')
+
+
+class RegistrationReviewView(APIView):
+    """POST /api/auth/registrar/registrations/<uuid:pk>/review/ — approve or reject."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    throttle_classes   = [AdminUserManageThrottle]
+
+    def post(self, request, pk):
+        ip = get_client_ip(request)
+        try:
+            user = User.objects.get(pk=pk, role='student')
+        except User.DoesNotExist:
+            return Response({'error': 'Registration not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.registration_status != User.REG_PENDING:
+            return Response(
+                {'error': f'This registration was already {user.registration_status}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = RegistrationReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        action  = serializer.validated_data['action']
+        remarks = (serializer.validated_data.get('remarks') or '').strip()
+
+        if action == 'approve':
+            user.registration_status = User.REG_APPROVED
+            user.is_active = True
+            user.is_verified = True
+        else:
+            user.registration_status = User.REG_REJECTED
+            user.is_active = False
+            user.is_verified = False
+        user.registration_remarks = remarks
+        user.registration_reviewed_by = request.user
+        user.registration_reviewed_at = timezone.now()
+        user.save(update_fields=[
+            'registration_status', 'is_active', 'is_verified',
+            'registration_remarks', 'registration_reviewed_by', 'registration_reviewed_at',
+        ])
+
+        self._notify(user, action, remarks)
+
+        _audit(
+            request.user, request.user.role,
+            f'registration_{action}d', f'user:{user.id}', ip, 'success',
+            {'target_user': str(user.id), 'remarks': remarks},
+        )
+        return Response(RegistrationRequestSerializer(user).data)
+
+    @staticmethod
+    def _notify(user, action, remarks):
+        if action == 'approve':
+            subject = 'NEMSUonePortal — your account has been approved'
+            body = (
+                f"Hello {user.full_name},\n\n"
+                "Your NEMSUonePortal registration has been approved by the Registrar. "
+                "You can now log in using your institutional email and the password "
+                "you set during registration.\n\n"
+                f"{settings.FRONTEND_URL}/login\n\n"
+                "Welcome to NEMSUonePortal."
+            )
+        else:
+            reason = f"\n\nReason: {remarks}" if remarks else ''
+            subject = 'NEMSUonePortal — registration not approved'
+            body = (
+                f"Hello {user.full_name},\n\n"
+                "Your NEMSUonePortal registration was not approved by the Registrar."
+                f"{reason}\n\n"
+                "If you believe this is a mistake, please contact the Registrar's Office."
+            )
+        try:
+            send_mail(
+                subject=subject, message=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.institutional_email], fail_silently=False,
+            )
+        except Exception:
+            logger.error('Failed to send registration decision email to %s',
+                         user.institutional_email, exc_info=True)
 
 
 # ── User management ───────────────────────────────────────────────────────────

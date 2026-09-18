@@ -57,6 +57,27 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 
+    # Registrar validation of student self-registration.
+    # 'approved' by default so existing rows and admin-created staff are unaffected;
+    # only public student registration sets this to 'pending'.
+    REG_PENDING = 'pending'
+    REG_APPROVED = 'approved'
+    REG_REJECTED = 'rejected'
+    REGISTRATION_STATUS_CHOICES = [
+        (REG_PENDING, 'Pending'),
+        (REG_APPROVED, 'Approved'),
+        (REG_REJECTED, 'Rejected'),
+    ]
+    registration_status = models.CharField(
+        max_length=20, choices=REGISTRATION_STATUS_CHOICES, default=REG_APPROVED
+    )
+    registration_remarks = models.TextField(blank=True)
+    registration_reviewed_by = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='registrations_reviewed',
+    )
+    registration_reviewed_at = models.DateTimeField(null=True, blank=True)
+
     department = models.ForeignKey(
         'enrollment.Department',
         null=True,

@@ -90,15 +90,18 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        token_obj = EmailVerificationToken.objects.create(user=user)
-        verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token_obj.token}"
+        # Registrar validation replaces email-link verification for students.
+        # Acknowledge receipt; the approve/reject email follows after review.
         _send_email(
-            subject='Verify your NEMSUonePortal email address',
+            subject='NEMSUonePortal — registration received',
             body=(
                 f"Hello {user.full_name},\n\n"
-                f"Click the link below to verify your email address:\n{verify_url}\n\n"
-                "This link expires in 24 hours.\n\n"
-                "If you did not create this account, ignore this email."
+                "We've received your registration for NEMSUonePortal. "
+                "The Registrar's Office will verify your student record and review "
+                "your request.\n\n"
+                "You'll get another email once your account has been approved or "
+                "if any action is needed. You can log in after approval.\n\n"
+                "If you did not make this request, please contact the Registrar's Office."
             ),
             recipient=user.institutional_email,
         )
@@ -107,7 +110,8 @@ class RegisterView(generics.CreateAPIView):
                get_client_ip(request), 'success')
 
         return Response(
-            {'message': 'Account created. Please check your email to verify your account.'},
+            {'message': 'Registration submitted. The Registrar will review your account '
+                        'and you will be notified by email once it is approved.'},
             status=status.HTTP_201_CREATED,
         )
 

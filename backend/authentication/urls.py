@@ -6,6 +6,8 @@ from .admin_views import (
     AdminUserDetailView,
     AdminUserListView,
     RegistrarStudentListView,
+    RegistrationRequestListView,
+    RegistrationReviewView,
 )
 from .views import (
     AcademicProfileView,
@@ -51,6 +53,8 @@ urlpatterns = [
 
     # Registrar — student list
     path('registrar/students/', RegistrarStudentListView.as_view(), name='registrar-student-list'),
+    path('registrar/registrations/', RegistrationRequestListView.as_view(), name='registrar-registration-list'),
+    path('registrar/registrations/<uuid:pk>/review/', RegistrationReviewView.as_view(), name='registrar-registration-review'),
 
     # Admin — user management, audit log, stats
     path('admin/users/',           AdminUserListView.as_view(),   name='admin-user-list'),

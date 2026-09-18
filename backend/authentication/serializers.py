@@ -7,45 +7,56 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import AuditLog, User
 
 
-class UserRegistrationSerializer(serializers.ModelSerializer):
+NAME_PART_RE = re.compile(r"^[^\d]{1,100}$", re.UNICODE)
+
+
+class UserRegistrationSerializer(serializers.Serializer):
+    """
+    Public student self-registration. Returning/enrolled students who already have
+    a university-issued student ID register here; the account is created in a
+    'pending' state and must be validated by the Registrar before it can log in.
+    Name is captured as separate parts and stored combined as 'Last, First Middle'.
+    """
+    last_name = serializers.CharField(max_length=100)
+    first_name = serializers.CharField(max_length=100)
+    middle_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    student_id = serializers.CharField(max_length=20)
+    institutional_email = serializers.EmailField()
+    contact_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
     password = serializers.CharField(
-        write_only=True,
-        required=True,
-        validators=[validate_password],
+        write_only=True, required=True, validators=[validate_password],
         style={'input_type': 'password'},
     )
-    role = serializers.ChoiceField(
-        choices=['student', 'faculty'],
-        default='student',
-        required=False,
-    )
-    department = serializers.IntegerField(required=False, allow_null=True, default=None)
 
-    class Meta:
-        model = User
-        fields = [
-            'student_id',
-            'institutional_email',
-            'full_name',
-            'contact_number',
-            'password',
-            'role',
-            'department',
-        ]
-        extra_kwargs = {'password': {'write_only': True}}
+    def _validate_name_part(self, value, label):
+        value = value.strip()
+        if value and not NAME_PART_RE.match(value):
+            raise serializers.ValidationError(f'{label} may not contain digits.')
+        return value
+
+    def validate_last_name(self, value):
+        return self._validate_name_part(value, 'Last name')
+
+    def validate_first_name(self, value):
+        return self._validate_name_part(value, 'First name')
+
+    def validate_middle_name(self, value):
+        return self._validate_name_part(value, 'Middle name')
 
     def validate_institutional_email(self, value):
-        return value.lower().strip()
+        value = value.lower().strip()
+        if User.objects.filter(institutional_email__iexact=value).exists():
+            raise serializers.ValidationError('An account with this email already exists.')
+        return value
 
     def validate_student_id(self, value):
-        return value.strip().upper()
-
-    def validate_full_name(self, value):
-        value = value.strip()
-        if not re.match(r"^[\w\s'\-\.]{2,255}$", value, re.UNICODE):
-            raise serializers.ValidationError(
-                'Full name may only contain letters, spaces, hyphens, apostrophes, and periods.'
-            )
+        value = value.strip().upper()
+        existing = User.objects.filter(student_id__iexact=value).first()
+        # A placeholder student (created by an instructor's classlist import) may already
+        # hold this ID — that is fine, registration will link to it later. Only block a
+        # real, already-registered account.
+        if existing and not getattr(existing, 'is_placeholder', False):
+            raise serializers.ValidationError('An account with this student ID already exists.')
         return value
 
     def validate_contact_number(self, value):
@@ -53,34 +64,26 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Enter a valid contact number.')
         return value
 
-    def validate(self, attrs):
-        from enrollment.models import Department
-        role = attrs.get('role', 'student')
-        dept_id = attrs.get('department')
-        if role == 'faculty':
-            if not dept_id:
-                raise serializers.ValidationError({'department': 'Department is required for faculty registration.'})
-            try:
-                attrs['department_obj'] = Department.objects.get(pk=dept_id, is_active=True)
-            except Department.DoesNotExist:
-                raise serializers.ValidationError({'department': 'Selected department is invalid or inactive.'})
-        else:
-            attrs['department_obj'] = None
-        return attrs
+    def _compose_full_name(self, first, middle, last):
+        given = ' '.join(p for p in [first, middle] if p).strip()
+        return f'{last}, {given}'.strip().rstrip(',')
 
     def create(self, validated_data):
-        dept_obj = validated_data.pop('department_obj', None)
-        validated_data.pop('department', None)
-        role = validated_data.pop('role', 'student')
+        full_name = self._compose_full_name(
+            validated_data['first_name'],
+            validated_data.get('middle_name', ''),
+            validated_data['last_name'],
+        )
         return User.objects.create_user(
             student_id=validated_data['student_id'],
             institutional_email=validated_data['institutional_email'],
-            full_name=validated_data['full_name'],
+            full_name=full_name,
             contact_number=validated_data.get('contact_number', ''),
             password=validated_data['password'],
-            role=role,
-            department=dept_obj,
+            role='student',
             is_verified=False,
+            is_active=False,
+            registration_status=User.REG_PENDING,
         )
 
 
@@ -102,13 +105,25 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         email = attrs.get(self.username_field, '').lower().strip()
 
-        # Check lockout before attempting password validation (OWASP A07)
+        # Check lockout + registration state before attempting password validation
+        # (OWASP A07). Pending/rejected accounts are is_active=False, so the parent
+        # validator would otherwise raise a generic "no active account" error.
         try:
             user = User.objects.get(institutional_email=email)
             if user.is_locked():
                 raise serializers.ValidationError(
                     'Account is temporarily locked due to multiple failed login '
                     'attempts. Please try again later or contact support.'
+                )
+            if user.registration_status == User.REG_PENDING:
+                raise serializers.ValidationError(
+                    'Your registration is still pending Registrar approval. '
+                    "You'll receive an email once your account has been reviewed."
+                )
+            if user.registration_status == User.REG_REJECTED:
+                raise serializers.ValidationError(
+                    'Your registration was not approved. Please contact the '
+                    "Registrar's Office for assistance."
                 )
         except User.DoesNotExist:
             pass  # Let the parent raise the invalid-credentials error
@@ -386,6 +401,33 @@ class AdminUserCreateSerializer(serializers.Serializer):
             is_active=True,
         )
         return user
+
+
+class RegistrationRequestSerializer(serializers.ModelSerializer):
+    reviewed_by_name = serializers.CharField(
+        source='registration_reviewed_by.full_name', read_only=True, default=None
+    )
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'student_id', 'institutional_email', 'full_name', 'contact_number',
+            'registration_status', 'registration_remarks',
+            'registration_reviewed_at', 'reviewed_by_name', 'date_joined',
+        ]
+        read_only_fields = fields
+
+
+class RegistrationReviewSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=['approve', 'reject'])
+    remarks = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+
+    def validate(self, attrs):
+        if attrs['action'] == 'reject' and not (attrs.get('remarks') or '').strip():
+            raise serializers.ValidationError(
+                {'remarks': 'A reason is required when rejecting a registration.'}
+            )
+        return attrs
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
