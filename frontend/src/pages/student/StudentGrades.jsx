@@ -1,13 +1,36 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
+import { useShell } from '../../components/layout/StudentShell';
+
+function formatUnits(val) {
+  const n = parseFloat(val);
+  if (Number.isNaN(n)) return '0';
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function gradeColor(grade) {
+  if (!grade) return 'var(--muted)';
+  const n = parseFloat(grade);
+  if (isNaN(n)) return grade === 'INC' ? 'var(--amber)' : 'var(--red)';
+  if (n <= 1.75) return 'var(--green)';
+  if (n <= 2.5)  return 'var(--ink)';
+  if (n <= 3.0)  return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function wGpa(records) {
+  const numeric = records.filter(r => r.grade != null && !isNaN(parseFloat(r.grade)));
+  if (!numeric.length) return null;
+  const totalU   = numeric.reduce((s, r) => s + parseFloat(r.subject_units || 0), 0);
+  const weighted = numeric.reduce((s, r) => s + parseFloat(r.grade) * parseFloat(r.subject_units || 0), 0);
+  return totalU > 0 ? (weighted / totalU).toFixed(2) : null;
+}
 
 export default function StudentGrades() {
-  const { user, logout } = useAuth();
-  const [grades, setGrades] = useState([]);
+  const { currentTerm } = useShell();
+  const [grades, setGrades]   = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError]     = useState('');
 
   useEffect(() => {
     api.get('/grades/my/')
@@ -16,7 +39,7 @@ export default function StudentGrades() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Group grades by term
+  /* ── Group by term ─────────────────────────────────────────── */
   const byTerm = grades.reduce((acc, g) => {
     const key = g.term_display;
     if (!acc[key]) acc[key] = { display: g.term_display, year: g.term_year, semester: g.term_semester, records: [] };
@@ -24,138 +47,225 @@ export default function StudentGrades() {
     return acc;
   }, {});
 
-  const terms = Object.values(byTerm).sort((a, b) =>
+  const termList = Object.values(byTerm).sort((a, b) =>
     b.year.localeCompare(a.year) || a.semester.localeCompare(b.semester)
   );
 
-  function gpa(records) {
-    const numeric = records.filter(r => !isNaN(parseFloat(r.grade)));
-    if (numeric.length === 0) return null;
-    const totalUnits = numeric.reduce((s, r) => s + parseFloat(r.subject_units || 0), 0);
-    const weighted = numeric.reduce((s, r) => s + parseFloat(r.grade) * parseFloat(r.subject_units || 0), 0);
-    return totalUnits > 0 ? (weighted / totalUnits).toFixed(2) : null;
-  }
+  /* ── Identify current term records ─────────────────────────── */
+  const currentTermKey = currentTerm
+    ? termList.find(t =>
+        t.year === currentTerm.year ||
+        t.display?.includes(currentTerm.semester_display)
+      )?.display
+    : termList[0]?.display;
 
-  function gradeColor(grade) {
-    if (!grade) return '#6b7280';
-    const n = parseFloat(grade);
-    if (isNaN(n)) return grade === 'INC' ? '#92400e' : '#991b1b';
-    if (n <= 3.00) return '#065f46';
-    return '#991b1b';
-  }
+  const currentRecords = currentTermKey ? byTerm[currentTermKey]?.records ?? [] : [];
+  const historyTerms   = termList.filter(t => t.display !== currentTermKey);
+
+  /* ── KPI stats ─────────────────────────────────────────────── */
+  const allGraded      = grades.filter(g => g.grade != null && !isNaN(parseFloat(g.grade)));
+  const cumulativeGwa  = wGpa(allGraded);
+
+  const currentGraded  = currentRecords.filter(g => g.grade != null && !isNaN(parseFloat(g.grade)));
+  const currentGwa     = wGpa(currentGraded);
+  const currentUnits   = currentRecords.reduce((s, r) => s + parseFloat(r.subject_units || 0), 0);
+
+  const totalUnitsEarned = allGraded
+    .filter(g => parseFloat(g.grade) <= 3.0)
+    .reduce((s, r) => s + parseFloat(r.subject_units || 0), 0);
+
+  const termLabel = currentTerm
+    ? `${currentTerm.semester_display} ${currentTerm.year}`
+    : (termList[0]?.display ?? 'No grades yet');
+
+  if (loading) return <div className="page"><p style={{ color: 'var(--muted)' }}>Loading grades…</p></div>;
 
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><img src="/logo.png" alt="NEMSU" className="sidebar-logo" />NEMSUonePortal</div>
-        <Link className="sidebar-link" to="/student/dashboard">Dashboard</Link>
-        <Link className="sidebar-link" to="/student/enrollment">Enrollment</Link>
-        <Link className="sidebar-link" to="/student/courses">My Courses</Link>
-        <Link className="sidebar-link active" to="/student/grades">My Grades</Link>
-        <Link className="sidebar-link" to="/student/schedule">Schedule</Link>
-        <Link className="sidebar-link" to="/student/documents">Document Requests</Link>
-        <Link className="sidebar-link" to="/student/announcements">Announcements</Link>
-        <Link className="sidebar-link" to="/student/profile">My Profile</Link>
-      </aside>
+    <div className="page">
 
-      <main className="dashboard-content">
-        <div className="dashboard-header">
-          <div>
-            <h1>My Grades</h1>
-            <span className="badge">{user?.role}</span>
-          </div>
-          <button className="btn-logout" onClick={logout}>Sign Out</button>
+      {/* ── Page head ──────────────────────────────────────── */}
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">Academic · {totalUnitsEarned} units earned</div>
+          <h2>My <em>grades</em></h2>
+          <div className="sub">Midterm and final grades for the current term, with full grade history per academic semester.</div>
         </div>
+        <div className="actions">
+          <button className="btn-sec" onClick={() => {}}>
+            <i className="ti ti-file-export" /> Export PDF
+          </button>
+        </div>
+      </div>
 
-        {error && <div style={styles.alertError}>{error}</div>}
-
-        {loading ? (
-          <p style={{ color: '#6b7280' }}>Loading grades…</p>
-        ) : terms.length === 0 ? (
-          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-            No grades available yet. Grades appear here once your faculty submits them.
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {terms.map(term => {
-              const termGpa = gpa(term.records);
-              return (
-                <div key={term.display} style={styles.card}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1rem', color: '#1e3a5f' }}>
-                      {term.display}
-                    </h2>
-                    {termGpa && (
-                      <span style={{ fontSize: '0.85rem', color: '#374151' }}>
-                        Term GWA:&nbsp;
-                        <strong style={{ color: parseFloat(termGpa) <= 3.0 ? '#065f46' : '#991b1b' }}>
-                          {termGpa}
-                        </strong>
-                      </span>
-                    )}
-                  </div>
-
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        {['Subject Code', 'Subject Name', 'Units', 'Grade', 'Remarks'].map(h => (
-                          <th key={h} style={styles.th}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {term.records.map(r => (
-                        <tr key={r.id}>
-                          <td style={styles.td}><strong>{r.subject_code}</strong></td>
-                          <td style={styles.td}>{r.subject_name}</td>
-                          <td style={{ ...styles.td, textAlign: 'center' }}>{formatUnits(r.subject_units)}</td>
-                          <td style={{ ...styles.td, textAlign: 'center',
-                            fontWeight: 700, color: gradeColor(r.grade) }}>
-                            {r.grade || '—'}
-                          </td>
-                          <td style={{ ...styles.td, color: '#6b7280', fontSize: '0.85rem' }}>
-                            {r.remarks || '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
+      {/* ── Stat row ───────────────────────────────────────── */}
+      <div className="stat-row" style={{ marginBottom: '1.75rem' }}>
+        <div className="stat">
+          <div className="num">{cumulativeGwa ?? '—'}</div>
+          <div className="lbl">Cumulative GWA</div>
+        </div>
+        <div className="stat">
+          <div className="num" style={{ color: currentGwa ? 'var(--green)' : undefined }}>{currentGwa ?? '—'}</div>
+          <div className="lbl">This term · GWA</div>
+        </div>
+        <div className="stat">
+          <div className="num">{formatUnits(currentUnits)}</div>
+          <div className="lbl">Units this term</div>
+        </div>
+        <div className="stat">
+          <div className="num">{formatUnits(totalUnitsEarned)}</div>
+          <div className="lbl">Total units earned</div>
+        </div>
+        <div className="stat">
+          <div className="num">
+            <span className="tag status-active" style={{ fontSize: 11 }}>
+              {grades.length > 0 ? 'Regular' : '—'}
+            </span>
           </div>
-        )}
-      </main>
+          <div className="lbl">Standing</div>
+        </div>
+      </div>
+
+      {error && (
+        <div style={{ background: 'var(--red-tint)', color: 'var(--red)', padding: '0.75rem 1rem', marginBottom: '1.5rem', fontSize: 13 }}>{error}</div>
+      )}
+
+      {grades.length === 0 && !error ? (
+        <div className="stu-empty">
+          <i className="ti ti-school" />
+          <p>No grades available yet. Grades appear here once your faculty submits them.</p>
+        </div>
+      ) : (
+        <>
+          {/* ── Current term grades ─────────────────────────── */}
+          {currentRecords.length > 0 && (
+            <>
+              <div className="card-head" style={{ background: 'transparent', border: 0, padding: 0, marginBottom: '1rem' }}>
+                <h4>Current term<span>{termLabel}{currentTerm?.block_code ? ` · ${currentTerm.block_code}` : ''}</span></h4>
+              </div>
+              <div className="table-wrap" style={{ marginBottom: '2rem' }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 110 }}>Code</th>
+                      <th>Subject</th>
+                      <th>Instructor</th>
+                      <th className="num" style={{ width: 60 }}>Units</th>
+                      <th className="num" style={{ width: 80 }}>Midterm</th>
+                      <th className="num" style={{ width: 80 }}>Final</th>
+                      <th style={{ width: 120 }}>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentRecords.map(r => (
+                      <tr key={r.id}>
+                        <td style={{ fontWeight: 600, color: 'var(--gold)', letterSpacing: '.04em' }}>
+                          {r.subject_code}{r.section ? <span style={{ color: 'var(--muted)', fontWeight: 500 }}> [{r.section}]</span> : ''}
+                        </td>
+                        <td><strong style={{ fontWeight: 500, color: 'var(--ink)' }}>{r.subject_name}</strong></td>
+                        <td style={{ color: 'var(--muted)' }}>{r.faculty_name || '—'}</td>
+                        <td className="num">{formatUnits(r.subject_units)}</td>
+                        <td className="num" style={{ fontWeight: 500, color: gradeColor(r.midterm_grade) }}>{r.midterm_grade ?? '—'}</td>
+                        <td className="num" style={{ fontWeight: 500, color: gradeColor(r.final_grade) }}>{r.final_grade ?? '—'}</td>
+                        <td>
+                          {r.is_submitted ? (
+                            <span className={`tag ${parseFloat(r.grade) <= 3.0 ? 'status-active' : 'status-locked'}`} style={{ fontSize: 10 }}>
+                              {r.remarks || (parseFloat(r.grade) <= 3.0 ? 'Passed' : 'Failed')}
+                            </span>
+                          ) : (
+                            <span className="tag pending" style={{ fontSize: 10 }}>Not yet posted</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* ── Grade history ───────────────────────────────── */}
+          {historyTerms.length > 0 && (
+            <>
+              <div className="card-head" style={{ background: 'transparent', border: 0, padding: 0, marginBottom: '1rem' }}>
+                <h4>Grade history<span>{historyTerms.length} completed term{historyTerms.length !== 1 ? 's' : ''}</span></h4>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {historyTerms.map(term => {
+                  const termGpa = wGpa(term.records);
+                  const termUnits = term.records.reduce((s, r) => s + parseFloat(r.subject_units || 0), 0);
+                  return (
+                    <TermHistorySection key={term.display} term={term} gpa={termGpa} totalUnits={termUnits} />
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-function formatUnits(val) {
-  const n = parseFloat(val);
-  if (Number.isNaN(n)) return '0';
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
-}
+function TermHistorySection({ term, gpa, totalUnits }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="info-section" style={{ marginBottom: 0 }}>
+      <div
+        className="info-section-head"
+        style={{ background: '#fff', borderBottom: open ? '1px solid var(--line)' : 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        onClick={() => setOpen(o => !o)}
+      >
+        <div>
+          <div style={{ fontWeight: 500, fontSize: 18, color: 'var(--ink)', letterSpacing: '-.005em' }}>{term.display}</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+            {term.records.length} subjects · {formatUnits(totalUnits)} units
+            {gpa ? <> · GWA <strong style={{ color: 'var(--ink)' }}>{gpa}</strong></> : ''}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <span className="tag status-active">Completed</span>
+          <i className={`ti ti-chevron-${open ? 'up' : 'down'}`} style={{ color: 'var(--muted)', fontSize: 14 }} />
+        </div>
+      </div>
 
-const styles = {
-  alertError: {
-    background: '#fee2e2', color: '#991b1b', padding: '0.75rem',
-    borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem',
-  },
-  card: {
-    background: '#fff', border: '1px solid #e5e7eb',
-    borderRadius: 8, padding: '1.25rem',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-  },
-  table: {
-    width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem',
-  },
-  th: {
-    textAlign: 'left', padding: '0.5rem 0.75rem',
-    background: '#f9fafb', borderBottom: '2px solid #e5e7eb',
-    fontWeight: 600, color: '#374151', fontSize: '0.82rem',
-  },
-  td: {
-    padding: '0.55rem 0.75rem', borderBottom: '1px solid #f3f4f6', color: '#1f2937',
-  },
-};
+      {open && (
+        <table className="table">
+          <thead>
+            <tr>
+              <th style={{ width: 100 }}>Code</th>
+              <th>Subject</th>
+              <th>Instructor</th>
+              <th className="num" style={{ width: 60 }}>Units</th>
+              <th className="num" style={{ width: 70 }}>Midterm</th>
+              <th className="num" style={{ width: 70 }}>Final</th>
+              <th style={{ width: 110 }}>Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {term.records.map(r => (
+              <tr key={r.id}>
+                <td style={{ fontWeight: 500, color: 'var(--ink-2)' }}>
+                  {r.subject_code}{r.section ? <span style={{ color: 'var(--muted)' }}> [{r.section}]</span> : ''}
+                </td>
+                <td>{r.subject_name}</td>
+                <td style={{ color: 'var(--muted)' }}>{r.faculty_name || '—'}</td>
+                <td className="num">{formatUnits(r.subject_units)}</td>
+                <td className="num" style={{ fontWeight: 500, color: gradeColor(r.midterm_grade) }}>{r.midterm_grade ?? '—'}</td>
+                <td className="num" style={{ fontWeight: 500, color: gradeColor(r.final_grade) }}>{r.final_grade ?? '—'}</td>
+                <td>
+                  {r.is_submitted ? (
+                    <span className={`tag ${parseFloat(r.grade) <= 3.0 ? 'status-active' : 'status-locked'}`} style={{ fontSize: 10 }}>
+                      {r.remarks || (parseFloat(r.grade) <= 3.0 ? 'Passed' : 'Failed')}
+                    </span>
+                  ) : (
+                    <span className="tag pending" style={{ fontSize: 10 }}>Not yet posted</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}

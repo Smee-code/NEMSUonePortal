@@ -56,15 +56,23 @@ class GradePagination(LimitOffsetPagination):
 # ── Student ────────────────────────────────────────────────────────────────────
 
 class StudentGradeListView(generics.ListAPIView):
-    """GET /api/grades/my/ — student sees their own submitted grades only."""
+    """
+    GET /api/grades/my/ — the student's enrolled courses (the roster rows an
+    instructor added them to) with midterm/final grades. Grade values are only
+    revealed once the faculty has submitted them; unsubmitted courses show as
+    'not yet posted'.
+    """
     serializer_class = StudentGradeSerializer
     permission_classes = [IsAuthenticated, IsStudent]
 
     def get_queryset(self):
         return (
             GradeRecord.objects
-            .filter(student=self.request.user, is_submitted=True)
-            .select_related('subject', 'academic_term')
+            .filter(student=self.request.user)
+            .select_related(
+                'subject', 'academic_term',
+                'teaching_assignment', 'teaching_assignment__faculty',
+            )
             .order_by('-academic_term__year', 'academic_term__semester', 'subject__code')
         )
 

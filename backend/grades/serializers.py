@@ -69,17 +69,29 @@ class StudentGradeSerializer(serializers.ModelSerializer):
     term_semester_display = serializers.CharField(
         source='academic_term.get_semester_display', read_only=True
     )
+    section = serializers.CharField(source='teaching_assignment.section', read_only=True, default='')
+    faculty_name = serializers.CharField(source='teaching_assignment.faculty.full_name', read_only=True, default=None)
 
     class Meta:
         model = GradeRecord
         fields = [
             'id', 'subject_code', 'subject_name', 'subject_units',
+            'section', 'faculty_name',
             'term_display', 'term_year', 'term_semester', 'term_semester_display',
-            'midterm_grade', 'final_grade', 'grade', 'remarks', 'submitted_at',
+            'midterm_grade', 'final_grade', 'grade', 'remarks',
+            'is_submitted', 'submitted_at',
         ]
 
     def get_term_display(self, obj):
         return str(obj.academic_term)
+
+    def to_representation(self, obj):
+        data = super().to_representation(obj)
+        # Grades only appear after the faculty submits them (paper rule).
+        if not obj.is_submitted:
+            for f in ('midterm_grade', 'final_grade', 'grade', 'remarks', 'submitted_at'):
+                data[f] = None
+        return data
 
 
 class GradeEncodeSerializer(serializers.Serializer):
@@ -114,16 +126,15 @@ class GradeEncodeSerializer(serializers.Serializer):
                 'Teaching assignment not found or does not belong to you.'
             )
 
-        # Verify student is approved-enrolled in this subject/term
-        from enrollment.models import EnrollmentSubject
-        if not EnrollmentSubject.objects.filter(
-            enrollment__student_id=data['student_id'],
-            enrollment__academic_term=assignment.academic_term,
-            enrollment__status='approved',
-            subject=assignment.subject,
+        # Verify the student is on this course's roster (the instructor added them
+        # via class-list import or individually — one GradeRecord per roster member).
+        from .models import GradeRecord
+        if not GradeRecord.objects.filter(
+            student_id=data['student_id'],
+            teaching_assignment=assignment,
         ).exists():
             raise serializers.ValidationError(
-                'Student is not approved-enrolled in this subject for this term.'
+                'This student is not in your class roster for this course.'
             )
 
         # Note: is_submitted re-check happens in the view under a DB lock (G-01 fix)
