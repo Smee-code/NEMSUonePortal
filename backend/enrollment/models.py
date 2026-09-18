@@ -104,6 +104,36 @@ class Subject(models.Model):
         return f"{self.code} — {self.name}"
 
 
+class Curriculum(models.Model):
+    """
+    A versioned curriculum for a program (e.g. BSIT-2019, effective 2019). A program
+    can have several curricula; a Subject can belong to several curricula (shared,
+    identical course record). Placement (year level + semester) lives on the Subject,
+    so the same shared course carries its semester with it across curricula.
+    """
+    program = models.ForeignKey(
+        Program, on_delete=models.CASCADE, related_name='curricula'
+    )
+    code = models.CharField(max_length=40, unique=True)          # e.g. "BSIT-2019"
+    year_effective = models.PositiveSmallIntegerField()          # year of effectivity
+    subjects = models.ManyToManyField(
+        Subject, related_name='curricula', blank=True
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='created_curricula',
+    )
+
+    class Meta:
+        ordering = ['program__code', '-year_effective']
+        unique_together = [('program', 'year_effective')]
+
+    def __str__(self):
+        return f"{self.program.code} Curriculum (effective {self.year_effective})"
+
+
 class Block(models.Model):
     """A section/block within a program for a given term and year level."""
     YEAR_LEVEL_CHOICES = Subject.YEAR_LEVEL_CHOICES
@@ -214,6 +244,43 @@ class EnrollmentRequest(models.Model):
 
     def __str__(self):
         return f"{self.student} — {self.academic_term} ({self.status})"
+
+
+class BlockExpansionRequest(models.Model):
+    """Registrar requests admin to increase a block's capacity."""
+    STATUS_CHOICES = [
+        ('pending',  'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    block = models.ForeignKey(
+        Block, on_delete=models.CASCADE, related_name='expansion_requests'
+    )
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='block_expansion_requests',
+    )
+    current_capacity = models.PositiveSmallIntegerField()
+    requested_capacity = models.PositiveSmallIntegerField()
+    reason = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    admin_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='reviewed_block_expansion_requests',
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Expansion {self.block} → {self.requested_capacity} [{self.status}]"
 
 
 class CurriculumDocument(models.Model):

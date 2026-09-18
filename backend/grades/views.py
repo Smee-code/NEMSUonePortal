@@ -127,18 +127,32 @@ class FacultyStudentGradeListView(APIView):
         records = (
             GradeRecord.objects
             .filter(teaching_assignment=assignment)
-            .select_related('student')
+            .select_related('student', 'student__curriculum', 'student__program')
             .order_by('student__full_name', 'student__student_id')
         )
+
+        # Programs that have more than one curriculum — only then is the old/new
+        # curriculum tag meaningful (per the design).
+        from django.db.models import Count
+        from enrollment.models import Curriculum
+        multi_curriculum_programs = {
+            row['program_id']
+            for row in Curriculum.objects.values('program_id')
+                .annotate(n=Count('id')).filter(n__gt=1)
+        }
 
         result = []
         for record in records:
             student = record.student
+            show_curr = student.program_id in multi_curriculum_programs
             result.append({
                 'student_uuid': str(student.id),
                 'student_name': student.full_name,
                 'student_id_no': student.student_id,
                 'is_placeholder': student.is_placeholder,
+                'curriculum_code': student.curriculum.code if student.curriculum_id else None,
+                'curriculum_year': student.curriculum.year_effective if student.curriculum_id else None,
+                'show_curriculum': show_curr,
                 'grade_record_id': str(record.id),
                 'midterm_grade': str(record.midterm_grade) if record.midterm_grade is not None else '',
                 'final_grade': str(record.final_grade) if record.final_grade is not None else '',

@@ -4,11 +4,13 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 
 const SB_ITEMS = [
-  { key: 'applications', icon: 'ti-file-check',       label: 'Freshman Applications', to: '/encoder/applications' },
+  { key: 'applications', icon: 'ti-file-check', label: 'Freshman Applications', to: '/encoder/applications' },
+  { key: 'curriculum',   icon: 'ti-list-tree',  label: 'Curriculum',            to: '/encoder/curriculum' },
 ];
 
 const PAGE_LABELS = {
   applications: 'Freshman Applications',
+  curriculum:   'Curriculum',
 };
 
 function initials(name) {

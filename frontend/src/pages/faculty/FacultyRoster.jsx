@@ -268,6 +268,11 @@ export default function FacultyRoster() {
                             </div>
                             <div>
                               <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)' }}>{st.student_name || '—'}</div>
+                              {st.show_curriculum && st.curriculum_code && (
+                                <span className="tag" style={{ fontSize: 10, background: 'var(--gold-tint,#f5edd9)', color: 'var(--gold,#b89043)', marginTop: 2, display: 'inline-block' }}>
+                                  {st.curriculum_code}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </td>

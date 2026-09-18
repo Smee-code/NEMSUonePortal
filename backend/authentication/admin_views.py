@@ -148,6 +148,12 @@ class RegistrationReviewView(APIView):
             user.registration_status = User.REG_APPROVED
             user.is_active = True
             user.is_verified = True
+            # Assign the curriculum version this student follows (by entry batch).
+            try:
+                from enrollment.curriculum_views import assign_curriculum_for_student
+                assign_curriculum_for_student(user)
+            except Exception:
+                logger.error('Curriculum auto-assign failed for %s', user.id, exc_info=True)
         else:
             user.registration_status = User.REG_REJECTED
             user.is_active = False

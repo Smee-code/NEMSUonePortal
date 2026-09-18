@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import AcademicTerm, Block, BlockExpansionRequest, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
+from .models import AcademicTerm, Block, BlockExpansionRequest, Curriculum, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
 
 
 class AcademicTermSerializer(serializers.ModelSerializer):
@@ -435,3 +435,92 @@ class BlockExpansionRequestSerializer(serializers.ModelSerializer):
             'created_at', 'reviewed_at', 'reviewed_by', 'reviewed_by_name',
         ]
         read_only_fields = ['requested_by', 'current_capacity', 'status', 'reviewed_at', 'reviewed_by']
+
+
+# ── Curriculum management (Department Encoder) ─────────────────────────────────
+
+class CurriculumSubjectSerializer(serializers.ModelSerializer):
+    """A course as it appears inside a curriculum (placement lives on the Subject)."""
+    units = serializers.DecimalField(max_digits=4, decimal_places=2, coerce_to_string=False)
+    year_level_display = serializers.CharField(source='get_year_level_display', read_only=True)
+    semester_display = serializers.CharField(source='get_semester_display', read_only=True)
+    subject_type_display = serializers.CharField(source='get_subject_type_display', read_only=True)
+    prerequisite_code = serializers.CharField(source='prerequisite.code', read_only=True, default=None)
+
+    class Meta:
+        model = Subject
+        fields = [
+            'id', 'code', 'name', 'units', 'subject_type', 'subject_type_display',
+            'year_level', 'year_level_display', 'semester', 'semester_display',
+            'prerequisite', 'prerequisite_code', 'description',
+        ]
+
+
+class CurriculumListSerializer(serializers.ModelSerializer):
+    program_code = serializers.CharField(source='program.code', read_only=True)
+    program_name = serializers.CharField(source='program.name', read_only=True)
+    department_code = serializers.CharField(source='program.department.code', read_only=True)
+    subject_count = serializers.IntegerField(source='subjects.count', read_only=True)
+    label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Curriculum
+        fields = [
+            'id', 'program', 'program_code', 'program_name', 'department_code',
+            'code', 'year_effective', 'is_active', 'subject_count', 'label', 'created_at',
+        ]
+
+    def get_label(self, obj):
+        return f'{obj.program.code} Curriculum (effective {obj.year_effective})'
+
+
+class CurriculumDetailSerializer(CurriculumListSerializer):
+    subjects = CurriculumSubjectSerializer(many=True, read_only=True)
+
+    class Meta(CurriculumListSerializer.Meta):
+        fields = CurriculumListSerializer.Meta.fields + ['subjects']
+
+
+class CurriculumCreateSerializer(serializers.Serializer):
+    program = serializers.PrimaryKeyRelatedField(queryset=Program.objects.filter(is_active=True))
+    year_effective = serializers.IntegerField(min_value=1980, max_value=2100)
+    code = serializers.CharField(max_length=40, required=False, allow_blank=True)
+    duplicate_from = serializers.PrimaryKeyRelatedField(
+        queryset=Curriculum.objects.all(), required=False, allow_null=True,
+    )
+
+    def validate(self, attrs):
+        program = attrs['program']
+        year = attrs['year_effective']
+        if Curriculum.objects.filter(program=program, year_effective=year).exists():
+            raise serializers.ValidationError(
+                {'year_effective': f'{program.code} already has a curriculum effective {year}.'}
+            )
+        code = (attrs.get('code') or '').strip() or f'{program.code}-{year}'
+        if Curriculum.objects.filter(code__iexact=code).exists():
+            raise serializers.ValidationError({'code': f"Curriculum code '{code}' is already in use."})
+        attrs['code'] = code
+        dup = attrs.get('duplicate_from')
+        if dup and dup.program_id != program.id:
+            raise serializers.ValidationError(
+                {'duplicate_from': 'You can only duplicate a curriculum of the same program.'}
+            )
+        return attrs
+
+
+class CurriculumAddSubjectSerializer(serializers.Serializer):
+    """
+    Add a course to a curriculum. Either reference an existing shared course by code,
+    or create a new one. A code that already exists is reused (shared record); reusing
+    it with a different year/semester is rejected (that would be a different course).
+    """
+    code = serializers.CharField(max_length=20)
+    name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    units = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
+    subject_type = serializers.ChoiceField(choices=['major', 'minor'], required=False, default='minor')
+    year_level = serializers.IntegerField(min_value=1, max_value=4)
+    semester = serializers.ChoiceField(choices=['first', 'second', 'summer'])
+    prerequisite_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
+
+    def validate_code(self, value):
+        return value.strip().upper()

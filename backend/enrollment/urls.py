@@ -1,8 +1,17 @@
 from django.urls import path
 
 from . import views
+from . import curriculum_views as cv
 
 urlpatterns = [
+    # Curriculum management (Department Encoder / Admin)
+    path('encoder/programs/', cv.EncoderProgramListView.as_view(), name='encoder-programs'),
+    path('curricula/', cv.CurriculumListCreateView.as_view(), name='curriculum-list-create'),
+    path('curricula/<int:pk>/', cv.CurriculumDetailView.as_view(), name='curriculum-detail'),
+    path('curricula/<int:pk>/subjects/', cv.CurriculumSubjectView.as_view(), name='curriculum-add-subject'),
+    path('curricula/<int:pk>/subjects/<int:subject_id>/', cv.CurriculumSubjectView.as_view(), name='curriculum-remove-subject'),
+    path('my-curriculum/', cv.StudentCurriculumView.as_view(), name='student-curriculum'),
+
     # Public — no authentication required
     path('public/landing/', views.PublicLandingView.as_view(), name='public-landing'),
     path('public/pre-enroll/', views.PublicPreEnrollView.as_view(), name='public-pre-enroll'),
@@ -25,12 +34,22 @@ urlpatterns = [
     # Registrar / Admin
     path('requests/', views.RegistrarEnrollmentListView.as_view(), name='enrollment-requests'),
     path('requests/<uuid:pk>/review/', views.RegistrarReviewView.as_view(), name='enrollment-review'),
+    path('requests/<uuid:pk>/block/', views.EnrollmentBlockAssignView.as_view(), name='enrollment-assign-block'),
     path('terms/<int:pk>/enrollment/', views.EnrollmentTermStatusView.as_view(), name='enrollment-term-status'),
     path('pending/', views.RegistrarPendingEnrollmentListView.as_view(), name='pending-enrollments'),
     path('pending/<uuid:pk>/review/', views.RegistrarPendingEnrollmentReviewView.as_view(), name='pending-enrollment-review'),
     path('pending/<uuid:pk>/documents/', views.RegistrarPreEnrollDocumentsView.as_view(), name='pending-enrollment-documents'),
     path('pending/<uuid:pk>/followup-email/', views.RegistrarPreEnrollFollowupView.as_view(), name='pending-enrollment-followup'),
     path('public/pre-enroll/<uuid:pk>/upload/', views.PublicPreEnrollUploadView.as_view(), name='pre-enroll-upload'),
+
+    # Registrar + Admin — block management
+    path('blocks/', views.BlockListView.as_view(), name='block-list'),
+    path('blocks/<int:pk>/', views.BlockDetailView.as_view(), name='block-detail'),
+    path('block-expansion-requests/', views.BlockExpansionRequestListCreateView.as_view(), name='block-expansion-requests'),
+    path('block-expansion-requests/<int:pk>/', views.BlockExpansionRequestDetailView.as_view(), name='block-expansion-request-detail'),
+
+    # Admin — reports
+    path('admin/reports/enrollment-summary/', views.AdminEnrollmentSummaryReportView.as_view(), name='admin-enrollment-report'),
 
     # Admin — term & subject management
     path('admin/terms/', views.AdminTermListCreateView.as_view(), name='admin-terms'),

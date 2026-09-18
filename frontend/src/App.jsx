@@ -32,6 +32,7 @@ import FacultySchedule from './pages/faculty/FacultySchedule';
 import RegistrarShell from './components/layout/RegistrarShell';
 import EncoderShell from './components/layout/EncoderShell';
 import EncoderApplications from './pages/encoder/EncoderApplications';
+import EncoderCurriculum from './pages/encoder/EncoderCurriculum';
 import RegistrarDashboard from './pages/registrar/RegistrarDashboard';
 import RegistrarEnrollmentRequests from './pages/registrar/RegistrarEnrollmentRequests';
 import RegistrarRegistrations from './pages/registrar/RegistrarRegistrations';
@@ -120,6 +121,7 @@ export default function App() {
           <Route path="/encoder" element={<RequireRole roles={['department_encoder']}><EncoderShell /></RequireRole>}>
             <Route index               element={<Navigate to="applications" replace />} />
             <Route path="applications" element={<EncoderApplications />} />
+            <Route path="curriculum"   element={<EncoderCurriculum />} />
             <Route path="*"            element={<Navigate to="applications" replace />} />
           </Route>
 

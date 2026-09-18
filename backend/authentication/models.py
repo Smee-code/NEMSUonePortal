@@ -98,6 +98,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         on_delete=models.SET_NULL,
         related_name='program_students',
     )
+    # Which curriculum version this student follows (auto-assigned by entry batch,
+    # manually changeable). Null until assigned / for non-students.
+    curriculum = models.ForeignKey(
+        'enrollment.Curriculum',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='students',
+    )
     year_level = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
