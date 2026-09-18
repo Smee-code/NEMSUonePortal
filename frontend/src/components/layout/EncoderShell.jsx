@@ -175,6 +175,17 @@ const CSS = `
   .page-head h2{font-size:26px;font-weight:600;color:var(--enc-ink);letter-spacing:-.02em}
   .page-head h2 em{font-style:normal;color:var(--enc-gold)}
   .page-head .sub{font-size:14px;color:var(--enc-muted);margin-top:6px;max-width:600px;line-height:1.55}
+  /* Buttons (shared across encoder pages) */
+  .btn-pri{padding:9px 16px;background:var(--enc-ink);color:#fff;border:1px solid var(--enc-ink);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;transition:background .15s,border-color .15s}
+  .btn-pri:hover:not(:disabled){background:var(--enc-gold);border-color:var(--enc-gold)}
+  .btn-pri:disabled{opacity:.55;cursor:not-allowed}
+  .btn-pri i{font-size:15px}
+  .btn-sec{padding:9px 14px;background:#fff;color:var(--enc-ink);border:1px solid var(--enc-line);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;transition:border-color .15s,color .15s}
+  .btn-sec:hover:not(:disabled){border-color:var(--enc-ink);color:var(--enc-ink)}
+  .btn-sec:disabled{opacity:.55;cursor:not-allowed}
+  .btn-sec i{font-size:15px}
+  .btn-ghost{padding:6px 8px;background:transparent;color:var(--enc-muted);border:none;cursor:pointer;font-family:inherit;font-size:12px;display:inline-flex;align-items:center;gap:4px}
+  .btn-ghost:hover{color:var(--enc-ink)}
   @media(max-width:980px){
     .enc-sb{position:fixed;top:0;left:0;bottom:0;z-index:70;width:248px;height:100dvh;transform:translateX(-100%);transition:transform .22s ease}
     .enc-sb.is-open{transform:none}
