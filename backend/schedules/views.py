@@ -161,6 +161,7 @@ class FacultyScheduleView(APIView):
                 'subject_code': ta.subject.code,
                 'subject_name': ta.subject.name,
                 'subject_units': ta.subject.units,
+                'section': ta.section,
                 'term': str(ta.academic_term),
                 'term_id': ta.academic_term.id,
                 'student_count': student_count,

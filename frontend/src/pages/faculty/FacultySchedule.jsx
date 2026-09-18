@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
 
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const DAY_LABELS = {
@@ -36,13 +34,8 @@ function createSlotRows(count = 1, base = EMPTY_SLOT) {
 function getCurrentRegularTermParts(today = new Date()) {
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
-
-  if (month >= 8 && month <= 12) {
-    return { year: `${year}-${year + 1}`, semester: 'first' };
-  }
-  if (month >= 1 && month <= 6) {
-    return { year: `${year - 1}-${year}`, semester: 'second' };
-  }
+  if (month >= 8 && month <= 12) return { year: `${year}-${year + 1}`, semester: 'first' };
+  if (month >= 1 && month <= 6) return { year: `${year - 1}-${year}`, semester: 'second' };
   return null;
 }
 
@@ -54,8 +47,6 @@ function formatTime(t) {
 }
 
 export default function FacultyTeachingLoad() {
-  const { user, logout } = useAuth();
-
   const [terms, setTerms] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -65,24 +56,22 @@ export default function FacultyTeachingLoad() {
   const [loading, setLoading] = useState(false);
   const [pageError, setPageError] = useState('');
 
-  // Declare assignment modal
   const [showDeclare, setShowDeclare] = useState(false);
-  const [declareForm, setDeclareForm] = useState({ term_semester: '', department_id: '', program_id: '', year_level: '', subject_id: '' });
+  const [declareForm, setDeclareForm] = useState({ term_semester: '', department_id: '', program_id: '', year_level: '', subject_id: '', block_id: '', section: '' });
   const [declareError, setDeclareError] = useState('');
   const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [declaring, setDeclaring] = useState(false);
+  const [declareBlocks, setDeclareBlocks] = useState([]);
+  const [blocksLoading, setBlocksLoading] = useState(false);
 
-  // Per-assignment slot form state
   const [slotOpen, setSlotOpen] = useState({});
   const [slotForm, setSlotForm] = useState({});
   const [slotError, setSlotError] = useState({});
   const [savingSlot, setSavingSlot] = useState({});
 
-  // Deletion loading state
   const [deletingAssignment, setDeletingAssignment] = useState(null);
   const [deletingSlot, setDeletingSlot] = useState(null);
 
-  // Load terms + curriculum filters on mount
   useEffect(() => {
     Promise.all([
       api.get('/enrollment/terms/'),
@@ -97,9 +86,7 @@ export default function FacultyTeachingLoad() {
         ? termsRes.data.find(t => t.year === currentParts.year && t.semester === currentParts.semester)
         : null;
       const active = termsRes.data.find(t => t.is_active);
-      if (current || active) {
-        setSelectedTerm(String((current || active).id));
-      }
+      if (current || active) setSelectedTerm(String((current || active).id));
     }).catch(() => setPageError('Failed to load terms and curriculum filters.'));
   }, []);
 
@@ -113,9 +100,7 @@ export default function FacultyTeachingLoad() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    fetchLoad(selectedTerm);
-  }, [selectedTerm]);
+  useEffect(() => { fetchLoad(selectedTerm); }, [selectedTerm]);
 
   // ── Declare assignment ───────────────────────────────────────────────────────
 
@@ -123,8 +108,9 @@ export default function FacultyTeachingLoad() {
     const selectedTermObj = terms.find(t => String(t.id) === selectedTerm);
     const currentParts = getCurrentRegularTermParts();
     const defaultSemester = selectedTermObj?.semester || currentParts?.semester || '';
-    setDeclareForm({ term_semester: defaultSemester, department_id: '', program_id: '', year_level: '', subject_id: '' });
+    setDeclareForm({ term_semester: defaultSemester, department_id: '', program_id: '', year_level: '', subject_id: '', block_id: '', section: '' });
     setDeclareSubjects([]);
+    setDeclareBlocks([]);
     setDeclareError('');
     setShowDeclare(true);
   };
@@ -137,10 +123,10 @@ export default function FacultyTeachingLoad() {
     setDeclaring(true);
     setDeclareError('');
     try {
-      const res = await api.post('/grades/faculty/assignments/', {
-        subject_id: Number(declareForm.subject_id),
-        term_semester: declareForm.term_semester,
-      });
+      const payload = { subject_id: Number(declareForm.subject_id), term_semester: declareForm.term_semester };
+      if (declareForm.block_id) payload.block_id = Number(declareForm.block_id);
+      if (declareForm.section.trim()) payload.section = declareForm.section.trim();
+      const res = await api.post('/grades/faculty/assignments/', payload);
       setShowDeclare(false);
       const targetTerm = res.data?.term_id ? String(res.data.term_id) : selectedTerm;
       if (targetTerm) setSelectedTerm(targetTerm);
@@ -153,11 +139,15 @@ export default function FacultyTeachingLoad() {
   };
 
   const handleDeclareTermChange = async (semester) => {
-    setDeclareForm(f => ({ ...f, term_semester: semester, subject_id: '' }));
+    setDeclareForm(f => ({ ...f, term_semester: semester, subject_id: '', block_id: '' }));
     setDeclareSubjects([]);
+    setDeclareBlocks([]);
     setDeclareError('');
     if (!semester || !declareForm.program_id || !declareForm.year_level) return;
-    await fetchDeclareSubjects(semester, declareForm.program_id, declareForm.year_level);
+    await Promise.all([
+      fetchDeclareSubjects(semester, declareForm.program_id, declareForm.year_level),
+      fetchDeclareBlocks(semester, declareForm.program_id, declareForm.year_level),
+    ]);
   };
 
   const handleDeclareDepartmentChange = (departmentId) => {
@@ -170,11 +160,7 @@ export default function FacultyTeachingLoad() {
     if (!semester || !programId || !yearLevel) return;
     setSubjectsLoading(true);
     try {
-      const params = new URLSearchParams({
-        semester,
-        program: programId,
-        year_level: yearLevel,
-      });
+      const params = new URLSearchParams({ semester, program: programId, year_level: yearLevel });
       const res = await api.get(`/enrollment/subjects/?${params.toString()}`);
       setDeclareSubjects(res.data);
     } catch {
@@ -184,20 +170,44 @@ export default function FacultyTeachingLoad() {
     }
   };
 
+  const fetchDeclareBlocks = async (semester, programId, yearLevel) => {
+    if (!programId || !yearLevel) { setDeclareBlocks([]); return; }
+    const termObj = terms.find(t => t.semester === semester) ?? null;
+    if (!termObj) { setDeclareBlocks([]); return; }
+    setBlocksLoading(true);
+    try {
+      const params = new URLSearchParams({ term: termObj.id, program: programId, year_level: yearLevel });
+      const res = await api.get(`/enrollment/blocks/?${params.toString()}`);
+      setDeclareBlocks(Array.isArray(res.data) ? res.data : (res.data.results ?? []));
+    } catch {
+      setDeclareBlocks([]);
+    } finally {
+      setBlocksLoading(false);
+    }
+  };
+
   const handleDeclareProgramChange = async (programId) => {
-    setDeclareForm(f => ({ ...f, program_id: programId, subject_id: '' }));
+    setDeclareForm(f => ({ ...f, program_id: programId, subject_id: '', block_id: '' }));
     setDeclareSubjects([]);
+    setDeclareBlocks([]);
     setDeclareError('');
     if (!declareForm.term_semester || !programId || !declareForm.year_level) return;
-    await fetchDeclareSubjects(declareForm.term_semester, programId, declareForm.year_level);
+    await Promise.all([
+      fetchDeclareSubjects(declareForm.term_semester, programId, declareForm.year_level),
+      fetchDeclareBlocks(declareForm.term_semester, programId, declareForm.year_level),
+    ]);
   };
 
   const handleDeclareYearLevelChange = async (yearLevel) => {
-    setDeclareForm(f => ({ ...f, year_level: yearLevel, subject_id: '' }));
+    setDeclareForm(f => ({ ...f, year_level: yearLevel, subject_id: '', block_id: '' }));
     setDeclareSubjects([]);
+    setDeclareBlocks([]);
     setDeclareError('');
     if (!declareForm.term_semester || !declareForm.program_id || !yearLevel) return;
-    await fetchDeclareSubjects(declareForm.term_semester, declareForm.program_id, yearLevel);
+    await Promise.all([
+      fetchDeclareSubjects(declareForm.term_semester, declareForm.program_id, yearLevel),
+      fetchDeclareBlocks(declareForm.term_semester, declareForm.program_id, yearLevel),
+    ]);
   };
 
   // ── Delete assignment ────────────────────────────────────────────────────────
@@ -221,18 +231,14 @@ export default function FacultyTeachingLoad() {
   const toggleSlotForm = (taId) => {
     const nowOpen = !slotOpen[taId];
     setSlotOpen(prev => ({ ...prev, [taId]: nowOpen }));
-    if (nowOpen && !slotForm[taId]) {
-      setSlotForm(prev => ({ ...prev, [taId]: createSlotRows(1) }));
-    }
+    if (nowOpen && !slotForm[taId]) setSlotForm(prev => ({ ...prev, [taId]: createSlotRows(1) }));
     setSlotError(prev => ({ ...prev, [taId]: '' }));
   };
 
   const updateSlotField = (taId, index, field, value) => {
     setSlotForm(prev => ({
       ...prev,
-      [taId]: (prev[taId] || createSlotRows(1)).map((slot, i) => (
-        i === index ? { ...slot, [field]: value } : slot
-      )),
+      [taId]: (prev[taId] || createSlotRows(1)).map((slot, i) => i === index ? { ...slot, [field]: value } : slot),
     }));
   };
 
@@ -240,9 +246,7 @@ export default function FacultyTeachingLoad() {
     setSlotForm(prev => {
       const current = prev[taId] || createSlotRows(1);
       const next = current.slice(0, count);
-      while (next.length < count) {
-        next.push({ ...EMPTY_SLOT, room: current[0]?.room || '' });
-      }
+      while (next.length < count) next.push({ ...EMPTY_SLOT, room: current[0]?.room || '' });
       return { ...prev, [taId]: next };
     });
     setSlotError(prev => ({ ...prev, [taId]: '' }));
@@ -283,10 +287,7 @@ export default function FacultyTeachingLoad() {
     setDeletingSlot(slotId);
     try {
       await api.delete(`/schedules/faculty/slots/${slotId}/`);
-      setLoad(prev => prev.map(ta => ({
-        ...ta,
-        slots: ta.slots.filter(s => s.id !== slotId),
-      })));
+      setLoad(prev => prev.map(ta => ({ ...ta, slots: ta.slots.filter(s => s.id !== slotId) })));
     } catch {
       setPageError('Failed to remove schedule slot.');
     } finally {
@@ -294,7 +295,7 @@ export default function FacultyTeachingLoad() {
     }
   };
 
-  // ── Derived labels ────────────────────────────────────────────────────────────
+  // ── Derived ──────────────────────────────────────────────────────────────────
 
   const selectedTermLabel = (() => {
     const t = terms.find(t => String(t.id) === selectedTerm);
@@ -304,449 +305,531 @@ export default function FacultyTeachingLoad() {
     ? programs.filter(p => String(p.department) === String(declareForm.department_id))
     : [];
 
+  const totalStudents = load.reduce((s, ta) => s + (ta.student_count || 0), 0);
+  const totalSlots    = load.reduce((s, ta) => s + (ta.slots?.length || 0), 0);
+  const totalUnits    = load.reduce((s, ta) => s + (ta.subject_units || 0), 0);
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><img src="/logo.png" alt="NEMSU" className="sidebar-logo" />NEMSUonePortal</div>
-        <Link className="sidebar-link" to="/faculty/dashboard">Dashboard</Link>
-        <Link className="sidebar-link" to="/faculty/grades">Grade Encoding</Link>
-        <Link className="sidebar-link active" to="/faculty/schedule">Teaching Load</Link>
-        <Link className="sidebar-link" to="/faculty/announcements">Announcements</Link>
-        <Link className="sidebar-link" to="/faculty/profile">My Profile</Link>
-      </aside>
+    <>
+      <style>{CSS}</style>
 
-      <main className="dashboard-content">
-        <div className="dashboard-header">
-          <div>
-            <h1>Teaching Load &amp; Schedule</h1>
-            <span className="badge">{user?.role}</span>
-          </div>
-          <button className="btn-logout" onClick={logout}>Sign Out</button>
+      {/* ── Page head ── */}
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">Faculty · Teaching Load</div>
+          <h2>Teaching <em>Load</em></h2>
         </div>
-
-        {/* Controls row */}
-        <div style={styles.controlsRow}>
-          <div>
-            <label style={styles.label}>Academic Term</label>
-            <select
-              value={selectedTerm}
-              onChange={e => setSelectedTerm(e.target.value)}
-              style={styles.select}
-            >
-              <option value="">— All Terms —</option>
-              {terms.map(t => (
-                <option key={t.id} value={t.id}>{t.semester_display} {t.year}</option>
-              ))}
-            </select>
-          </div>
-          <button style={styles.btnPrimary} onClick={openDeclareModal}>
-            + Declare Subject
+        <div style={{ display: 'flex', gap: '.75rem' }}>
+          <button className="btn-pri" onClick={openDeclareModal}>
+            <i className="ti ti-plus" /> Declare Subject
           </button>
         </div>
+      </div>
 
-        {pageError && <div style={styles.alertError}>{pageError}</div>}
+      {/* ── Toolbar ── */}
+      <div className="toolbar" style={{ marginBottom: '1.5rem' }}>
+        <select
+          className="tl-select"
+          value={selectedTerm}
+          onChange={e => setSelectedTerm(e.target.value)}
+        >
+          <option value="">— All Terms —</option>
+          {terms.map(t => (
+            <option key={t.id} value={t.id}>{t.semester_display} {t.year}</option>
+          ))}
+        </select>
+        <span className="tl-count">
+          {load.length} assignment{load.length !== 1 ? 's' : ''}
+          {selectedTerm ? ` · ${selectedTermLabel}` : ''}
+        </span>
+      </div>
 
-        {/* Assignment list */}
-        {loading ? (
-          <p style={{ color: '#6b7280' }}>Loading teaching load…</p>
-        ) : load.length === 0 ? (
-          <div style={styles.emptyState}>
-            <p style={{ fontWeight: 600 }}>
-              No teaching assignments{selectedTerm ? ` for ${selectedTermLabel}` : ''}.
-            </p>
-            <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-              Click <strong>+ Declare Subject</strong> to add your subjects for this term.
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {load.map(ta => {
-              const taId = ta.teaching_assignment_id;
-              return (
-                <div key={taId} style={styles.card}>
-                  {/* Card header */}
-                  <div style={styles.cardHeader}>
-                    <div>
-                      <span style={styles.subjectCode}>{ta.subject_code}</span>
-                      <span style={styles.subjectName}>{ta.subject_name}</span>
-                    </div>
-                    <div style={styles.cardMeta}>
-                      <span style={styles.pill}>{ta.subject_units} units</span>
-                      <span style={styles.pill}>
-                        {ta.student_count} student{ta.student_count !== 1 ? 's' : ''}
-                      </span>
-                      <span style={{ ...styles.pill, background: '#dbeafe', color: '#1e40af' }}>
-                        {ta.term}
-                      </span>
-                      <button
-                        style={styles.btnDanger}
-                        disabled={deletingAssignment === taId}
-                        onClick={() => handleDeleteAssignment(taId)}
-                      >
-                        {deletingAssignment === taId ? 'Removing…' : 'Remove'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Schedule slots */}
-                  <div style={{ marginTop: '0.85rem' }}>
-                    {ta.slots.length > 0 && (
-                      <div style={styles.slotsRow}>
-                        {[...ta.slots]
-                          .sort((a, b) =>
-                            DAY_ORDER.indexOf(a.day_of_week) - DAY_ORDER.indexOf(b.day_of_week) ||
-                            a.start_time.localeCompare(b.start_time)
-                          )
-                          .map(slot => (
-                            <div key={slot.id} style={styles.slotChip}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.82rem' }}>
-                                  {DAY_LABELS[slot.day_of_week]}
-                                </span>
-                                <button
-                                  style={styles.btnSlotX}
-                                  disabled={deletingSlot === slot.id}
-                                  onClick={() => handleDeleteSlot(slot.id)}
-                                  title="Remove slot"
-                                >
-                                  {deletingSlot === slot.id ? '…' : '×'}
-                                </button>
-                              </div>
-                              <span style={{ color: '#059669', fontWeight: 600, fontSize: '0.81rem' }}>
-                                {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-                              </span>
-                              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>{slot.room}</span>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-
-                    {ta.slots.length === 0 && !slotOpen[taId] && (
-                      <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontStyle: 'italic', marginBottom: '0.5rem' }}>
-                        No schedule set yet.
-                      </p>
-                    )}
-
-                    {/* Add slot toggle / form */}
-                    {!slotOpen[taId] ? (
-                      <button style={styles.btnAddSlot} onClick={() => toggleSlotForm(taId)}>
-                        + Add Schedule Slot
-                      </button>
-                    ) : (
-                      <div style={styles.slotFormBox}>
-                        <div style={styles.slotFormTopRow}>
-                          <div>
-                            <label style={styles.labelSm}>Meetings per Week</label>
-                            <select
-                              value={(slotForm[taId] || createSlotRows(1)).length}
-                              onChange={e => updateMeetingCount(taId, Number(e.target.value))}
-                              style={styles.inputSm}
-                            >
-                              <option value={1}>1 meeting</option>
-                              <option value={2}>2 meetings</option>
-                              <option value={3}>3 meetings</option>
-                            </select>
-                          </div>
-                          <div style={styles.slotActions}>
-                            <button
-                              style={styles.btnPrimary}
-                              onClick={() => handleAddSlot(taId)}
-                              disabled={savingSlot[taId]}
-                            >
-                              {savingSlot[taId] ? 'Saving…' : 'Save'}
-                            </button>
-                            <button
-                              style={styles.btnSecondary}
-                              onClick={() => toggleSlotForm(taId)}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                        {(slotForm[taId] || createSlotRows(1)).map((slot, index) => (
-                          <div key={index} style={styles.slotFormRow}>
-                            <div style={styles.meetingLabel}>Meeting {index + 1}</div>
-                            <div>
-                              <label style={styles.labelSm}>Day</label>
-                              <select
-                                value={slot.day_of_week || 'monday'}
-                                onChange={e => updateSlotField(taId, index, 'day_of_week', e.target.value)}
-                                style={styles.inputSm}
-                              >
-                                {DAY_OPTIONS.map(d => (
-                                  <option key={d.value} value={d.value}>{d.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label style={styles.labelSm}>Start Time</label>
-                              <input
-                                type="time"
-                                value={slot.start_time || '07:00'}
-                                onChange={e => updateSlotField(taId, index, 'start_time', e.target.value)}
-                                style={styles.inputSm}
-                              />
-                            </div>
-                            <div>
-                              <label style={styles.labelSm}>End Time</label>
-                              <input
-                                type="time"
-                                value={slot.end_time || '08:30'}
-                                onChange={e => updateSlotField(taId, index, 'end_time', e.target.value)}
-                                style={styles.inputSm}
-                              />
-                            </div>
-                            <div>
-                              <label style={styles.labelSm}>Room</label>
-                              <input
-                                type="text"
-                                placeholder="e.g. Room 201"
-                                value={slot.room || ''}
-                                onChange={e => updateSlotField(taId, index, 'room', e.target.value)}
-                                style={{ ...styles.inputSm, minWidth: 130 }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                        {slotError[taId] && (
-                          <p style={styles.formError}>{slotError[taId]}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Declare Subject Modal */}
-        {showDeclare && (
-          <div style={styles.overlay}>
-            <div style={styles.modal}>
-              <h2 style={styles.modalTitle}>Declare Teaching Assignment</h2>
-              <p style={styles.modalSubtitle}>
-                Select a term first. Subjects will follow the selected term, program, and year level.
-              </p>
-
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Term</label>
-                <select
-                  value={declareForm.term_semester}
-                  onChange={e => handleDeclareTermChange(e.target.value)}
-                  style={styles.select}
-                >
-                  <option value="">— Select Term —</option>
-                  {TERM_OPTIONS.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Department</label>
-                <select
-                  value={declareForm.department_id}
-                  onChange={e => handleDeclareDepartmentChange(e.target.value)}
-                  style={styles.select}
-                  disabled={!declareForm.term_semester}
-                >
-                  <option value="">— Select Department —</option>
-                  {departments.map(d => (
-                    <option key={d.id} value={d.id}>{d.code} — {d.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Program</label>
-                <select
-                  value={declareForm.program_id}
-                  onChange={e => handleDeclareProgramChange(e.target.value)}
-                  style={styles.select}
-                  disabled={!declareForm.term_semester || !declareForm.department_id}
-                >
-                  <option value="">— Select Program —</option>
-                  {declarePrograms.map(p => (
-                    <option key={p.id} value={p.id}>{p.code} — {p.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Year Level</label>
-                <select
-                  value={declareForm.year_level}
-                  onChange={e => handleDeclareYearLevelChange(e.target.value)}
-                  style={styles.select}
-                  disabled={!declareForm.term_semester || !declareForm.program_id}
-                >
-                  <option value="">— Select Year Level —</option>
-                  {YEAR_LEVEL_OPTIONS.map(y => (
-                    <option key={y.value} value={y.value}>{y.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Subject</label>
-                <select
-                  value={declareForm.subject_id}
-                  onChange={e => setDeclareForm(f => ({ ...f, subject_id: e.target.value }))}
-                  style={styles.select}
-                  disabled={!declareForm.term_semester || !declareForm.program_id || !declareForm.year_level || subjectsLoading}
-                >
-                  <option value="">{subjectsLoading ? 'Loading subjects...' : '— Select Subject —'}</option>
-                  {declareSubjects.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.year_level_display ? `${s.year_level_display} / ` : ''}{s.semester_display ? `${s.semester_display} - ` : ''}{s.code} — {s.name} ({s.units} units)
-                    </option>
-                  ))}
-                </select>
-                {declareForm.term_semester && declareForm.program_id && declareForm.year_level && !subjectsLoading && declareSubjects.length === 0 && (
-                  <p style={styles.helpText}>No active subjects are assigned to this term, program, and year level.</p>
-                )}
-              </div>
-
-              {declareError && <p style={styles.formError}>{declareError}</p>}
-
-              <div style={styles.modalActions}>
-                <button
-                  style={styles.btnSecondary}
-                  onClick={() => setShowDeclare(false)}
-                  disabled={declaring}
-                >
-                  Cancel
-                </button>
-                <button
-                  style={styles.btnPrimary}
-                  onClick={handleDeclare}
-                  disabled={declaring}
-                >
-                  {declaring ? 'Saving…' : 'Declare'}
-                </button>
+      {/* ── Stats strip ── */}
+      {!loading && load.length > 0 && (
+        <div className="stat-row" style={{ marginBottom: '1.5rem' }}>
+          {[
+            { label: 'Subjects',      val: load.length,     icon: 'ti-book-2'      },
+            { label: 'Students',      val: totalStudents,   icon: 'ti-users'       },
+            { label: 'Total units',   val: totalUnits,      icon: 'ti-chart-bar'   },
+            { label: 'Schedule slots',val: totalSlots,      icon: 'ti-calendar'    },
+          ].map(s => (
+            <div key={s.label} className="stat-cell">
+              <div className="stat-val">{s.val}</div>
+              <div className="stat-lbl">
+                <i className={`ti ${s.icon}`} style={{ fontSize: 11, marginRight: 4 }} />{s.label}
               </div>
             </div>
+          ))}
+        </div>
+      )}
+
+      {pageError && (
+        <div className="tl-alert-err">{pageError}</div>
+      )}
+
+      {/* ── Assignment list ── */}
+      {loading ? (
+        <div className="tl-loading">Loading teaching load…</div>
+      ) : load.length === 0 ? (
+        <div className="empty-state">
+          <i className="ti ti-calendar-off" style={{ fontSize: 32, color: 'var(--faint)', marginBottom: '.75rem' }} />
+          <div style={{ fontWeight: 600, color: 'var(--ink)', marginBottom: '.4rem' }}>
+            No teaching assignments{selectedTerm ? ` for ${selectedTermLabel}` : ''}.
           </div>
-        )}
-      </main>
-    </div>
+          <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+            Click <strong>+ Declare Subject</strong> to add your subjects for this term.
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '1.75rem' }}>
+          {load.map(ta => {
+            const taId = ta.teaching_assignment_id;
+            const sortedSlots = [...(ta.slots || [])].sort((a, b) =>
+              DAY_ORDER.indexOf(a.day_of_week) - DAY_ORDER.indexOf(b.day_of_week) ||
+              a.start_time.localeCompare(b.start_time)
+            );
+            return (
+              <div key={taId} className="tl-card">
+                {/* Card header */}
+                <div className="tl-card-head">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, letterSpacing: '.1em', color: 'var(--gold)', textTransform: 'uppercase', fontWeight: 600 }}>
+                        {ta.subject_code}
+                      </span>
+                      {ta.section && (
+                        <span className="tag" style={{ background: 'var(--gold-tint)', color: 'var(--gold)', border: 'none', fontSize: 10, fontWeight: 700 }}>
+                          {ta.section}
+                        </span>
+                      )}
+                      <span className="tag" style={{ background: 'var(--cool)', color: 'var(--ink-2)', border: 'none', fontSize: 10 }}>
+                        {ta.subject_units} units
+                      </span>
+                      {ta.term && (
+                        <span className="tag" style={{ background: '#dbeafe', color: '#1e40af', border: 'none', fontSize: 10 }}>
+                          {ta.term}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 500, fontSize: 17, color: 'var(--ink)', letterSpacing: '-.005em' }}>
+                      {ta.subject_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
+                      {ta.student_count} student{ta.student_count !== 1 ? 's' : ''} enrolled
+                    </div>
+                  </div>
+                  <button
+                    className="tl-btn-remove"
+                    disabled={deletingAssignment === taId}
+                    onClick={() => handleDeleteAssignment(taId)}
+                  >
+                    {deletingAssignment === taId ? 'Removing…' : <><i className="ti ti-trash" /> Remove</>}
+                  </button>
+                </div>
+
+                {/* Schedule slots */}
+                <div className="tl-slots-section">
+                  {sortedSlots.length > 0 ? (
+                    <div className="tl-slots-row">
+                      {sortedSlots.map(slot => (
+                        <div key={slot.id} className="tl-slot-chip">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                              {DAY_LABELS[slot.day_of_week]}
+                            </span>
+                            <button
+                              className="tl-slot-x"
+                              disabled={deletingSlot === slot.id}
+                              onClick={() => handleDeleteSlot(slot.id)}
+                              title="Remove slot"
+                            >
+                              {deletingSlot === slot.id ? '…' : '×'}
+                            </button>
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--green)' }}>
+                            {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                          </span>
+                          <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{slot.room}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: 'var(--faint)', fontStyle: 'italic', marginBottom: '.5rem' }}>
+                      No schedule slots set yet.
+                    </div>
+                  )}
+
+                  {/* Add slot toggle / form */}
+                  {!slotOpen[taId] ? (
+                    <button className="tl-btn-add-slot" onClick={() => toggleSlotForm(taId)}>
+                      <i className="ti ti-plus" /> Add Schedule Slot
+                    </button>
+                  ) : (
+                    <div className="tl-slot-form">
+                      <div className="tl-slot-form-top">
+                        <div>
+                          <label className="tl-label-sm">Meetings per week</label>
+                          <select
+                            className="tl-input-sm"
+                            value={(slotForm[taId] || createSlotRows(1)).length}
+                            onChange={e => updateMeetingCount(taId, Number(e.target.value))}
+                          >
+                            <option value={1}>1 meeting</option>
+                            <option value={2}>2 meetings</option>
+                            <option value={3}>3 meetings</option>
+                          </select>
+                        </div>
+                        <div style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-end' }}>
+                          <button
+                            className="btn-pri"
+                            style={{ padding: '.4rem .9rem', fontSize: 13 }}
+                            onClick={() => handleAddSlot(taId)}
+                            disabled={savingSlot[taId]}
+                          >
+                            {savingSlot[taId] ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            className="btn-sec"
+                            style={{ padding: '.4rem .9rem', fontSize: 13 }}
+                            onClick={() => toggleSlotForm(taId)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                      {(slotForm[taId] || createSlotRows(1)).map((slot, index) => (
+                        <div key={index} className="tl-slot-row">
+                          <div className="tl-meeting-label">Meeting {index + 1}</div>
+                          <div>
+                            <label className="tl-label-sm">Day</label>
+                            <select
+                              className="tl-input-sm"
+                              value={slot.day_of_week || 'monday'}
+                              onChange={e => updateSlotField(taId, index, 'day_of_week', e.target.value)}
+                            >
+                              {DAY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="tl-label-sm">Start time</label>
+                            <input
+                              type="time"
+                              className="tl-input-sm"
+                              value={slot.start_time || '07:00'}
+                              onChange={e => updateSlotField(taId, index, 'start_time', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="tl-label-sm">End time</label>
+                            <input
+                              type="time"
+                              className="tl-input-sm"
+                              value={slot.end_time || '08:30'}
+                              onChange={e => updateSlotField(taId, index, 'end_time', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="tl-label-sm">Room</label>
+                            <input
+                              type="text"
+                              className="tl-input-sm"
+                              placeholder="e.g. Room 201"
+                              value={slot.room || ''}
+                              onChange={e => updateSlotField(taId, index, 'room', e.target.value)}
+                              style={{ minWidth: 120 }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      {slotError[taId] && (
+                        <div className="tl-form-err">{slotError[taId]}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Declare Subject Modal ── */}
+      {showDeclare && (
+        <div className="tl-overlay" onClick={e => { if (e.target === e.currentTarget) setShowDeclare(false); }}>
+          <div className="tl-modal">
+            <div className="tl-modal-head">
+              <div>
+                <div style={{ fontSize: 11, letterSpacing: '.1em', color: 'var(--gold)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
+                  Teaching Load
+                </div>
+                <h3 style={{ margin: 0, fontSize: 18, color: 'var(--ink)' }}>Declare Teaching Assignment</h3>
+              </div>
+              <button className="tl-modal-close" onClick={() => setShowDeclare(false)}>
+                <i className="ti ti-x" />
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 1.25rem' }}>
+              Select a term first. Subjects will follow the selected term, program, and year level.
+            </p>
+
+            {[
+              {
+                label: 'Term',
+                el: (
+                  <select
+                    className="tl-modal-select"
+                    value={declareForm.term_semester}
+                    onChange={e => handleDeclareTermChange(e.target.value)}
+                  >
+                    <option value="">— Select Term —</option>
+                    {TERM_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                ),
+              },
+              {
+                label: 'Department',
+                el: (
+                  <select
+                    className="tl-modal-select"
+                    value={declareForm.department_id}
+                    onChange={e => handleDeclareDepartmentChange(e.target.value)}
+                    disabled={!declareForm.term_semester}
+                  >
+                    <option value="">— Select Department —</option>
+                    {departments.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+                  </select>
+                ),
+              },
+              {
+                label: 'Program',
+                el: (
+                  <select
+                    className="tl-modal-select"
+                    value={declareForm.program_id}
+                    onChange={e => handleDeclareProgramChange(e.target.value)}
+                    disabled={!declareForm.term_semester || !declareForm.department_id}
+                  >
+                    <option value="">— Select Program —</option>
+                    {declarePrograms.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                  </select>
+                ),
+              },
+              {
+                label: 'Year Level',
+                el: (
+                  <select
+                    className="tl-modal-select"
+                    value={declareForm.year_level}
+                    onChange={e => handleDeclareYearLevelChange(e.target.value)}
+                    disabled={!declareForm.term_semester || !declareForm.program_id}
+                  >
+                    <option value="">— Select Year Level —</option>
+                    {YEAR_LEVEL_OPTIONS.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
+                  </select>
+                ),
+              },
+            ].map(({ label, el }) => (
+              <div key={label} className="tl-modal-field">
+                <label className="tl-modal-label">{label}</label>
+                {el}
+              </div>
+            ))}
+
+            <div className="tl-modal-field">
+              <label className="tl-modal-label">Subject</label>
+              <select
+                className="tl-modal-select"
+                value={declareForm.subject_id}
+                onChange={e => setDeclareForm(f => ({ ...f, subject_id: e.target.value }))}
+                disabled={!declareForm.term_semester || !declareForm.program_id || !declareForm.year_level || subjectsLoading}
+              >
+                <option value="">{subjectsLoading ? 'Loading subjects…' : '— Select Subject —'}</option>
+                {declareSubjects.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.year_level_display ? `${s.year_level_display} / ` : ''}{s.semester_display ? `${s.semester_display} - ` : ''}{s.code} — {s.name} ({s.units} units)
+                  </option>
+                ))}
+              </select>
+              {declareForm.term_semester && declareForm.program_id && declareForm.year_level && !subjectsLoading && declareSubjects.length === 0 && (
+                <div className="tl-help-text">No active subjects for this term, program, and year level.</div>
+              )}
+            </div>
+
+            <div className="tl-modal-field">
+              <label className="tl-modal-label">
+                Block <span style={{ fontWeight: 400, color: 'var(--faint)', fontSize: 12 }}>(optional)</span>
+              </label>
+              <select
+                className="tl-modal-select"
+                value={declareForm.block_id}
+                onChange={e => setDeclareForm(f => ({ ...f, block_id: e.target.value }))}
+                disabled={!declareForm.program_id || !declareForm.year_level || blocksLoading}
+              >
+                <option value="">{blocksLoading ? 'Loading blocks…' : '— No block assigned —'}</option>
+                {declareBlocks.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} — {b.enrolled_count}/{b.capacity} students{b.is_full ? ' (Full)' : ''}
+                  </option>
+                ))}
+              </select>
+              {declareForm.program_id && declareForm.year_level && !blocksLoading && declareBlocks.length === 0 && (
+                <div className="tl-help-text">No blocks found. Blocks are created automatically when enrollments are approved.</div>
+              )}
+            </div>
+
+            <div className="tl-modal-field">
+              <label className="tl-modal-label">
+                Section <span style={{ fontWeight: 400, color: 'var(--faint)', fontSize: 12 }}>(as in your class list, e.g. 1A)</span>
+              </label>
+              <input
+                className="tl-modal-select"
+                type="text"
+                value={declareForm.section}
+                onChange={e => setDeclareForm(f => ({ ...f, section: e.target.value }))}
+                placeholder="e.g. 1A"
+                maxLength={30}
+              />
+              <div className="tl-help-text">Same subject taught to two sections = two courses. Leave blank if you handle only one section.</div>
+            </div>
+
+            {declareError && <div className="tl-form-err" style={{ marginBottom: '.75rem' }}>{declareError}</div>}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.75rem', marginTop: '1.25rem' }}>
+              <button className="btn-sec" onClick={() => setShowDeclare(false)} disabled={declaring}>
+                Cancel
+              </button>
+              <button className="btn-pri" onClick={handleDeclare} disabled={declaring}>
+                {declaring ? 'Saving…' : 'Declare Assignment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
-const styles = {
-  label: {
-    display: 'block', fontWeight: 600, fontSize: '0.9rem',
-    color: '#374151', marginBottom: '0.4rem',
-  },
-  labelSm: {
-    display: 'block', fontWeight: 600, fontSize: '0.82rem',
-    color: '#374151', marginBottom: '0.3rem',
-  },
-  select: {
-    width: '100%', maxWidth: 420, padding: '0.5rem 0.75rem',
-    borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.95rem',
-  },
-  inputSm: {
-    padding: '0.45rem 0.6rem', borderRadius: 6,
-    border: '1px solid #d1d5db', fontSize: '0.88rem',
-  },
-  controlsRow: {
-    display: 'flex', gap: '1rem', alignItems: 'flex-end',
-    marginBottom: '1.5rem', flexWrap: 'wrap',
-  },
-  alertError: {
-    background: '#fee2e2', color: '#991b1b', padding: '0.75rem',
-    borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem',
-  },
-  emptyState: {
-    background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8,
-    padding: '2rem', textAlign: 'center', color: '#6b7280',
-  },
-  card: {
-    background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,
-    padding: '1rem 1.25rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-  },
-  cardHeader: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem',
-  },
-  cardMeta: {
-    display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center',
-  },
-  subjectCode: { fontWeight: 700, color: '#1e3a5f', fontSize: '1rem', marginRight: '0.6rem' },
-  subjectName: { color: '#374151', fontSize: '0.9rem' },
-  pill: {
-    background: '#f3f4f6', color: '#374151', borderRadius: 20,
-    padding: '0.2rem 0.65rem', fontSize: '0.78rem', fontWeight: 600,
-  },
-  slotsRow: { display: 'flex', flexWrap: 'wrap', gap: '0.65rem', marginBottom: '0.75rem' },
-  slotChip: {
-    background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8,
-    padding: '0.45rem 0.75rem', display: 'flex', flexDirection: 'column',
-    gap: '0.1rem', minWidth: 155,
-  },
-  slotFormBox: {
-    background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
-    padding: '0.85rem 1rem', marginTop: '0.5rem',
-  },
-  slotFormTopRow: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'flex-end', gap: '0.85rem', flexWrap: 'wrap',
-    marginBottom: '0.75rem',
-  },
-  slotFormRow: {
-    display: 'flex', flexWrap: 'wrap', gap: '0.85rem', alignItems: 'flex-end',
-    paddingTop: '0.75rem', marginTop: '0.75rem', borderTop: '1px solid #e2e8f0',
-  },
-  slotActions: {
-    display: 'flex', gap: '0.5rem', alignItems: 'flex-end',
-  },
-  meetingLabel: {
-    minWidth: 78, color: '#1e3a5f', fontWeight: 700,
-    fontSize: '0.84rem', paddingBottom: '0.55rem',
-  },
-  formError: { color: '#b91c1c', fontSize: '0.85rem', marginTop: '0.5rem' },
-  helpText: { color: '#6b7280', fontSize: '0.82rem', marginTop: '0.4rem' },
-  btnPrimary: {
-    background: '#1e3a5f', color: '#fff', border: 'none', borderRadius: 6,
-    padding: '0.5rem 1.1rem', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 600,
-    whiteSpace: 'nowrap',
-  },
-  btnSecondary: {
-    background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db',
-    borderRadius: 6, padding: '0.5rem 1rem', fontSize: '0.9rem',
-    cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap',
-  },
-  btnDanger: {
-    background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5',
-    borderRadius: 6, padding: '0.25rem 0.75rem', fontSize: '0.8rem',
-    cursor: 'pointer', fontWeight: 600,
-  },
-  btnAddSlot: {
-    background: 'none', border: '1px dashed #9ca3af', color: '#6b7280',
-    borderRadius: 6, padding: '0.35rem 0.9rem', fontSize: '0.85rem',
-    cursor: 'pointer', marginTop: '0.25rem',
-  },
-  btnSlotX: {
-    background: 'none', border: 'none', color: '#ef4444', fontSize: '1rem',
-    cursor: 'pointer', lineHeight: 1, padding: '0 0 0 0.4rem',
-    fontWeight: 700,
-  },
-  overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-  },
-  modal: {
-    background: '#fff', borderRadius: 12, padding: '1.75rem 2rem',
-    width: '100%', maxWidth: 480, boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-  },
-  modalTitle: { margin: '0 0 0.4rem', fontSize: '1.15rem', color: '#1e3a5f', fontWeight: 700 },
-  modalSubtitle: { margin: '0 0 1.25rem', fontSize: '0.88rem', color: '#6b7280' },
-  fieldGroup: { marginBottom: '1rem' },
-  modalActions: {
-    display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem',
-  },
-};
+const CSS = `
+  .tl-select {
+    padding: .45rem .75rem;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+  }
+  .tl-select:focus { border-color: var(--ink); }
+  .tl-count { font-size: 12px; color: var(--muted); align-self: center; }
+  .tl-loading { color: var(--muted); font-size: 13px; padding: 2rem 0; }
+  .tl-alert-err {
+    background: #fee2e2; color: #991b1b; padding: .75rem 1rem;
+    font-size: 13px; margin-bottom: 1rem; border-left: 3px solid #dc2626;
+  }
+
+  /* Assignment card */
+  .tl-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    padding: 1.25rem 1.5rem;
+  }
+  .tl-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .tl-btn-remove {
+    display: flex; align-items: center; gap: 5px;
+    background: none; border: 1px solid #fca5a5; color: var(--red);
+    padding: .3rem .8rem; font-size: 12px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: background .15s;
+  }
+  .tl-btn-remove:hover:not(:disabled) { background: #fee2e2; }
+  .tl-btn-remove:disabled { opacity: .6; cursor: default; }
+
+  /* Slots */
+  .tl-slots-section { border-top: 1px solid var(--line-soft); padding-top: .875rem; }
+  .tl-slots-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .75rem; }
+  .tl-slot-chip {
+    background: #f0fdf4; border: 1px solid #bbf7d0;
+    padding: .5rem .75rem; display: flex; flex-direction: column;
+    gap: 1px; min-width: 150px;
+  }
+  .tl-slot-x {
+    background: none; border: none; color: var(--red); font-size: 15px;
+    cursor: pointer; line-height: 1; padding: 0 0 0 .4rem; font-weight: 700;
+  }
+  .tl-slot-x:disabled { opacity: .5; cursor: default; }
+  .tl-btn-add-slot {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: none; border: 1px dashed var(--faint); color: var(--muted);
+    padding: .35rem .9rem; font-size: 12px; cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  .tl-btn-add-slot:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* Slot form */
+  .tl-slot-form {
+    background: var(--warm); border: 1px solid var(--line);
+    padding: .875rem 1rem; margin-top: .75rem;
+  }
+  .tl-slot-form-top {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem;
+  }
+  .tl-slot-row {
+    display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end;
+    padding-top: .75rem; margin-top: .75rem; border-top: 1px solid var(--line-soft);
+  }
+  .tl-meeting-label {
+    min-width: 72px; color: var(--ink-2); font-weight: 700;
+    font-size: 12px; padding-bottom: .55rem;
+  }
+  .tl-label-sm {
+    display: block; font-size: 11px; font-weight: 600;
+    color: var(--muted); margin-bottom: .3rem; text-transform: uppercase; letter-spacing: .05em;
+  }
+  .tl-input-sm {
+    padding: .4rem .6rem; border: 1px solid var(--line); background: #fff;
+    color: var(--ink); font-size: 13px; outline: none;
+  }
+  .tl-input-sm:focus { border-color: var(--ink); }
+  .tl-form-err { color: var(--red); font-size: 12px; margin-top: .5rem; }
+  .tl-help-text { color: var(--muted); font-size: 12px; margin-top: .35rem; }
+
+  /* Modal */
+  .tl-overlay {
+    position: fixed; inset: 0; background: rgba(10,22,40,.45);
+    display: flex; align-items: center; justify-content: center; z-index: 200;
+  }
+  .tl-modal {
+    background: #fff; width: 100%; max-width: 480px;
+    padding: 1.75rem 2rem; box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    max-height: 90vh; overflow-y: auto;
+  }
+  .tl-modal-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: .5rem;
+  }
+  .tl-modal-close {
+    background: none; border: none; color: var(--muted); font-size: 18px;
+    cursor: pointer; padding: 4px; line-height: 1;
+  }
+  .tl-modal-close:hover { color: var(--ink); }
+  .tl-modal-field { margin-bottom: .875rem; }
+  .tl-modal-label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--muted); margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .05em;
+  }
+  .tl-modal-select {
+    width: 100%; padding: .5rem .75rem; border: 1px solid var(--line);
+    background: #fff; color: var(--ink); font-size: 14px; outline: none;
+  }
+  .tl-modal-select:focus { border-color: var(--ink); }
+  .tl-modal-select:disabled { background: var(--warm); color: var(--faint); cursor: not-allowed; }
+`;

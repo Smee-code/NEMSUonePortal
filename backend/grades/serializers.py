@@ -3,7 +3,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from rest_framework import serializers
 
 from authentication.models import User
-from enrollment.models import AcademicTerm, Subject
+from enrollment.models import AcademicTerm, Block, Subject
 
 from .models import GradeRecord, TeachingAssignment
 
@@ -18,6 +18,7 @@ class TeachingAssignmentSerializer(serializers.ModelSerializer):
     )
     term_display = serializers.SerializerMethodField(read_only=True)
     term_id = serializers.IntegerField(source='academic_term.id', read_only=True)
+    block_name = serializers.SerializerMethodField(read_only=True)
 
     faculty_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role='faculty'),
@@ -40,11 +41,15 @@ class TeachingAssignmentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'faculty_id', 'faculty_name',
             'subject_id', 'subject_code', 'subject_name', 'subject_units',
-            'academic_term_id', 'term_id', 'term_display', 'assigned_at',
+            'academic_term_id', 'term_id', 'term_display',
+            'block_name', 'section', 'assigned_at',
         ]
 
     def get_term_display(self, obj):
         return str(obj.academic_term)
+
+    def get_block_name(self, obj):
+        return obj.block.name if obj.block_id else None
 
     def create(self, validated_data):
         validated_data['assigned_by'] = self.context['request'].user
@@ -164,6 +169,16 @@ class FacultyAssignmentCreateSerializer(serializers.Serializer):
         required=False,
         write_only=True,
     )
+    block_id = serializers.PrimaryKeyRelatedField(
+        queryset=Block.objects.all(),
+        source='block',
+        required=False,
+        allow_null=True,
+    )
+    section = serializers.CharField(max_length=30, required=False, allow_blank=True, default='')
+
+    def validate_section(self, value):
+        return (value or '').strip()
 
 
 class RegistrarGradeSerializer(serializers.ModelSerializer):

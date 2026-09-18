@@ -22,6 +22,17 @@ class TeachingAssignment(models.Model):
         on_delete=models.PROTECT,
         related_name='teaching_assignments',
     )
+    block = models.ForeignKey(
+        'enrollment.Block',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='teaching_assignments',
+    )
+    # Free-text section label the instructor sets (e.g. "1A", "CS1A"). Together with
+    # subject + academic_term this identifies one course/class the instructor handles;
+    # the same subject taught to two sections in a term is two courses.
+    section = models.CharField(max_length=30, blank=True)
     assigned_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -31,11 +42,14 @@ class TeachingAssignment(models.Model):
     assigned_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [('faculty', 'subject', 'academic_term')]
-        ordering = ['-academic_term__year', 'subject__code']
+        unique_together = [('faculty', 'subject', 'academic_term', 'section')]
+        ordering = ['-academic_term__year', 'subject__code', 'section']
 
     def __str__(self):
-        return f"{self.faculty.full_name} — {self.subject.code} ({self.academic_term})"
+        label = f"{self.subject.code}"
+        if self.section:
+            label += f" [{self.section}]"
+        return f"{self.faculty.full_name} — {label} ({self.academic_term})"
 
 
 class GradeRecord(models.Model):

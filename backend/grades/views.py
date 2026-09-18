@@ -680,6 +680,8 @@ class FacultyTeachingAssignmentCreateView(APIView):
         subject = serializer.validated_data['subject_id']
         term = serializer.validated_data.get('academic_term')
         term_semester = serializer.validated_data.get('term_semester')
+        block = serializer.validated_data.get('block')
+        section = serializer.validated_data.get('section', '')
         ip = get_client_ip(request)
 
         if term is None:
@@ -713,11 +715,14 @@ class FacultyTeachingAssignmentCreateView(APIView):
                     faculty=request.user,
                     subject=subject,
                     academic_term=term,
+                    block=block,
+                    section=section,
                     assigned_by=request.user,
                 )
         except IntegrityError:
+            sec = f' section {section}' if section else ''
             return Response(
-                {'error': 'You already have a teaching assignment for this subject in this term.'},
+                {'error': f'You already have a course for {subject.code}{sec} in this term.'},
                 status=status.HTTP_409_CONFLICT,
             )
 
@@ -731,6 +736,68 @@ class FacultyTeachingAssignmentCreateView(APIView):
             TeachingAssignmentSerializer(assignment).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class AdminGradeSubmissionReportView(APIView):
+    """GET /api/grades/admin/reports/submission-progress/?term=<id>"""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+
+    def get(self, request):
+        term_id = request.query_params.get('term')
+        if not term_id or not term_id.isdigit():
+            return Response(
+                {'error': 'term query parameter is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            term = AcademicTerm.objects.get(pk=int(term_id))
+        except AcademicTerm.DoesNotExist:
+            return Response({'error': 'Academic term not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        assignments = (
+            TeachingAssignment.objects
+            .filter(academic_term=term)
+            .select_related('faculty', 'subject')
+            .prefetch_related('grade_records')
+        )
+
+        total = assignments.count()
+        submitted_count = 0
+        result = []
+
+        for ta in assignments:
+            enrolled_count = EnrollmentSubject.objects.filter(
+                enrollment__academic_term=term,
+                enrollment__status='approved',
+                subject=ta.subject,
+            ).count()
+
+            grades_submitted = ta.grade_records.filter(is_submitted=True).count()
+            grades_pending = max(0, enrolled_count - grades_submitted)
+            fully_submitted = enrolled_count > 0 and grades_pending == 0
+            if fully_submitted:
+                submitted_count += 1
+
+            result.append({
+                'id': ta.id,
+                'faculty_name': ta.faculty.full_name,
+                'faculty_email': ta.faculty.institutional_email,
+                'subject_code': ta.subject.code,
+                'subject_name': ta.subject.name,
+                'enrolled_count': enrolled_count,
+                'grades_submitted': grades_submitted,
+                'grades_pending': grades_pending,
+                'fully_submitted': fully_submitted,
+            })
+
+        return Response({
+            'term': str(term),
+            'term_id': term.pk,
+            'total_assignments': total,
+            'submitted_count': submitted_count,
+            'pending_count': total - submitted_count,
+            'assignments': result,
+        })
 
 
 class FacultyTeachingAssignmentDeleteView(APIView):
