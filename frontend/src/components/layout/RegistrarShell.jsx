@@ -136,7 +136,7 @@ function RegTopbar({ currentTerm, toast, badges, openNav }) {
 
       {/* Notifications drawer */}
       {notifOpen && (
-        <div className="reg-topbar-drawer" onClick={e => e.stopPropagation()}>
+        <div className="reg-topbar-drawer" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
           <div className="reg-drawer-head-sm">
             <span>Notifications</span>
             <button className="reg-icon-btn" onClick={() => setNotifOpen(false)}><i className="ti ti-x" /></button>
@@ -176,7 +176,7 @@ function RegTopbar({ currentTerm, toast, badges, openNav }) {
 
       {/* Account drawer */}
       {acctOpen && (
-        <div className="reg-topbar-drawer" onClick={e => e.stopPropagation()}>
+        <div className="reg-topbar-drawer" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
           <div className="reg-drawer-head-sm">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div className="reg-acct-avatar">{initials(user?.full_name)}</div>
