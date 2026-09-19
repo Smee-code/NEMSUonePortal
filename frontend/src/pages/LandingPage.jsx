@@ -446,6 +446,21 @@ const CSS = `
   .modal-body > p.lead{font-size:14px;color:var(--muted);line-height:1.65;margin-bottom:2rem;max-width:480px}
   .modal-body--center > p.lead{margin-left:auto;margin-right:auto}
   .modal-choices{display:flex;flex-direction:column;gap:12px;text-align:left}
+  /* Freshman admission intro modal */
+  .adm-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:var(--gold-tint,#f5edd9);padding:5px 11px;}
+  .adm-steps{display:flex;flex-direction:column;gap:.75rem;}
+  .adm-step{display:flex;gap:14px;align-items:flex-start;}
+  .adm-step-ico{width:38px;height:38px;flex-shrink:0;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .adm-step-t{font-size:14px;font-weight:600;color:var(--ink);}
+  .adm-step-d{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:2px;}
+  /* Document upload rows */
+  .doc-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;}
+  .doc-info{display:flex;align-items:center;gap:8px;min-width:0;flex:1;}
+  .doc-label{font-size:13px;color:var(--ink);}
+  .doc-upload{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;flex-shrink:0;}
+  .doc-upload:hover{border-color:var(--ink);}
+  .doc-upload.has-file{border-color:var(--green,#0a7c52);color:var(--green,#0a7c52);}
+  .doc-upload i{font-size:15px;}
   .modal-choice{display:flex;align-items:center;gap:1rem;padding:1.25rem 1.5rem;cursor:pointer;background:#fff;border:1px solid var(--line);transition:border-color .2s,background .2s,padding-left .2s;width:100%;text-align:left;font-family:inherit;}
   .modal-choice:hover{border-color:var(--ink);background:var(--cool);padding-left:1.75rem}
   .modal-choice-icon{width:46px;height:46px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cool);}
@@ -686,6 +701,7 @@ const SUBJECTS = [
 ];
 
 const WIZARD_STEPS = ['Student type', 'Personal info', 'Requirements', 'Subjects', 'Review & confirm'];
+const FRESHMAN_STEPS = ['Personal information', 'Required documents', 'Review & confirm'];
 
 /* ══════════════════════════════════════════════════════════════
    HOOKS & HELPERS
@@ -780,11 +796,11 @@ export default function LandingPage() {
   const [landingData, setLandingData] = useState(null);
   const [activeNav,   setActiveNav]   = useState('#home');
 
-  function openEnroll()          { setScreen('picker'); document.body.style.overflow = 'hidden'; }
+  function openEnroll()          { setScreen('admission'); document.body.style.overflow = 'hidden'; }
   function openLogin()           { navigate('/login');  }
   function openSignup()          { navigate('/signup'); }
-  function handleNewStudent()    { setScreen(null); setEnrollOpen(true); }
-  function handleReturning()     { setScreen(null); document.body.style.overflow = ''; navigate('/login'); }
+  function startApplication()    { setScreen(null); setEnrollOpen(true); }
+  function goLogin()             { setScreen(null); document.body.style.overflow = ''; navigate('/login'); }
   function closeEnroll()         { setEnrollOpen(false); document.body.style.overflow = ''; }
   function closeModal()          { setScreen(null); document.body.style.overflow = ''; }
 
@@ -849,11 +865,11 @@ export default function LandingPage() {
       <News content={c.news} />
       <CtaBand onEnroll={openEnroll} onLogin={openLogin} />
       <Footer onEnroll={openEnroll} onLogin={openLogin} onSignup={openSignup} />
-      {screen === 'picker' && (
-        <PickerModal
+      {screen === 'admission' && (
+        <AdmissionIntroModal
           onClose={closeModal}
-          onNewStudent={handleNewStudent}
-          onReturningStudent={handleReturning}
+          onStart={startApplication}
+          onLogin={goLogin}
         />
       )}
       {enrollOpen && (
@@ -911,7 +927,7 @@ function Navbar({ scrolled, onEnroll, activeNav, onNavClick }) {
           ))}
         </div>
         <button className="btn btn-primary nav-cta" onClick={onEnroll}>
-          Enroll now <i className="ti ti-arrow-right" />
+          Apply now <i className="ti ti-arrow-right" />
         </button>
         <button className="burger" aria-label="Menu">
           <i className="ti ti-menu-2" />
@@ -952,7 +968,7 @@ function Hero({ onEnroll, term }) {
         </p>
         <div className="hero-actions">
           <button className="btn btn-onDark" onClick={onEnroll}>
-            Begin enrollment <i className="ti ti-arrow-right" />
+            Apply for admission <i className="ti ti-arrow-right" />
           </button>
           <a href="#news" className="btn btn-onDark-ghost">
             Latest news &amp; updates
@@ -1323,7 +1339,7 @@ function CtaBand({ onEnroll, onLogin }) {
         </div>
         <div className="cta-actions">
           <button className="btn btn-gold" onClick={onEnroll}>
-            Begin enrollment <i className="ti ti-arrow-right" />
+            Apply for admission <i className="ti ti-arrow-right" />
           </button>
           <button className="btn btn-onDark-ghost" onClick={onLogin}>
             <i className="ti ti-login" /> Student login
@@ -1362,7 +1378,7 @@ function Footer({ onEnroll, onLogin, onSignup }) {
             <div className="footer-links">
               <a onClick={onLogin} style={{ cursor: 'pointer' }}>Log in</a>
               <a onClick={onSignup} style={{ cursor: 'pointer' }}>Sign up</a>
-              <a onClick={onEnroll} style={{ cursor: 'pointer' }}>Enroll now</a>
+              <a onClick={onEnroll} style={{ cursor: 'pointer' }}>Apply for admission</a>
               <a href="#news">News &amp; updates</a>
             </div>
           </div>
@@ -1420,7 +1436,12 @@ function DetailModal({ item, onClose }) {
   );
 }
 
-function PickerModal({ onClose, onNewStudent, onReturningStudent }) {
+function AdmissionIntroModal({ onClose, onStart, onLogin }) {
+  const steps = [
+    { icon: 'ti-folder', t: 'Gather & upload your documents', d: 'Prepare your admission requirements (Form 138, PSA birth certificate, good moral, etc.) and upload them in the application.' },
+    { icon: 'ti-checklist', t: 'We validate your documents', d: "The campus reviews your submission to confirm you're eligible for admission." },
+    { icon: 'ti-mail-check', t: 'Get your entrance-exam invite', d: "You'll receive an email letting you know if you qualified for the next step — the college entrance examination." },
+  ];
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
@@ -1429,34 +1450,38 @@ function PickerModal({ onClose, onNewStudent, onReturningStudent }) {
             <img src="/logo.png" alt="NEMSU" />
             <div>
               <div className="name">NEMSUonePortal</div>
-              <div className="sub">Begin enrollment</div>
+              <div className="sub">Freshman admission</div>
             </div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">
             <i className="ti ti-x" />
           </button>
         </div>
-        <div className="modal-body modal-body--center">
-          <h3>Are you a new or <em>returning</em> student?</h3>
-          <p className="lead">Select the option that applies to you to continue with enrollment.</p>
-          <div className="modal-choices">
-            <button className="modal-choice" onClick={onNewStudent}>
-              <div className="modal-choice-icon"><i className="ti ti-user-plus" /></div>
-              <div className="modal-choice-body">
-                <div className="t">New student</div>
-                <div className="d">Freshman, transferee, or shiftee enrolling for the first time</div>
+        <div className="modal-body">
+          <span className="adm-badge"><i className="ti ti-school" /> For incoming 1st-year college students</span>
+          <h3 style={{ marginTop: '.9rem' }}>Apply for <em>admission</em> to NEMSU Cantilan.</h3>
+          <p className="lead" style={{ marginBottom: '1.25rem' }}>
+            This is for <strong>incoming first-year college students</strong> who want to enroll at the university.
+            Here's how it works:
+          </p>
+          <div className="adm-steps">
+            {steps.map((s, i) => (
+              <div key={i} className="adm-step">
+                <div className="adm-step-ico"><i className={`ti ${s.icon}`} /></div>
+                <div>
+                  <div className="adm-step-t">{s.t}</div>
+                  <div className="adm-step-d">{s.d}</div>
+                </div>
               </div>
-              <i className="ti ti-arrow-right" style={{ color: 'var(--muted)' }} />
-            </button>
-            <button className="modal-choice" onClick={onReturningStudent}>
-              <div className="modal-choice-icon"><i className="ti ti-login" /></div>
-              <div className="modal-choice-body">
-                <div className="t">Returning student</div>
-                <div className="d">Already have an account — log in to continue</div>
-              </div>
-              <i className="ti ti-arrow-right" style={{ color: 'var(--muted)' }} />
-            </button>
+            ))}
           </div>
+          <button className="flow-btn-primary" style={{ marginTop: '1.5rem' }} onClick={onStart}>
+            Start application <i className="ti ti-arrow-right" />
+          </button>
+          <p className="lead" style={{ fontSize: 12, marginTop: '1rem', textAlign: 'center' }}>
+            Already a student with an account?{' '}
+            <a onClick={onLogin} style={{ color: 'var(--ink)', fontWeight: 600, cursor: 'pointer' }}>Log in instead</a>
+          </p>
         </div>
         <div className="modal-foot">
           Need help? Contact <a href="mailto:cantilan@nemsu.edu.ph">cantilan@nemsu.edu.ph</a>
@@ -1472,9 +1497,12 @@ function PickerModal({ onClose, onNewStudent, onReturningStudent }) {
 function EnrollmentModal({ onClose, term, programs }) {
   const [step, setStep]       = useState(1);
   const [dir, setDir]         = useState('fwd');
-  const [type, setType]       = useState('freshman');
+  const type = 'freshman';    // this application is for incoming freshmen only
+  const [done, setDone]       = useState(false);
   const [submitting, setSub]  = useState(false);
   const [refNum, setRefNum]   = useState('');
+  const [files, setFiles]     = useState({});   // { itemId: File } — uploaded PDFs
+  const [uploadErr, setUpErr] = useState('');
   const [checked, setChecked] = useState({});
   const [selSubj, setSelSubj] = useState(
     () => SUBJECTS.reduce((a, s) => ({ ...a, [s.code]: true }), {})
@@ -1488,6 +1516,14 @@ function EnrollmentModal({ onClose, term, programs }) {
     ? programs.map(p => p.name)
     : PROGRAMS_STATIC.map(p => p.name);
 
+  // Keep the selected program a valid, real program name so it maps to a
+  // department (and reaches that department's encoder) on submit.
+  useEffect(() => {
+    if (progList.length && !progList.includes(form.program)) {
+      setForm(p => ({ ...p, program: progList[0] }));
+    }
+  }, [programs]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const update  = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const toggle  = id   => setChecked(p => ({ ...p, [id]: !p[id] }));
   const toggleS = code => setSelSubj(p => ({ ...p, [code]: !p[code] }));
@@ -1495,21 +1531,34 @@ function EnrollmentModal({ onClose, term, programs }) {
 
   const go = n => { setDir(n > step ? 'fwd' : 'back'); setStep(n); };
   const back = () => step > 1 ? go(step - 1) : onClose();
-  const next = () => step < 5 ? go(step + 1) : handleSubmit();
+  const next = () => step < 3 ? go(step + 1) : handleSubmit();
 
   const handleSubmit = async () => {
     setSub(true);
-    const ref = `NEMSU-${new Date().getFullYear()}-${String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5)}`;
+    let ref = `NEMSU-${new Date().getFullYear()}-${String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5)}`;
     try {
-      await api.post('/enrollment/public/pre-enroll/', {
+      const res = await api.post('/enrollment/public/pre-enroll/', {
         student_type: type, first_name: form.first, last_name: form.last,
-        email: form.email, contact: form.contact, dob: form.dob,
-        sex: form.sex, program: form.program, year_level: form.year,
+        email: form.email, contact_number: form.contact,
+        date_of_birth: form.dob || null, sex: form.sex,
+        program_name: form.program, year_level: YEAR_LEVEL_MAP[form.year] || 1,
       });
+      if (res.data?.reference_number) ref = res.data.reference_number;
+      // Attach the uploaded document PDFs to the new application.
+      const pid = res.data?.pending_id;
+      if (pid) {
+        for (const { file, label } of Object.values(files)) {
+          const fd = new FormData();
+          fd.append('requirement_label', label);
+          fd.append('file', file);
+          try { await api.post(`/enrollment/public/pre-enroll/${pid}/upload/`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }); }
+          catch (_) {}
+        }
+      }
     } catch (_) {}
     setRefNum(ref);
     setSub(false);
-    setStep(6);
+    setDone(true);
   };
 
   const reqs = ALL_REQUIREMENTS[type] || [];
@@ -1517,7 +1566,7 @@ function EnrollmentModal({ onClose, term, programs }) {
   return (
     <div className="modal-back" onClick={onClose}>
       <div
-        className={step === 6 ? 'modal' : 'modal modal--wide'}
+        className={done ? 'modal' : 'modal modal--wide'}
         onClick={e => e.stopPropagation()}
       >
         <div className="modal-head">
@@ -1525,7 +1574,7 @@ function EnrollmentModal({ onClose, term, programs }) {
             <img src="/logo.png" alt="NEMSU" />
             <div>
               <div className="name">NEMSUonePortal</div>
-              <div className="sub">{step === 6 ? 'Application received' : 'Pre-enrollment'}</div>
+              <div className="sub">{done ? 'Application received' : 'Freshman admission'}</div>
             </div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">
@@ -1533,17 +1582,17 @@ function EnrollmentModal({ onClose, term, programs }) {
           </button>
         </div>
 
-        {step === 6 ? (
+        {done ? (
           <div className="modal-body modal-body--center">
             <div className="success-icon"><i className="ti ti-check" /></div>
             <h3>Application <em>received</em>.</h3>
-            <p className="lead">Your pre-enrollment has been submitted. Please bring the required documents to the Registrar's Office at NEMSU Cantilan Campus to complete your enrollment.</p>
+            <p className="lead">Thank you for applying to NEMSU Cantilan Campus. The campus will now validate your uploaded documents.</p>
             <div style={{ display:'inline-block', margin:'1rem 0 1.5rem', padding:'1rem 2rem', background:'var(--warm)', border:'1px solid var(--line)' }}>
               <div style={{ fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--gold)', fontWeight:600, marginBottom:4 }}>Reference number</div>
               <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:22, color:'var(--ink)' }}>{refNum}</div>
             </div>
             <p className="lead" style={{ fontSize:12, marginBottom:'1.5rem' }}>
-              Once approved, you'll receive an email with a link to activate your student account.
+              You'll receive an email at <strong>{form.email || 'your email address'}</strong> letting you know if you qualified for the next step — the college entrance examination. Keep this reference number for your records.
             </p>
             <button className="flow-btn-primary" style={{ maxWidth:220, margin:'0 auto' }} onClick={onClose}>
               Done
@@ -1552,9 +1601,9 @@ function EnrollmentModal({ onClose, term, programs }) {
         ) : (
           <div className="wiz">
             <aside className="wiz-side">
-              <div className="wiz-side-head">Steps · {step}/5</div>
+              <div className="wiz-side-head">Steps · {step}/3</div>
               <div className="wiz-steps">
-                {WIZARD_STEPS.map((label, i) => {
+                {FRESHMAN_STEPS.map((label, i) => {
                   const n = i + 1, active = n === step, done = n < step;
                   return (
                     <div key={n} className={`wiz-step${active ? ' active' : ''}${done ? ' done' : ''}`}>
@@ -1567,44 +1616,19 @@ function EnrollmentModal({ onClose, term, programs }) {
                 })}
               </div>
               <div className="wiz-side-foot">
-                Need help with pre-enrollment?
+                Need help with your application?
                 <a href="mailto:cantilan@nemsu.edu.ph">cantilan@nemsu.edu.ph</a>
               </div>
             </aside>
 
             <main className="wiz-main">
               <div className="wiz-progress">
-                <div style={{ width: `${(step / 5) * 100}%` }} />
+                <div style={{ width: `${(step / 3) * 100}%` }} />
               </div>
 
               <div style={panel(dir)}>
-                {/* Step 1 — Student type */}
+                {/* Step 1 — Personal info */}
                 {step === 1 && (
-                  <>
-                    <h4>Select student type</h4>
-                    <p className="wiz-sub">Choose the category that best describes your enrollment status. This determines the requirements you'll need to submit.</p>
-                    <div className="type-grid">
-                      {Object.keys(TYPE_LABELS).map(id => (
-                        <button
-                          key={id}
-                          className={`type-card${type === id ? ' selected' : ''}`}
-                          onClick={() => setType(id)}
-                        >
-                          <i className={`ti ${TYPE_ICONS[id]}`} />
-                          <div className="t">{TYPE_LABELS[id]}</div>
-                          <div className="d">{TYPE_DESCS[id]}</div>
-                        </button>
-                      ))}
-                    </div>
-                    <div style={hintBox}>
-                      <i className="ti ti-info-circle" style={{ fontSize:16, flexShrink:0, marginTop:1 }} />
-                      <span>{TYPE_HINTS[type]}</span>
-                    </div>
-                  </>
-                )}
-
-                {/* Step 2 — Personal info */}
-                {step === 2 && (
                   <>
                     <h4>Personal information</h4>
                     <p className="wiz-sub">Enter your details as they appear on official documents.</p>
@@ -1658,68 +1682,59 @@ function EnrollmentModal({ onClose, term, programs }) {
                   </>
                 )}
 
-                {/* Step 3 — Requirements checklist */}
-                {step === 3 && (
+                {/* Step 2 — Document uploads */}
+                {step === 2 && (
                   <>
-                    <h4>Required documents</h4>
-                    <p className="wiz-sub">Check each document you have ready. Bring originals and photocopies to the Registrar's Office.</p>
+                    <h4>Upload your documents</h4>
+                    <p className="wiz-sub">Upload a clear <strong>PDF</strong> of each document (max 10&nbsp;MB each). The campus will validate them for admission.</p>
+                    {uploadErr && (
+                      <div style={{ background:'#fef2f2', border:'1px solid #fca5a5', color:'#dc2626', fontSize:12, padding:'8px 12px', marginBottom:12 }}>{uploadErr}</div>
+                    )}
                     {reqs.map(group => (
                       <div key={group.group} style={{ marginBottom: '1.25rem' }}>
                         <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:8 }}>
                           {group.group}
                         </div>
-                        {group.items.map(item => (
-                          <label key={item.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom:'1px solid var(--line-soft)', cursor:'pointer', fontSize:13, color:'var(--ink)' }}>
-                            <input
-                              type="checkbox"
-                              checked={!!checked[item.id]}
-                              onChange={() => toggle(item.id)}
-                              style={{ width:15, height:15, accentColor:'var(--ink)', flexShrink:0 }}
-                            />
-                            <span style={{ flex:1 }}>{item.label}</span>
-                            <span style={unitPill}>{item.tag}</span>
-                          </label>
-                        ))}
+                        {group.items.map(item => {
+                          const f = files[item.id];
+                          return (
+                            <div key={item.id} className="doc-row">
+                              <div className="doc-info">
+                                <span className="doc-label">{item.label}</span>
+                                <span style={unitPill}>{item.tag}</span>
+                              </div>
+                              <label className={`doc-upload${f ? ' has-file' : ''}`}>
+                                <input
+                                  type="file" accept="application/pdf" style={{ display:'none' }}
+                                  onChange={e => {
+                                    const file = e.target.files?.[0]; if (e.target) e.target.value = '';
+                                    if (!file) return;
+                                    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) { setUpErr(`${item.label}: only PDF files are accepted.`); return; }
+                                    if (file.size > 10 * 1024 * 1024) { setUpErr(`${item.label}: file must be under 10 MB.`); return; }
+                                    setUpErr('');
+                                    setFiles(p => ({ ...p, [item.id]: { file, label: item.label } }));
+                                  }}
+                                />
+                                {f
+                                  ? <><i className="ti ti-file-check" /> {f.file.name.length > 24 ? f.file.name.slice(0, 22) + '…' : f.file.name}</>
+                                  : <><i className="ti ti-upload" /> Upload PDF</>}
+                              </label>
+                            </div>
+                          );
+                        })}
                       </div>
                     ))}
                   </>
                 )}
 
-                {/* Step 4 — Subject selection */}
-                {step === 4 && (
-                  <>
-                    <h4>Subject selection</h4>
-                    <p className="wiz-sub">Review your subject load for {form.year} — {form.program}. Deselect any subject if advised by your department.</p>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, padding:'8px 12px', background:'var(--cool)', border:'1px solid var(--line)', fontSize:13 }}>
-                      <span style={{ color:'var(--muted)' }}>Total units selected</span>
-                      <span style={{ fontWeight:600, color:'var(--ink)' }}>{totalUnits} units</span>
-                    </div>
-                    {SUBJECTS.map(s => (
-                      <label key={s.code} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid var(--line-soft)', cursor:'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={!!selSubj[s.code]}
-                          onChange={() => toggleS(s.code)}
-                          style={{ width:15, height:15, accentColor:'var(--ink)', flexShrink:0 }}
-                        />
-                        <span style={{ flex:1 }}>
-                          <span style={{ fontSize:11, fontWeight:600, color:'var(--gold)', letterSpacing:'.06em', display:'block', marginBottom:1 }}>{s.code}</span>
-                          <span style={{ fontSize:13, color:'var(--ink)' }}>{s.name}</span>
-                        </span>
-                        <span style={unitPill}>{s.units} units</span>
-                      </label>
-                    ))}
-                  </>
-                )}
-
-                {/* Step 5 — Review & confirm */}
-                {step === 5 && (
+                {/* Step 3 — Review & confirm */}
+                {step === 3 && (
                   <>
                     <h4>Review &amp; confirm</h4>
-                    <p className="wiz-sub">Verify your enrollment details before submitting. Go back to edit any field.</p>
+                    <p className="wiz-sub">Verify your details before submitting. Go back to edit any field.</p>
                     <div style={{ border:'1px solid var(--line)', background:'var(--warm)', marginBottom:12 }}>
                       {[
-                        ['Student type',  TYPE_LABELS[type]],
+                        ['Applying as',   'Incoming freshman'],
                         ['Full name',     `${form.first} ${form.last}`.trim() || '—'],
                         ['Email',         form.email  || '—'],
                         ['Contact',       form.contact || '—'],
@@ -1738,7 +1753,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                     </div>
                     <div style={hintBox}>
                       <i className="ti ti-info-circle" style={{ fontSize:16, flexShrink:0, marginTop:1 }} />
-                      <span style={{ fontSize:12 }}>After submitting, bring your documents to the Registrar's Office to complete your enrollment.</span>
+                      <span style={{ fontSize:12 }}>After submitting, the campus validates your documents and emails you if you qualify for the entrance examination.</span>
                     </div>
                   </>
                 )}
@@ -1749,7 +1764,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                   <i className="ti ti-arrow-left" /> {step === 1 ? 'Cancel' : 'Back'}
                 </button>
                 <button className="wiz-btn primary" onClick={next} disabled={submitting}>
-                  {step === 5
+                  {step === 3
                     ? (submitting ? 'Submitting…' : <><i className="ti ti-check" /> Submit application</>)
                     : <>Continue <i className="ti ti-arrow-right" /></>}
                 </button>
