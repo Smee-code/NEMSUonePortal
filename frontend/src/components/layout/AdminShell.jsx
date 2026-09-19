@@ -3,6 +3,8 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { AdminShellCtx } from '../../context/AdminShellContext';
 import api from '../../api/axios';
+import useNotifications from '../../hooks/useNotifications';
+import NotificationList from '../NotificationList';
 
 /* ── CSS ─────────────────────────────────────────────────────────────────── */
 const CSS = `
@@ -341,14 +343,6 @@ const PAGE_LABELS = {
   settings:      'System Settings',
 };
 
-const NOTIFICATIONS = [
-  { unread: true,  msg: 'Enrollment requests pending review',      sub: 'Registrar office',          time: '2m ago'  },
-  { unread: true,  msg: 'New scholarship application submitted',    sub: 'OSAS · BSCS-3A',            time: '14m ago' },
-  { unread: true,  msg: 'Grade submission deadline in 3 days',      sub: 'System reminder',            time: '1h ago'  },
-  { unread: false, msg: 'Backup completed successfully',            sub: 'System · Daily snapshot',   time: '9h ago'  },
-  { unread: false, msg: 'Account locked (3 failed attempts)',       sub: 'Security policy triggered', time: '12h ago' },
-];
-
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 function initials(name) {
   const p = (name || '').trim().split(/\s+/);
@@ -402,7 +396,7 @@ function AdminSidebar({ active, navOpen, closeNav }) {
 }
 
 /* ── Topbar ──────────────────────────────────────────────────────────────── */
-function AdminTopbar({ active, openDrawer, openNav }) {
+function AdminTopbar({ active, openDrawer, openNav, unread = 0, onBell }) {
   const { user } = useAuth();
   const [term, setTerm] = useState(null);
 
@@ -449,10 +443,10 @@ function AdminTopbar({ active, openDrawer, openNav }) {
         <button
           className="adm-icon-btn"
           aria-label="Notifications"
-          onClick={() => openDrawer('notifications')}
+          onClick={onBell || (() => openDrawer('notifications'))}
         >
           <i className="ti ti-bell" />
-          <span className="adm-dot" />
+          {unread > 0 && <span className="adm-dot" />}
         </button>
 
         <div className="adm-user-chip" onClick={() => openDrawer('account')}>
@@ -494,7 +488,7 @@ function ToastHost({ toasts }) {
 }
 
 /* ── Drawer host + variants ──────────────────────────────────────────────── */
-function DrawerHost({ drawer, closeDrawer, toast }) {
+function DrawerHost({ drawer, closeDrawer, toast, notifs = [], unreadCount = 0 }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -512,7 +506,7 @@ function DrawerHost({ drawer, closeDrawer, toast }) {
       <div className="adm-drawer-back" onClick={closeDrawer} />
       <div className="adm-drawer">
         {drawer.kind === 'notifications' && (
-          <DrawerNotifications close={closeDrawer} toast={toast} />
+          <DrawerNotifications close={closeDrawer} notifs={notifs} unreadCount={unreadCount} />
         )}
         {drawer.kind === 'account' && (
           <DrawerAccount close={closeDrawer} logout={logout} navigate={navigate} toast={toast} />
@@ -525,33 +519,22 @@ function DrawerHost({ drawer, closeDrawer, toast }) {
   );
 }
 
-function DrawerNotifications({ close, toast }) {
-  const unreadCount = NOTIFICATIONS.filter(n => n.unread).length;
+function DrawerNotifications({ close, notifs = [], unreadCount = 0 }) {
   return (
     <>
       <div className="adm-drawer-head">
         <div>
           <h3>Notifications</h3>
-          <div className="adm-drawer-sub">{unreadCount} unread · last 24 hours</div>
+          <div className="adm-drawer-sub">
+            {unreadCount > 0 ? `${unreadCount} new announcement${unreadCount !== 1 ? 's' : ''}` : 'Announcements'}
+          </div>
         </div>
         <button className="adm-icon-btn" onClick={close}><i className="ti ti-x" /></button>
       </div>
       <div className="adm-drawer-body">
-        {NOTIFICATIONS.map((n, i) => (
-          <div key={i} className="adm-notif-row">
-            <div className={`adm-notif-dot${n.unread ? '' : ' read'}`} />
-            <div>
-              <div className="adm-notif-msg">{n.msg}</div>
-              <div className="adm-notif-meta">{n.sub}</div>
-            </div>
-            <div className="adm-notif-time">{n.time}</div>
-          </div>
-        ))}
+        <NotificationList items={notifs} unreadCount={unreadCount} />
       </div>
       <div className="adm-drawer-foot">
-        <button className="adm-btn-sec" onClick={() => { toast('All notifications marked as read', { type: 'success' }); }}>
-          Mark all read
-        </button>
         <button className="adm-btn-pri" onClick={close}><i className="ti ti-check" /> Done</button>
       </div>
     </>
@@ -691,6 +674,8 @@ function DrawerForm({ close, toast, title, sub, submitLabel = 'Save', toastMsg =
 export default function AdminShell() {
   const location = useLocation();
   const active = activeKey(location.pathname);
+  const { user } = useAuth();
+  const { items: notifs, unreadCount, markSeen } = useNotifications(user?.id);
 
   // Close the mobile nav whenever the route changes
   useEffect(() => { setNavOpen(false); }, [location.pathname]);
@@ -724,14 +709,15 @@ export default function AdminShell() {
         <AdminSidebar active={active} navOpen={navOpen} closeNav={() => setNavOpen(false)} />
         {navOpen && <div className="adm-navback" onClick={() => setNavOpen(false)} />}
         <div className="adm-main">
-          <AdminTopbar active={active} openDrawer={openDrawer} openNav={() => setNavOpen(true)} />
+          <AdminTopbar active={active} openDrawer={openDrawer} openNav={() => setNavOpen(true)}
+            unread={unreadCount} onBell={() => { openDrawer('notifications'); markSeen(); }} />
           <div className="adm-body">
             <Outlet />
           </div>
         </div>
       </div>
       <ToastHost toasts={toasts} />
-      <DrawerHost drawer={drawer} closeDrawer={closeDrawer} toast={toast} />
+      <DrawerHost drawer={drawer} closeDrawer={closeDrawer} toast={toast} notifs={notifs} unreadCount={unreadCount} />
     </AdminShellCtx.Provider>
   );
 }

@@ -3,6 +3,8 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { FacultyShellCtx } from '../../context/FacultyShellContext';
 import api from '../../api/axios';
+import useNotifications from '../../hooks/useNotifications';
+import NotificationList from '../NotificationList';
 
 /* ── CSS ─────────────────────────────────────────────────────────────────── */
 const CSS = `
@@ -426,12 +428,6 @@ const PAGE_LABELS = {
   profile:       'My Profile',
 };
 
-const NOTIFICATIONS = [
-  { unread: true,  msg: 'Grade submission deadline approaching',    sub: 'CC 101 · BSIT-1A',          time: '2m ago'  },
-  { unread: true,  msg: 'New enrollment request in your section',   sub: 'IT 312 · BSIT-3A',          time: '1h ago'  },
-  { unread: false, msg: 'Grade sheet exported successfully',        sub: 'System notification',        time: '9h ago'  },
-];
-
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 function initials(name) {
   const p = (name || '').trim().split(/\s+/);
@@ -485,7 +481,7 @@ function FacSidebar({ active, navOpen, closeNav }) {
 }
 
 /* ── Topbar ──────────────────────────────────────────────────────────────── */
-function FacTopbar({ active, openDrawer, openNav }) {
+function FacTopbar({ active, openDrawer, openNav, unread = 0, onBell }) {
   const { user } = useAuth();
   const [term, setTerm] = useState(null);
 
@@ -517,9 +513,9 @@ function FacTopbar({ active, openDrawer, openNav }) {
           {termLabel}
         </div>
 
-        <button className="fac-icon-btn" aria-label="Notifications" onClick={() => openDrawer('notifications')}>
+        <button className="fac-icon-btn" aria-label="Notifications" onClick={onBell || (() => openDrawer('notifications'))}>
           <i className="ti ti-bell" />
-          <span className="fac-dot" />
+          {unread > 0 && <span className="fac-dot" />}
         </button>
 
         <div className="fac-user-chip" onClick={() => openDrawer('account')}>
@@ -561,7 +557,7 @@ function ToastHost({ toasts }) {
 }
 
 /* ── Drawer host ─────────────────────────────────────────────────────────── */
-function DrawerHost({ drawer, closeDrawer, toast }) {
+function DrawerHost({ drawer, closeDrawer, toast, notifs = [], unreadCount = 0 }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -579,7 +575,7 @@ function DrawerHost({ drawer, closeDrawer, toast }) {
       <div className="fac-drawer-back" onClick={closeDrawer} />
       <div className="fac-drawer">
         {drawer.kind === 'notifications' && (
-          <DrawerNotifications close={closeDrawer} toast={toast} />
+          <DrawerNotifications close={closeDrawer} notifs={notifs} unreadCount={unreadCount} />
         )}
         {drawer.kind === 'account' && (
           <DrawerAccount close={closeDrawer} logout={logout} navigate={navigate} toast={toast} />
@@ -589,31 +585,22 @@ function DrawerHost({ drawer, closeDrawer, toast }) {
   );
 }
 
-function DrawerNotifications({ close, toast }) {
-  const unread = NOTIFICATIONS.filter(n => n.unread).length;
+function DrawerNotifications({ close, notifs = [], unreadCount = 0 }) {
   return (
     <>
       <div className="fac-drawer-head">
         <div>
           <h3>Notifications</h3>
-          <div className="fac-drawer-sub">{unread} unread · last 24 hours</div>
+          <div className="fac-drawer-sub">
+            {unreadCount > 0 ? `${unreadCount} new announcement${unreadCount !== 1 ? 's' : ''}` : 'Announcements'}
+          </div>
         </div>
         <button className="fac-icon-btn" onClick={close}><i className="ti ti-x" /></button>
       </div>
       <div className="fac-drawer-body">
-        {NOTIFICATIONS.map((n, i) => (
-          <div key={i} className="fac-notif-row">
-            <div className={`fac-notif-dot${n.unread ? '' : ' read'}`} />
-            <div>
-              <div className="fac-notif-msg">{n.msg}</div>
-              <div className="fac-notif-meta">{n.sub}</div>
-            </div>
-            <div className="fac-notif-time">{n.time}</div>
-          </div>
-        ))}
+        <NotificationList items={notifs} unreadCount={unreadCount} />
       </div>
       <div className="fac-drawer-foot">
-        <button className="btn-sec" onClick={() => { toast('All notifications marked as read', { type: 'success' }); }}>Mark all read</button>
         <button className="btn-pri" onClick={close}><i className="ti ti-check" /> Done</button>
       </div>
     </>
@@ -663,6 +650,8 @@ function DrawerAccount({ close, logout, navigate, toast }) {
 export default function FacultyShell() {
   const location = useLocation();
   const active = activeKey(location.pathname);
+  const { user } = useAuth();
+  const { items: notifs, unreadCount, markSeen } = useNotifications(user?.id);
 
   // Close the mobile nav whenever the route changes
   useEffect(() => { setNavOpen(false); }, [location.pathname]);
@@ -696,14 +685,15 @@ export default function FacultyShell() {
         <FacSidebar active={active} navOpen={navOpen} closeNav={() => setNavOpen(false)} />
         {navOpen && <div className="fac-navback" onClick={() => setNavOpen(false)} />}
         <div className="fac-main">
-          <FacTopbar active={active} openDrawer={openDrawer} openNav={() => setNavOpen(true)} />
+          <FacTopbar active={active} openDrawer={openDrawer} openNav={() => setNavOpen(true)}
+            unread={unreadCount} onBell={() => { openDrawer('notifications'); markSeen(); }} />
           <div className="fac-body">
             <Outlet />
           </div>
         </div>
       </div>
       <ToastHost toasts={toasts} />
-      <DrawerHost drawer={drawer} closeDrawer={closeDrawer} toast={toast} />
+      <DrawerHost drawer={drawer} closeDrawer={closeDrawer} toast={toast} notifs={notifs} unreadCount={unreadCount} />
     </FacultyShellCtx.Provider>
   );
 }

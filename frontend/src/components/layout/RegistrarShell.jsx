@@ -3,6 +3,8 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { RegistrarShellCtx } from '../../context/RegistrarShellContext';
 import api from '../../api/axios';
+import useNotifications from '../../hooks/useNotifications';
+import NotificationList from '../NotificationList';
 
 /* ── Sidebar nav items ─────────────────────────────────────────────────────── */
 const SB_ITEMS = [
@@ -73,7 +75,7 @@ function RegSidebar({ badges, navOpen, closeNav }) {
 }
 
 /* ── Topbar ────────────────────────────────────────────────────────────────── */
-function RegTopbar({ currentTerm, toast, badges, openNav }) {
+function RegTopbar({ currentTerm, toast, badges, openNav, notifs = [], unread = 0, markSeen }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,8 +84,6 @@ function RegTopbar({ currentTerm, toast, badges, openNav }) {
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [acctOpen,  setAcctOpen]  = useState(false);
-
-  const totalUnread = (badges.enrollment || 0) + (badges.documents || 0);
 
   useEffect(() => {
     if (!notifOpen && !acctOpen) return;
@@ -116,10 +116,10 @@ function RegTopbar({ currentTerm, toast, badges, openNav }) {
         <button
           className="reg-icon-btn"
           aria-label="Notifications"
-          onClick={e => { e.stopPropagation(); setNotifOpen(o => !o); setAcctOpen(false); }}
+          onClick={e => { e.stopPropagation(); setNotifOpen(o => { const next = !o; if (next && markSeen) markSeen(); return next; }); setAcctOpen(false); }}
         >
           <i className="ti ti-bell" />
-          {totalUnread > 0 && <span className="reg-icon-dot" />}
+          {unread > 0 && <span className="reg-icon-dot" />}
         </button>
         <div
           className="reg-user-chip"
@@ -142,31 +142,7 @@ function RegTopbar({ currentTerm, toast, badges, openNav }) {
             <button className="reg-icon-btn" onClick={() => setNotifOpen(false)}><i className="ti ti-x" /></button>
           </div>
           <div className="reg-drawer-notif-list">
-            {badges.enrollment > 0 && (
-              <div className="reg-drawer-notif-row">
-                <span className="reg-notif-dot" />
-                <div>
-                  <div className="reg-notif-msg">{badges.enrollment} enrollment request{badges.enrollment !== 1 ? 's' : ''} pending review</div>
-                  <div className="reg-notif-sub">Registrar · Workflow</div>
-                </div>
-                <span className="reg-notif-time">now</span>
-              </div>
-            )}
-            {badges.documents > 0 && (
-              <div className="reg-drawer-notif-row">
-                <span className="reg-notif-dot" />
-                <div>
-                  <div className="reg-notif-msg">{badges.documents} document request{badges.documents !== 1 ? 's' : ''} submitted</div>
-                  <div className="reg-notif-sub">Registrar · Workflow</div>
-                </div>
-                <span className="reg-notif-time">now</span>
-              </div>
-            )}
-            {badges.enrollment === 0 && badges.documents === 0 && (
-              <div style={{ padding: '1.5rem', fontSize: 13, color: 'var(--reg-muted)', textAlign: 'center' }}>
-                No pending notifications
-              </div>
-            )}
+            <NotificationList items={notifs} unreadCount={unread} />
           </div>
           <div className="reg-drawer-foot-sm">
             <button className="btn-sec" onClick={() => setNotifOpen(false)}>Close</button>
@@ -230,6 +206,8 @@ function ToastHost({ items }) {
 
 /* ── Shell ─────────────────────────────────────────────────────────────────── */
 export default function RegistrarShell() {
+  const { user } = useAuth();
+  const { items: notifs, unreadCount, markSeen } = useNotifications(user?.id);
   const [currentTerm, setCurrentTerm] = useState(null);
   const [badges, setBadges]           = useState({ enrollment: 0, documents: 0 });
   const [toasts, setToasts]           = useState([]);
@@ -265,7 +243,8 @@ export default function RegistrarShell() {
         <RegSidebar badges={badges} navOpen={navOpen} closeNav={() => setNavOpen(false)} />
         {navOpen && <div className="reg-navback" onClick={() => setNavOpen(false)} />}
         <div className="reg-main">
-          <RegTopbar currentTerm={currentTerm} toast={toast} badges={badges} openNav={() => setNavOpen(true)} />
+          <RegTopbar currentTerm={currentTerm} toast={toast} badges={badges} openNav={() => setNavOpen(true)}
+            notifs={notifs} unread={unreadCount} markSeen={markSeen} />
           <div className="reg-body">
             <Outlet />
           </div>

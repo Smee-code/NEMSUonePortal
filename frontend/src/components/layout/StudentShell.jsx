@@ -2,6 +2,8 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
+import useNotifications from '../../hooks/useNotifications';
+import NotificationList from '../NotificationList';
 
 export const ShellCtx = createContext(null);
 export const useShell = () => useContext(ShellCtx);
@@ -432,7 +434,7 @@ function Sidebar({ active, navOpen, closeNav }) {
 }
 
 /* ─── Topbar ──────────────────────────────────────────────── */
-function Topbar({ user, logout, currentTerm, onBell, onAccount, pathKey, openNav }) {
+function Topbar({ user, currentTerm, onBell, onAccount, pathKey, openNav, unread = 0 }) {
   return (
     <header className="stu-topbar">
       <button className="stu-navtoggle" onClick={openNav} aria-label="Open navigation">
@@ -459,7 +461,7 @@ function Topbar({ user, logout, currentTerm, onBell, onAccount, pathKey, openNav
         )}
         <button className="icon-btn" onClick={onBell} title="Notifications">
           <i className="ti ti-bell" />
-          <span className="dot" />
+          {unread > 0 && <span className="dot" />}
         </button>
         <button className="stu-uc" onClick={onAccount} title="Account">
           <div className="stu-av">{initials(user?.full_name)}</div>
@@ -496,7 +498,7 @@ function ToastHost({ toasts }) {
 }
 
 /* ─── Drawer host ─────────────────────────────────────────── */
-function DrawerHost({ drawer, onClose, user, logout }) {
+function DrawerHost({ drawer, onClose, user, logout, notifs = [], unreadCount = 0 }) {
   const { type, data } = drawer;
   return (
     <>
@@ -531,7 +533,7 @@ function DrawerHost({ drawer, onClose, user, logout }) {
               <button className="btn-ghost" onClick={onClose}><i className="ti ti-x" /></button>
             </div>
             <div className="stu-dbody">
-              <p style={{ color: 'var(--muted)', fontSize: 13 }}>No new notifications.</p>
+              <NotificationList items={notifs} unreadCount={unreadCount} />
             </div>
           </>
         )}
@@ -568,6 +570,7 @@ function DrawerHost({ drawer, onClose, user, logout }) {
 /* ─── Shell ───────────────────────────────────────────────── */
 export default function StudentShell() {
   const { user, logout } = useAuth();
+  const { items: notifs, unreadCount, markSeen } = useNotifications(user?.id);
   const location = useLocation();
   const [currentTerm, setCurrentTerm] = useState(null);
   const [toasts, setToasts]           = useState([]);
@@ -602,7 +605,8 @@ export default function StudentShell() {
         <main className="stu-main">
           <Topbar
             user={user} logout={logout} currentTerm={currentTerm}
-            onBell={() => openDrawer('notifications')}
+            unread={unreadCount}
+            onBell={() => { openDrawer('notifications'); markSeen(); }}
             onAccount={() => openDrawer('account')}
             pathKey={pathKey}
             openNav={() => setNavOpen(true)}
@@ -613,7 +617,7 @@ export default function StudentShell() {
         </main>
         <ToastHost toasts={toasts} />
         {drawer && (
-          <DrawerHost drawer={drawer} onClose={closeDrawer} user={user} logout={logout} />
+          <DrawerHost drawer={drawer} onClose={closeDrawer} user={user} logout={logout} notifs={notifs} unreadCount={unreadCount} />
         )}
       </div>
     </ShellCtx.Provider>
