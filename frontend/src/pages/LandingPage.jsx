@@ -50,7 +50,7 @@ const CSS = `
   .btn-onDark:hover{background:transparent;color:#fff}
   .btn-onDark-ghost{background:transparent;color:#fff;border-color:var(--line-dark-2)}
   .btn-onDark-ghost:hover{border-color:#fff;background:rgba(255,255,255,.06)}
-  .btn-link{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);text-decoration:none;padding-bottom:4px;border-bottom:1px solid var(--ink);transition:gap .2s;}
+  .btn-link{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);text-decoration:none;padding:0 0 4px;background:none;border:0;border-bottom:1px solid var(--ink);cursor:pointer;font-family:inherit;transition:gap .2s;}
   .btn-link:hover{gap:14px}
   .btn-link.on-dark{color:#fff;border-bottom-color:rgba(255,255,255,.4)}
   .btn-link.on-dark:hover{border-bottom-color:#fff}
@@ -1112,6 +1112,9 @@ function VisionMission() {
 }
 
 function Programs({ programs }) {
+  const [showAll, setShowAll] = useState(false);
+  const PREVIEW_COUNT = 6;
+
   const list = programs?.length
     ? programs.map((p, i) => ({
         num:  String(i + 1).padStart(2, '0'),
@@ -1120,6 +1123,9 @@ function Programs({ programs }) {
         desc: p.description ?? p.desc ?? '',
       }))
     : PROGRAMS_STATIC;
+
+  const visible = showAll ? list : list.slice(0, PREVIEW_COUNT);
+  const hasMore = list.length > PREVIEW_COUNT;
 
   return (
     <section id="programs" className="progs">
@@ -1132,11 +1138,16 @@ function Programs({ programs }) {
                 Undergraduate programs at <em>Cantilan Campus</em>.
               </h2>
             </div>
-            <a href="#enroll" className="btn-link">All programs <i className="ti ti-arrow-right" /></a>
+            {hasMore && (
+              <button type="button" className="btn-link" onClick={() => setShowAll(s => !s)}>
+                {showAll ? 'Show fewer' : `All programs (${list.length})`}
+                <i className={`ti ti-arrow-${showAll ? 'up' : 'right'}`} />
+              </button>
+            )}
           </div>
         </Reveal>
         <div className="progs-grid">
-          {list.map((p, i) => (
+          {visible.map((p, i) => (
             <Reveal key={p.name} delay={i * 0.04}>
               <article className="prog">
                 <div className="prog-num">— {p.num}</div>
