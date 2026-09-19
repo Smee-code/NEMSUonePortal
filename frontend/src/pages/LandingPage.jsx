@@ -3,7 +3,585 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
 /* ══════════════════════════════════════════════════════════════
-   DATA
+   CSS — ported from landing-redesign.html
+══════════════════════════════════════════════════════════════ */
+const CSS = `
+  :root{
+    --ink:#0a1628;--ink-2:#1e3a5f;--ink-3:#0f1f3a;
+    --muted:#5a6478;--faint:#8a93a3;
+    --paper:#ffffff;--warm:#f8f7f3;--cool:#f4f6fa;
+    --line:#e5e7eb;--line-soft:#eef0f4;
+    --line-dark:rgba(255,255,255,.10);--line-dark-2:rgba(255,255,255,.20);
+    --gold:#b89043;--gold-soft:#d9b96b;
+    --on-dark:#e8ecf2;--on-dark-mute:rgba(232,236,242,.65);--on-dark-faint:rgba(232,236,242,.42);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5;font-size:15px;}
+  .serif{font-weight:500;letter-spacing:-.005em}
+  a{color:inherit}
+  img{display:block;max-width:100%}
+
+  /* ── Reusable ── */
+  .lp-wrap{max-width:1280px;margin:0 auto;padding:0 2rem}
+  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);display:inline-flex;align-items:center;gap:10px;}
+  .eyebrow::before{content:"";width:24px;height:1px;background:var(--gold);display:inline-block}
+  .eyebrow.on-dark{color:var(--gold-soft)}
+  .eyebrow.on-dark::before{background:var(--gold-soft)}
+  .h-display{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;line-height:1.02;letter-spacing:-.025em;color:var(--ink);font-size:clamp(56px,7.5vw,108px);}
+  .h-display em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400}
+  .h-section{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;line-height:1.05;letter-spacing:-.022em;color:var(--ink);font-size:clamp(36px,4.2vw,54px);}
+  .h-section em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;color:var(--ink-2)}
+  .h-section.on-dark{color:#fff}
+  .h-section.on-dark em{color:var(--gold-soft)}
+  .lead{font-size:17px;line-height:1.7;color:var(--muted);max-width:640px}
+  .micro{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:600}
+
+  /* ── Buttons ── */
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:2px;font-size:13px;font-weight:500;letter-spacing:.02em;cursor:pointer;border:1px solid transparent;transition:background .2s,border-color .2s,color .2s,transform .15s;text-decoration:none;font-family:inherit;}
+  .btn i{font-size:15px}
+  .btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn-primary:hover{background:#000;border-color:#000}
+  .btn-gold{background:var(--gold);color:#fff;border-color:var(--gold)}
+  .btn-gold:hover{background:#a07c33;border-color:#a07c33}
+  .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  .btn-ghost:hover{border-color:var(--ink);background:var(--ink);color:#fff}
+  .btn-onDark{background:#fff;color:var(--ink);border-color:#fff}
+  .btn-onDark:hover{background:transparent;color:#fff}
+  .btn-onDark-ghost{background:transparent;color:#fff;border-color:var(--line-dark-2)}
+  .btn-onDark-ghost:hover{border-color:#fff;background:rgba(255,255,255,.06)}
+  .btn-link{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);text-decoration:none;padding-bottom:4px;border-bottom:1px solid var(--ink);transition:gap .2s;}
+  .btn-link:hover{gap:14px}
+  .btn-link.on-dark{color:#fff;border-bottom-color:rgba(255,255,255,.4)}
+  .btn-link.on-dark:hover{border-bottom-color:#fff}
+
+  /* ── Topbar ── */
+  .topbar{background:var(--ink);color:var(--on-dark-mute);font-size:12px;}
+  .topbar-inner{max-width:1280px;margin:0 auto;padding:9px 2rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;}
+  .topbar-info{display:flex;gap:1.5rem;flex-wrap:wrap}
+  .topbar-info span{display:inline-flex;align-items:center;gap:6px}
+  .topbar-info i{font-size:13px;color:var(--gold-soft)}
+  .topbar-auth{display:flex;gap:1.25rem;flex-shrink:0;align-items:center}
+  .topbar-auth a{color:var(--on-dark-mute);text-decoration:none;transition:color .15s}
+  .topbar-auth a:hover{color:#fff}
+  .topbar-auth .divider{color:var(--on-dark-faint)}
+  .topbar-portal-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-soft);border:1px solid rgba(217,185,107,.3);border-radius:99px;font-weight:600;}
+
+  /* ── Navbar ── */
+  .nav{background:#fff;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--line);}
+  .nav.scrolled{box-shadow:0 1px 0 var(--line),0 8px 24px -16px rgba(10,22,40,.18)}
+  .nav-inner{max-width:1280px;margin:0 auto;padding:0 2rem;display:flex;align-items:center;height:82px;gap:1.5rem;}
+  .brand{display:flex;align-items:center;gap:14px;text-decoration:none;flex-shrink:0}
+  .brand-logo{width:48px;height:48px;border-radius:50%;object-fit:contain;background:var(--cool);padding:3px;}
+  .brand-text{line-height:1.2}
+  .brand-name{font-family:'Instrument Serif',serif;font-size:24px;font-weight:400;color:var(--ink);letter-spacing:-.01em;}
+  .brand-sub{font-size:11px;color:var(--muted);letter-spacing:.04em;margin-top:1px;font-weight:500}
+  .nav-links{display:flex;margin-left:auto;gap:.125rem}
+  .nav-link{padding:0 16px;height:82px;display:flex;align-items:center;font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;}
+  .nav-link:hover{color:var(--ink)}
+  .nav-link.active{color:var(--ink);border-bottom-color:var(--ink)}
+  .nav-cta{margin-left:.75rem}
+  .burger{display:none}
+  @media(max-width:980px){
+    .topbar-info{display:none}
+    .nav-links{display:none}
+    .nav-cta{display:none}
+    .brand{flex-shrink:1;min-width:0}
+    .brand-text{min-width:0}
+    .brand-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .burger{display:flex;margin-left:auto;flex-shrink:0;width:42px;height:42px;border-radius:2px;border:1px solid var(--line);background:#fff;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);}
+    .burger i{font-size:20px}
+  }
+
+  /* ── Hero ── */
+  .hero{position:relative;min-height:88vh;background:var(--ink-3);color:#fff;overflow:hidden;display:flex;flex-direction:column;}
+  .hero-photo{position:absolute;inset:0;z-index:0;}
+  .hero-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+  .hero-photo::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(10,22,40,.4) 0%,rgba(10,22,40,.2) 35%,rgba(10,22,40,.72) 100%),linear-gradient(90deg,rgba(10,22,40,.82) 0%,rgba(10,22,40,.62) 35%,rgba(10,22,40,.4) 65%,rgba(10,22,40,.12) 100%);}
+  .hero-content{position:relative;z-index:3;flex:1;max-width:1280px;margin:0 auto;width:100%;padding:5rem 2rem 3rem;display:flex;flex-direction:column;justify-content:flex-end;}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:2rem;}
+  .hero-eyebrow::before{content:"";width:36px;height:1px;background:var(--gold-soft)}
+  .hero-status-pill{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(255,255,255,.08);backdrop-filter:blur(8px);border:1px solid var(--line-dark-2);border-radius:99px;}
+  .hero-status-pill .dot{width:7px;height:7px;border-radius:50%;background:#5dd6a1;box-shadow:0 0 0 4px rgba(93,214,161,.18);}
+  .hero h1{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;color:#fff;font-size:clamp(54px,8vw,124px);line-height:.98;letter-spacing:-.025em;margin-bottom:1.75rem;max-width:1100px;text-shadow:0 2px 18px rgba(10,22,40,.55);}
+  .hero h1 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:var(--gold-soft);font-weight:400;text-shadow:0 2px 14px rgba(10,22,40,.7),0 1px 3px rgba(10,22,40,.55)}
+  .hero-sub{font-size:18px;line-height:1.6;color:rgba(255,255,255,.82);max-width:580px;margin-bottom:2.5rem;font-weight:400;}
+  .hero-actions{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .hero-scroll{position:absolute;left:50%;bottom:24px;z-index:4;transform:translateX(-50%);color:rgba(255,255,255,.6);font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .hero-scroll i{font-size:14px;animation:lp-bounce 2s ease-in-out infinite}
+  @keyframes lp-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+  @media(max-width:880px){
+    .hero{min-height:76vh}
+    .hero-content{padding:4rem 1.25rem 3rem}
+    .hero-scroll{display:none}
+  }
+
+  /* ── Audience portals ── */
+  .portals{background:var(--ink);color:#fff;border-top:1px solid var(--line-dark)}
+  .portals-inner{max-width:1280px;margin:0 auto;padding:0 2rem;display:grid;grid-template-columns:auto repeat(4,1fr);gap:0;}
+  .portals-label{padding:1.5rem 2rem 1.5rem 0;border-right:1px solid var(--line-dark);display:flex;flex-direction:column;justify-content:center;}
+  .portals-label .micro{color:var(--on-dark-faint);margin-bottom:4px}
+  .portals-label .lbl{font-family:'Instrument Serif',serif;font-size:22px;color:#fff;letter-spacing:-.01em;line-height:1;}
+  .portal{padding:1.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center;border-right:1px solid var(--line-dark);text-decoration:none;color:#fff;transition:background .25s,padding-left .25s;}
+  .portal:last-child{border-right:none}
+  .portal:hover{background:rgba(255,255,255,.04);padding-left:1.75rem}
+  .portal-text .micro{color:var(--gold-soft);margin-bottom:6px;font-size:10px}
+  .portal-text .name{font-size:16px;font-weight:500;color:#fff;line-height:1.2}
+  .portal i{font-size:18px;color:var(--on-dark-mute);transition:transform .25s,color .25s;}
+  .portal:hover i{transform:translateX(4px);color:#fff}
+  @media(max-width:980px){
+    .portals-inner{grid-template-columns:1fr 1fr}
+    .portals-label{grid-column:1/-1;border-right:none;border-bottom:1px solid var(--line-dark);padding:1.25rem 0}
+    .portal:nth-child(2),.portal:nth-child(4){border-right:none}
+    .portal:nth-child(2),.portal:nth-child(3){border-bottom:1px solid var(--line-dark)}
+  }
+  @media(max-width:560px){
+    .portals-inner{grid-template-columns:1fr}
+    .portal{border-right:none;border-bottom:1px solid var(--line-dark)}
+    .portal:last-child{border-bottom:none}
+  }
+
+  /* ── Spotlight ── */
+  .spot{background:#fff;padding:7rem 0}
+  .spot-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:3rem;gap:2rem;flex-wrap:wrap;}
+  .spot-head .eyebrow{margin-bottom:1rem}
+  .spot-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:0;border-top:1px solid var(--line);}
+  .spot-image{position:relative;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-height:520px;background:var(--cool);}
+  .spot-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+  .spot-image::after{content:"";position:absolute;left:24px;top:24px;z-index:3;pointer-events:none;font:600 10px/1 'Inter',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#fff;background:rgba(10,22,40,.75);backdrop-filter:blur(4px);padding:6px 10px;}
+  .spot-image[data-tag]::after{content:attr(data-tag)}
+  .spot-body{padding:3.5rem 3rem;border-bottom:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;}
+  .spot-meta{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:1.5rem;}
+  .spot-body h3{font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(32px,3vw,42px);line-height:1.08;color:var(--ink);margin-bottom:1.5rem;letter-spacing:-.015em;}
+  .spot-body h3 em{font-style:italic;color:var(--ink-2);font-weight:400}
+  .spot-body p{font-size:15px;line-height:1.8;color:var(--muted);margin-bottom:2rem}
+  .spot-byline{font-size:12px;letter-spacing:.06em;color:var(--faint);margin-bottom:2rem;padding-top:1.5rem;border-top:1px solid var(--line);}
+  @media(max-width:880px){
+    .spot{padding:5rem 0}
+    .spot-grid{grid-template-columns:1fr}
+    .spot-image{min-height:340px;border-right:none}
+    .spot-body{padding:2.5rem 1.5rem}
+  }
+
+  /* ── Info strip ── */
+  .info-strip{background:var(--warm);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .info-inner{max-width:1280px;margin:0 auto;padding:0 2rem;display:grid;grid-template-columns:repeat(4,1fr);}
+  .info-cell{padding:1.5rem 1.5rem;border-right:1px solid var(--line);display:flex;align-items:flex-start;gap:14px;}
+  .info-cell:last-child{border-right:none}
+  .info-cell i{font-size:20px;color:var(--gold);flex-shrink:0;margin-top:2px}
+  .info-cell .micro{margin-bottom:4px;color:var(--muted)}
+  .info-cell .val{font-size:14px;color:var(--ink);font-weight:500;line-height:1.4}
+  @media(max-width:760px){
+    .info-inner{grid-template-columns:1fr 1fr}
+    .info-cell:nth-child(2){border-right:none}
+    .info-cell:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  }
+  @media(max-width:520px){
+    .info-inner{grid-template-columns:1fr}
+    .info-cell{border-right:none;padding:1.25rem 1rem}
+    .info-cell:nth-child(-n+3){border-bottom:1px solid var(--line)}
+  }
+
+  /* ── About ── */
+  .about{background:#fff;padding:7rem 0}
+  .about-grid{display:grid;grid-template-columns:1fr 1.3fr;gap:5rem;align-items:start;}
+  .about-visual{position:relative;aspect-ratio:4/5;max-width:440px}
+  .about-visual img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+  .about-visual::after{content:"";position:absolute;left:-24px;bottom:-24px;width:140px;height:140px;background:var(--gold);z-index:-1;}
+  .about-badge{position:absolute;left:-16px;top:24px;z-index:3;background:#fff;padding:14px 18px;border:1px solid var(--line);box-shadow:0 4px 16px rgba(10,22,40,.06);}
+  .about-badge .micro{font-size:10px;color:var(--gold);margin-bottom:2px}
+  .about-badge .v{font-family:'Instrument Serif',serif;font-size:18px;color:var(--ink);line-height:1}
+  .about-copy .eyebrow{margin-bottom:1.5rem}
+  .about-copy h2{margin-bottom:1.5rem}
+  .about-copy p{font-size:16px;line-height:1.8;color:var(--muted);margin-bottom:1.25rem;max-width:580px}
+  .pillars{display:grid;grid-template-columns:repeat(2,1fr);gap:0;margin-top:2.5rem;border-top:1px solid var(--line);}
+  .pillar{padding:1.5rem 1.5rem 1.5rem 0;border-bottom:1px solid var(--line);border-right:1px solid var(--line);}
+  .pillar:nth-child(2n){padding-right:0;padding-left:1.5rem;border-right:none}
+  .pillar:nth-last-child(-n+2){border-bottom:none}
+  .pillar .num{font-family:'Instrument Serif',serif;font-size:18px;color:var(--gold);margin-bottom:.5rem;display:block}
+  .pillar .title{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px}
+  .pillar .desc{font-size:13px;color:var(--muted);line-height:1.55}
+  @media(max-width:880px){
+    .about{padding:5rem 0}
+    .about-grid{grid-template-columns:1fr;gap:3rem}
+    .about-visual{max-width:none}
+    .about-visual::after{display:none}
+  }
+
+  /* ── Stats ── */
+  .stats{background:var(--ink-3);color:#fff;padding:6rem 0;position:relative;overflow:hidden}
+  .stats::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 90% 10%,rgba(184,144,67,.10),transparent 50%);}
+  .stats-inner{position:relative;z-index:2;max-width:1280px;margin:0 auto;padding:0 2rem}
+  .stats-head{margin-bottom:3rem;max-width:680px}
+  .stats-head .eyebrow{margin-bottom:1.25rem}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line-dark-2);}
+  .stat-cell{padding:2.5rem 2rem 2.5rem 0;border-right:1px solid var(--line-dark);}
+  .stat-cell:last-child{border-right:none}
+  .stat-cell:not(:first-child){padding-left:2rem}
+  .stat-num{font-family:'Instrument Serif',serif;font-weight:400;font-size:72px;line-height:1;color:#fff;letter-spacing:-.025em;}
+  .stat-num sup{font-size:.4em;color:var(--gold-soft);margin-left:2px;top:-.8em}
+  .stat-lbl{margin-top:14px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--on-dark-mute);}
+  .stat-desc{margin-top:8px;font-size:13px;color:var(--on-dark-faint);line-height:1.5}
+  @media(max-width:880px){
+    .stats{padding:4rem 0}
+    .stats-grid{grid-template-columns:1fr 1fr}
+    .stat-cell{padding:1.75rem 1rem!important;border-right:none;border-bottom:1px solid var(--line-dark)}
+    .stat-cell:nth-child(odd){border-right:1px solid var(--line-dark)}
+    .stat-cell:nth-last-child(-n+2){border-bottom:none}
+    .stat-num{font-size:48px}
+  }
+
+  /* ── Vision/Mission ── */
+  .vm{background:var(--warm);padding:7rem 0}
+  .vm-head{text-align:center;margin-bottom:4rem}
+  .vm-head .eyebrow{margin-bottom:1.25rem}
+  .vm-head h2{max-width:780px;margin:0 auto}
+  .vm-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;max-width:1120px;margin:0 auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .vm-card{padding:3rem 3.5rem}
+  .vm-card:first-child{border-right:1px solid var(--line)}
+  .vm-num{font-family:'Instrument Serif',serif;font-size:13px;color:var(--gold);letter-spacing:.16em;text-transform:uppercase;font-weight:400;margin-bottom:1.25rem;display:block;}
+  .vm-card h3{font-family:'Instrument Serif',serif;font-weight:400;font-size:30px;line-height:1.15;color:var(--ink);margin-bottom:1rem;letter-spacing:-.01em;}
+  .vm-card h3 em{font-style:italic}
+  .vm-card p{font-size:15px;line-height:1.8;color:var(--muted)}
+  @media(max-width:760px){
+    .vm{padding:4rem 0}
+    .vm-grid{grid-template-columns:1fr}
+    .vm-card{padding:2.5rem 1.5rem;border-right:none!important}
+    .vm-card:first-child{border-bottom:1px solid var(--line)}
+  }
+
+  /* ── Programs ── */
+  .progs{background:#fff;padding:7rem 0}
+  .progs-head{display:grid;grid-template-columns:1fr auto;gap:2rem;align-items:end;margin-bottom:3.5rem;}
+  .progs-head h2{max-width:640px}
+  .progs-head .eyebrow{margin-bottom:1rem}
+  .progs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line);}
+  .prog{padding:2.5rem 2rem 2.25rem;border-bottom:1px solid var(--line);border-right:1px solid var(--line);position:relative;transition:background .25s;cursor:pointer;display:flex;flex-direction:column;min-height:300px;}
+  .prog:nth-child(3n){border-right:none}
+  .prog:hover{background:var(--cool)}
+  .prog-num{font-family:'Instrument Serif',serif;font-size:13px;color:var(--faint);letter-spacing:.1em;font-weight:400;margin-bottom:1.5rem;}
+  .prog h4{font-family:'Instrument Serif',serif;font-weight:400;font-size:26px;line-height:1.15;color:var(--ink);letter-spacing:-.008em;margin-bottom:.75rem;}
+  .prog .dept{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:1rem;}
+  .prog p{font-size:14px;line-height:1.65;color:var(--muted);margin-top:auto;padding-top:1.25rem;border-top:1px solid var(--line-soft);}
+  .prog .arrow{position:absolute;top:2.5rem;right:2rem;opacity:0;transform:translateX(-6px);transition:opacity .25s,transform .25s;color:var(--ink);font-size:22px;}
+  .prog:hover .arrow{opacity:1;transform:translateX(0)}
+  @media(max-width:980px){
+    .progs{padding:5rem 0}
+    .progs-head{grid-template-columns:1fr;margin-bottom:2.5rem}
+    .progs-grid{grid-template-columns:repeat(2,1fr)}
+    .prog{padding:2rem 1.5rem;min-height:240px}
+    .prog:nth-child(3n){border-right:1px solid var(--line)}
+    .prog:nth-child(2n){border-right:none}
+  }
+  @media(max-width:600px){
+    .progs-grid{grid-template-columns:1fr}
+    .prog{border-right:none!important}
+  }
+
+  /* ── Life ── */
+  .life{background:#fff;padding:7rem 0;border-top:1px solid var(--line)}
+  .life-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:3rem;gap:2rem;flex-wrap:wrap;}
+  .life-head .eyebrow{margin-bottom:1rem}
+  .life-head h2{max-width:560px}
+  .life-grid{display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:160px;gap:1.5rem;}
+  .life-item{position:relative;overflow:hidden;display:block;text-decoration:none;color:#fff}
+  .life-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+  .life-item::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,transparent 40%,rgba(10,22,40,.78) 100%);}
+  .life-item .meta{position:absolute;left:1.25rem;right:1.25rem;bottom:1.25rem;z-index:3;}
+  .life-item .micro{color:var(--gold-soft);margin-bottom:6px;font-size:10px;}
+  .life-item .title{font-family:'Instrument Serif',serif;font-weight:400;font-size:22px;line-height:1.15;color:#fff;letter-spacing:-.01em;}
+  .life-a{grid-column:span 7;grid-row:span 3}
+  .life-b{grid-column:span 5;grid-row:span 2}
+  .life-c{grid-column:span 5;grid-row:span 2}
+  .life-d{grid-column:span 4;grid-row:span 2}
+  .life-e{grid-column:span 4;grid-row:span 2}
+  .life-f{grid-column:span 4;grid-row:span 2}
+  @media(max-width:880px){
+    .life{padding:5rem 0}
+    .life-grid{grid-template-columns:1fr 1fr;grid-auto-rows:140px}
+    .life-a,.life-b,.life-c,.life-d,.life-e,.life-f{grid-column:span 1;grid-row:span 2}
+    .life-a{grid-column:span 2}
+  }
+
+  /* ── Facilities ── */
+  .facs{background:var(--ink);color:#fff;padding:7rem 0}
+  .facs-head{margin-bottom:3.5rem;max-width:720px}
+  .facs-head .eyebrow{color:var(--gold-soft);margin-bottom:1.25rem}
+  .facs-head .eyebrow::before{background:var(--gold-soft)}
+  .facs-head h2{color:#fff;margin-bottom:1.25rem}
+  .facs-head h2 em{color:var(--gold-soft);font-style:italic}
+  .facs-head p{color:var(--on-dark-mute);font-size:17px;line-height:1.7}
+  .facs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line-dark-2);}
+  .fac{padding:2.5rem 1.75rem;border-bottom:1px solid var(--line-dark);border-right:1px solid var(--line-dark);transition:background .25s;}
+  .fac:nth-child(4n){border-right:none}
+  .fac:hover{background:rgba(255,255,255,.03)}
+  .fac i{font-size:32px;color:var(--gold-soft);display:block;margin-bottom:1.5rem;}
+  .fac h4{font-family:'Instrument Serif',serif;font-weight:400;font-size:24px;line-height:1.2;color:#fff;margin-bottom:.5rem;}
+  .fac p{font-size:13px;line-height:1.6;color:var(--on-dark-mute)}
+  @media(max-width:880px){
+    .facs{padding:5rem 0}
+    .facs-grid{grid-template-columns:repeat(2,1fr)}
+    .fac:nth-child(4n){border-right:1px solid var(--line-dark)}
+    .fac:nth-child(2n){border-right:none}
+  }
+  @media(max-width:520px){
+    .facs-grid{grid-template-columns:1fr}
+    .fac{border-right:none!important}
+  }
+
+  /* ── News ── */
+  .news{background:var(--warm);padding:7rem 0}
+  .news-head{display:grid;grid-template-columns:1fr auto;gap:2rem;align-items:end;margin-bottom:3.5rem;}
+  .news-head h2{max-width:600px}
+  .news-head .eyebrow{margin-bottom:1.25rem}
+  .news-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;}
+  .news-card{background:#fff;border:1px solid var(--line);transition:transform .25s,box-shadow .25s,border-color .25s;display:flex;flex-direction:column;cursor:pointer;text-decoration:none;color:inherit;}
+  .news-card:hover{transform:translateY(-4px);box-shadow:0 12px 28px -12px rgba(10,22,40,.18);border-color:var(--ink-2)}
+  .news-card-image{position:relative;aspect-ratio:16/10;background:var(--cool);overflow:hidden;}
+  .news-card-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+  .news-card-tag{position:absolute;left:14px;top:14px;z-index:3;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:rgba(10,22,40,.78);backdrop-filter:blur(4px);padding:5px 10px;font-weight:600;}
+  .news-card-body{padding:1.75rem 1.75rem 2rem;display:flex;flex-direction:column;flex:1}
+  .news-card-date{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:.75rem;font-weight:600;}
+  .news-card h3{font-family:'Instrument Serif',serif;font-weight:400;font-size:22px;line-height:1.2;color:var(--ink);margin-bottom:.75rem;letter-spacing:-.008em;}
+  .news-card p{font-size:14px;line-height:1.65;color:var(--muted);margin-bottom:1.25rem}
+  .news-card .read{margin-top:auto;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);font-weight:600;display:inline-flex;align-items:center;gap:6px;}
+  @media(max-width:880px){
+    .news{padding:5rem 0}
+    .news-head{grid-template-columns:1fr;margin-bottom:2.5rem}
+    .news-grid{grid-template-columns:1fr}
+  }
+
+  /* ── CTA ── */
+  .cta{background:var(--ink-3);color:#fff;padding:6rem 0;position:relative;overflow:hidden;}
+  .cta::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-soft) 50%,transparent);opacity:.4;}
+  .cta-inner{max-width:1280px;margin:0 auto;padding:0 2rem;display:grid;grid-template-columns:1fr auto;gap:4rem;align-items:center;}
+  .cta h2{color:#fff;max-width:680px}
+  .cta h2 em{color:var(--gold-soft);font-style:italic}
+  .cta p{color:var(--on-dark-mute);font-size:16px;line-height:1.7;margin-top:1rem;max-width:540px}
+  .cta-actions{display:flex;gap:14px;flex-wrap:wrap}
+  @media(max-width:880px){.cta-inner{grid-template-columns:1fr;gap:2rem}}
+
+  /* ── Footer ── */
+  .footer{background:var(--ink);color:var(--on-dark-mute);padding:5rem 0 0;border-top:1px solid var(--line-dark);}
+  .footer-grid{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr;gap:4rem;padding-bottom:3rem;border-bottom:1px solid var(--line-dark);}
+  .footer-brand{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem}
+  .footer-brand img{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.04);padding:3px}
+  .footer-brand-name{font-family:'Instrument Serif',serif;font-size:24px;color:#fff}
+  .footer-brand-sub{font-size:11px;color:var(--on-dark-faint);letter-spacing:.06em;margin-top:2px}
+  .footer-tagline{font-size:14px;color:var(--on-dark-mute);line-height:1.7;max-width:380px;margin-bottom:1.5rem}
+  .footer-contact{display:flex;flex-direction:column;gap:8px;font-size:13px}
+  .footer-contact span{display:flex;align-items:center;gap:10px}
+  .footer-contact i{color:var(--gold-soft);font-size:14px}
+  .footer h5{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#fff;margin-bottom:1.5rem;font-weight:600;}
+  .footer-links{display:flex;flex-direction:column;gap:10px;font-size:13px}
+  .footer-links a{color:var(--on-dark-mute);text-decoration:none;transition:color .15s}
+  .footer-links a:hover{color:#fff}
+  .footer-bottom{padding:1.5rem 0;display:flex;justify-content:space-between;font-size:12px;color:var(--on-dark-faint);}
+  .footer-bottom a{color:var(--on-dark-faint);text-decoration:none;margin-left:1.5rem}
+  .footer-bottom a:hover{color:#fff}
+  @media(max-width:880px){
+    .footer{padding:3.5rem 0 0}
+    .footer-grid{grid-template-columns:1fr 1fr;gap:2.5rem}
+    .footer-bottom{flex-direction:column;gap:.75rem;text-align:center}
+    .footer-bottom a{margin:0 .75rem}
+  }
+  @media(max-width:520px){.footer-grid{grid-template-columns:1fr}}
+
+  /* ── Modal system ── */
+  .modal-back{position:fixed;inset:0;background:rgba(10,22,40,.55);backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem;animation:lp-fadeIn .2s ease;overflow-y:auto;}
+  @keyframes lp-fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes lp-slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  .modal{background:#fff;max-width:520px;width:100%;border:1px solid var(--line);animation:lp-slideUp .25s cubic-bezier(.4,0,.2,1);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 3rem);}
+  .modal--wide{max-width:880px}
+  .modal--med{max-width:640px}
+  .modal-head{padding:1.75rem 2.5rem 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .modal-head-brand{display:flex;align-items:center;gap:12px}
+  .modal-head-brand img{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--cool);padding:2px}
+  .modal-head-brand .name{font-family:'Instrument Serif',serif;font-size:18px;color:var(--ink);line-height:1}
+  .modal-head-brand .sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-top:4px}
+  .modal-close{width:36px;height:36px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s,background .15s;}
+  .modal-close:hover{border-color:var(--ink);background:var(--ink);color:#fff}
+  .modal-close i{font-size:16px}
+  .modal-body{padding:2rem 2.5rem 2.25rem;overflow-y:auto;flex:1}
+  .modal-body--center{text-align:center}
+  .modal-body h3{font-family:'Instrument Serif',serif;font-weight:400;font-size:30px;color:var(--ink);line-height:1.15;letter-spacing:-.012em;margin-bottom:.5rem;}
+  .modal-body h3 em{font-style:italic;color:var(--ink-2);font-weight:400}
+  .modal-body > p.lead{font-size:14px;color:var(--muted);line-height:1.65;margin-bottom:2rem;max-width:480px}
+  .modal-body--center > p.lead{margin-left:auto;margin-right:auto}
+  .modal-choices{display:flex;flex-direction:column;gap:12px;text-align:left}
+  .modal-choice{display:flex;align-items:center;gap:1rem;padding:1.25rem 1.5rem;cursor:pointer;background:#fff;border:1px solid var(--line);transition:border-color .2s,background .2s,padding-left .2s;width:100%;text-align:left;font-family:inherit;}
+  .modal-choice:hover{border-color:var(--ink);background:var(--cool);padding-left:1.75rem}
+  .modal-choice-icon{width:46px;height:46px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cool);}
+  .modal-choice-icon i{font-size:20px;color:var(--ink)}
+  .modal-choice-body{flex:1;min-width:0}
+  .modal-choice-body .t{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:2px}
+  .modal-choice-body .d{font-size:12px;color:var(--muted);line-height:1.5}
+  .modal-foot{padding:1.25rem 2.5rem;border-top:1px solid var(--line);font-size:13px;color:var(--muted);text-align:center;background:var(--warm);flex-shrink:0;}
+  .modal-foot a{color:var(--ink);font-weight:500;text-decoration:none;border-bottom:1px solid var(--ink);padding-bottom:1px;cursor:pointer}
+  .modal-foot a:hover{color:var(--ink-2)}
+  @media(max-width:680px){
+    .modal-head,.modal-body,.modal-foot{padding-left:1.5rem;padding-right:1.5rem}
+  }
+
+  /* ── Reveal ── */
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.4,0,.2,1),transform .8s cubic-bezier(.4,0,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  /* ── Flow forms ── */
+  .flow-form{display:flex;flex-direction:column;gap:1.25rem}
+  .flow-field{display:flex;flex-direction:column;gap:6px}
+  .flow-field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .flow-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .flow-input,.flow-select{width:100%;padding:12px 14px;font-size:14px;border:1px solid var(--line);background:#fff;color:var(--ink);font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;border-radius:0;box-sizing:border-box}
+  .flow-input:focus,.flow-select:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(10,22,40,.06)}
+  .flow-input::placeholder{color:var(--faint)}
+  .flow-input:disabled{background:var(--cool);color:var(--muted)}
+  .flow-helper{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+  .flow-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+  .flow-check input{appearance:none;width:16px;height:16px;border:1px solid var(--line);cursor:pointer;display:grid;place-items:center;background:#fff;flex-shrink:0}
+  .flow-check input:checked{background:var(--ink);border-color:var(--ink)}
+  .flow-check input:checked::after{content:"\\2713";color:#fff;font-size:11px;font-weight:700;line-height:1}
+  .flow-actions{display:flex;flex-direction:column;gap:12px;margin-top:.5rem}
+  .flow-btn-primary{width:100%;padding:14px;background:var(--ink);color:#fff;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+  .flow-btn-primary:hover{background:#000}
+  .flow-btn-primary:disabled{opacity:.5;cursor:not-allowed}
+
+  /* ── Wizard ── */
+  .wiz{display:grid;grid-template-columns:220px 1fr;min-height:480px}
+  .wiz-side{background:var(--warm);border-right:1px solid var(--line);padding:2rem 1.5rem;display:flex;flex-direction:column}
+  .wiz-side-head{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:1.25rem}
+  .wiz-steps{display:flex;flex-direction:column;gap:6px;flex:1}
+  .wiz-step{display:flex;align-items:center;gap:10px;padding:9px 12px;font-size:13px;color:var(--muted);transition:color .2s,background .2s}
+  .wiz-step.active{background:#fff;color:var(--ink);font-weight:500;border:1px solid var(--line)}
+  .wiz-step.done{color:var(--ink)}
+  .wiz-step-num{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted)}
+  .wiz-step.active .wiz-step-num{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .wiz-step.done .wiz-step-num{background:var(--gold);color:#fff;border-color:var(--gold)}
+  .wiz-side-foot{font-size:11px;color:var(--muted);line-height:1.6;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line)}
+  .wiz-side-foot a{color:var(--ink);text-decoration:none;display:block;margin-top:4px;font-weight:500}
+  .wiz-main{padding:2rem 2.25rem;display:flex;flex-direction:column;overflow-y:auto}
+  .wiz-main h4{font-family:'Instrument Serif',serif;font-weight:400;font-size:24px;color:var(--ink);letter-spacing:-.01em;margin-bottom:.4rem}
+  .wiz-main .wiz-sub{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem;max-width:440px}
+  .wiz-progress{height:2px;background:var(--line-soft);margin-bottom:1.5rem}
+  .wiz-progress > div{height:100%;background:var(--ink);transition:width .35s cubic-bezier(.4,0,.2,1)}
+  .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+  .type-card{padding:1.25rem;border:1px solid var(--line);cursor:pointer;background:#fff;text-align:left;font-family:inherit;transition:border-color .15s,background .15s}
+  .type-card:hover{border-color:var(--muted)}
+  .type-card.selected{border-color:var(--ink);background:var(--cool)}
+  .type-card i{font-size:22px;color:var(--ink);margin-bottom:10px;display:block}
+  .type-card .t{font-size:14px;font-weight:600;color:var(--ink)}
+  .type-card .d{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+  .wiz-actions{display:flex;justify-content:space-between;gap:12px;margin-top:auto;padding-top:1.5rem;border-top:1px solid var(--line-soft)}
+  .wiz-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);transition:border-color .15s,background .15s,color .15s}
+  .wiz-btn:hover{border-color:var(--ink)}
+  .wiz-btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .wiz-btn.primary:hover{background:#000;border-color:#000}
+  .wiz-btn:disabled{opacity:.4;cursor:not-allowed}
+  .success-icon{width:64px;height:64px;border-radius:50%;background:#e8f4ec;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem}
+  .success-icon i{font-size:32px;color:#0a7c52}
+  @keyframes lp-slideInRight{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+  @keyframes lp-slideInLeft{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
+  @media(max-width:680px){
+    .wiz{grid-template-columns:1fr}
+    .wiz-side{display:none}
+    .modal-head,.modal-body,.modal-foot{padding-left:1.5rem;padding-right:1.5rem}
+  }
+`;
+
+/* ══════════════════════════════════════════════════════════════
+   DATA — Design
+══════════════════════════════════════════════════════════════ */
+const UNSPLASH = (id, w = 1600) =>
+  `https://images.unsplash.com/${id}?w=${w}&q=80&auto=format&fit=crop`;
+
+const PHOTO = {
+  hero:  '/campus-hero.jpg',
+  spot:  UNSPLASH('photo-1532094349884-543bc11b234d', 1400),
+  about: UNSPLASH('photo-1523580494863-6f3031224c94', 1200),
+  lifeA: UNSPLASH('photo-1541339907198-e08756dedf3f', 1600),
+  lifeB: UNSPLASH('photo-1523240795612-9a054b0db644', 1000),
+  lifeC: UNSPLASH('photo-1571260899304-425eee4c7efc', 1000),
+  lifeD: UNSPLASH('photo-1554475901-4538ddfbccc2', 1000),
+  lifeE: UNSPLASH('photo-1494178270175-e96de2971df9', 1000),
+  lifeF: UNSPLASH('photo-1607237138185-eedd9c632b0b', 1000),
+  news1: UNSPLASH('photo-1434030216411-0b793f4b4173', 1000),
+  news2: UNSPLASH('photo-1456513080510-7bf3a84b82f8', 1000),
+  news3: UNSPLASH('photo-1562774053-701939374585', 1000),
+};
+
+const PROGRAMS_STATIC = [
+  { num:'01', name:'BS Computer Science',        dept:'Computer Studies',      desc:'Computing principles, algorithms, software development, and emerging technologies.' },
+  { num:'02', name:'BS Information Technology',  dept:'Computer Studies',      desc:'Information systems, networking, database management, and IT infrastructure.' },
+  { num:'03', name:'BS Education',               dept:'Teacher Education',     desc:'Future teachers in secondary and elementary education with strong pedagogical foundations.' },
+  { num:'04', name:'BS Business Administration', dept:'Business & Management', desc:'Business acumen in marketing, finance, management, and entrepreneurship.' },
+  { num:'05', name:'BS Nursing',                 dept:'Allied Health',         desc:'Competent nurses equipped with clinical skills, critical thinking, and compassionate care.' },
+  { num:'06', name:'BS Agriculture',             dept:'Agricultural Sciences', desc:'Modern agricultural practices, crop science, and sustainable food systems.' },
+];
+
+const FACILITIES = [
+  { icon:'ti-books',         name:'Library',             desc:'Extensive collection of academic resources and digital subscriptions.' },
+  { icon:'ti-cpu',           name:'Computer Laboratory', desc:'State-of-the-art computing facilities for IT and CS students.' },
+  { icon:'ti-flask',         name:'Science Laboratory',  desc:'Fully equipped labs for nursing, biology, and chemistry programs.' },
+  { icon:'ti-ball-football', name:'Sports Complex',      desc:'Basketball courts, open fields, and recreational areas for students.' },
+];
+
+const NEWS = [
+  { id:'news-1', day:'28', my:'May 2025', tag:'Enrollment',     photoKey:'news1', title:'Online Enrollment Now Open for A.Y. 2025–2026',         body:'All students of NEMSU Cantilan Campus — incoming freshmen, transferees, shiftees, and regular students — may now enroll online.' },
+  { id:'news-2', day:'20', my:'May 2025', tag:'Scholarship',    photoKey:'news2', title:'Scholarship Applications Open for 1st Semester',         body:'CHED, DOST, LGU, and institutional scholarship applications are now being accepted at the OSAS office. Deadline is June 15, 2025.' },
+  { id:'news-3', day:'10', my:'May 2025', tag:'Accreditation',  photoKey:'news3', title:'NEMSU Cantilan Achieves AACCUP Level II Accreditation',  body:"Several programs in the Cantilan Campus have achieved Level II accreditation, reflecting the campus's commitment to quality." },
+];
+
+const STATS = [
+  { num:5000, suffix:'+', lbl:'Students enrolled',  desc:'Active learners across all programs' },
+  { num:20,   suffix:'+', lbl:'Academic programs',   desc:'Undergraduate degrees offered' },
+  { num:6,    suffix:'',  lbl:'Departments',          desc:'Spanning technology to health' },
+  { num:50,   suffix:'+', lbl:'Years of service',    desc:'Serving the Caraga region' },
+];
+
+const NAV_LINKS = [
+  { label:'Home',        href:'#home'     },
+  { label:'About',       href:'#about'    },
+  { label:'Programs',    href:'#programs' },
+  { label:'Campus life', href:'#life'     },
+  { label:'News',        href:'#news'     },
+];
+
+const LIFE = [
+  { id:'life-a', cls:'life-a', tag:'Campus',       title:'A campus that grows with its community',    photoKey:'lifeA' },
+  { id:'life-b', cls:'life-b', tag:'Academics',    title:'Hands-on learning, beyond the classroom',   photoKey:'lifeB' },
+  { id:'life-c', cls:'life-c', tag:'Student life', title:'From orgs to sports — find your community', photoKey:'lifeC' },
+  { id:'life-d', cls:'life-d', tag:'Research',     title:'Applied science for the Caraga region',     photoKey:'lifeD' },
+  { id:'life-e', cls:'life-e', tag:'Faculty',      title:'Mentors invested in your growth',           photoKey:'lifeE' },
+  { id:'life-f', cls:'life-f', tag:'Events',       title:'Tradition meets contemporary culture',      photoKey:'lifeF' },
+];
+
+const PORTALS = [
+  { kind:'For students',    name:'Student Portal',    action:'login'  },
+  { kind:'For faculty',     name:'Faculty Portal',    action:'login'  },
+  { kind:'For registrar',   name:'Registrar Console', action:'login'  },
+  { kind:'Future students', name:'Apply & Enroll',    action:'enroll' },
+];
+
+const PILLARS = [
+  { num:'01', title:'Instruction', desc:'Quality academic delivery across undergraduate programs.' },
+  { num:'02', title:'Research',    desc:'Innovation, discovery and applied scholarship.' },
+  { num:'03', title:'Extension',   desc:'Community engagement and outreach programs.' },
+  { num:'04', title:'Production',  desc:'Sustainable enterprise and partnerships.' },
+];
+
+const SPOTLIGHT_KEY      = 'nemsu:spotlight-posts';
+const SPOTLIGHT_FALLBACK = {
+  title:    'Documenting coastal biodiversity along the Surigao del Sur seaboard.',
+  body:     'A multi-year initiative by the College of Agriculture & Allied Sciences partners with local fishing communities to catalog reef species, monitor coastal erosion, and develop sustainable aquaculture practices for the Caraga region.',
+  category: 'Research · Caraga marine biodiversity',
+  tag:      'Research spotlight',
+  byline:   'Featured · NEMSU Cantilan Research Office',
+  imageUrl: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=1400&q=80&auto=format&fit=crop',
+  createdAt:'May 2025',
+};
+
+/* ══════════════════════════════════════════════════════════════
+   DATA — Enrollment modal (existing, preserved unchanged)
 ══════════════════════════════════════════════════════════════ */
 const TYPE_HINTS = {
   freshman:   'Freshmen must submit their SHS Form 138, PSA Birth Certificate, and other admission documents.',
@@ -11,201 +589,89 @@ const TYPE_HINTS = {
   shiftee:    "Shiftees must secure clearance from their current department and the dean's endorsement letter.",
   transferee: 'Transferees must provide their Transcript of Records (TOR) and Honorable Dismissal from their previous school.',
 };
-const TYPE_LABELS = { freshman: 'Freshman', regular: 'Regular', shiftee: 'Shiftee', transferee: 'Transferee' };
-const TYPE_ICONS  = { freshman: 'ti-school', regular: 'ti-refresh', shiftee: 'ti-arrows-exchange', transferee: 'ti-building-community' };
-const TYPE_DESCS  = { freshman: 'Incoming first-year student from SHS', regular: 'Continuing or returning student', shiftee: 'Changing program within NEMSU Cantilan', transferee: 'Coming from another institution' };
+const TYPE_LABELS = { freshman:'Freshman', regular:'Regular', shiftee:'Shiftee', transferee:'Transferee' };
+const TYPE_ICONS  = { freshman:'ti-school', regular:'ti-refresh', shiftee:'ti-arrows-exchange', transferee:'ti-building-community' };
+const TYPE_DESCS  = { freshman:'Incoming first-year student from SHS', regular:'Continuing or returning student', shiftee:'Changing program within NEMSU Cantilan', transferee:'Coming from another institution' };
 
 const ALL_REQUIREMENTS = {
   freshman: [
-    { group: 'Basic documents', items: [
-      { id: 'r1', label: 'SHS Form 138 / Report Card',              tag: 'Required'    },
-      { id: 'r2', label: 'PSA Birth Certificate',                   tag: 'Required'    },
-      { id: 'r3', label: 'Good Moral Certificate',                  tag: 'Required'    },
-      { id: 'r4', label: 'SHS Diploma / Certificate of Completion', tag: 'Required'    },
-      { id: 'r5', label: '2x2 ID photos (4 copies)',                tag: 'Required'    },
-      { id: 'r6', label: 'Medical Certificate',                     tag: 'Required'    },
+    { group:'Basic documents', items:[
+      { id:'r1', label:'SHS Form 138 / Report Card',              tag:'Required'    },
+      { id:'r2', label:'PSA Birth Certificate',                   tag:'Required'    },
+      { id:'r3', label:'Good Moral Certificate',                  tag:'Required'    },
+      { id:'r4', label:'SHS Diploma / Certificate of Completion', tag:'Required'    },
+      { id:'r5', label:'2x2 ID photos (4 copies)',                tag:'Required'    },
+      { id:'r6', label:'Medical Certificate',                     tag:'Required'    },
     ]},
-    { group: 'Admission', items: [
-      { id: 'r7', label: 'Entrance Exam Result / Admission Slip',   tag: 'If required' },
-      { id: 'r8', label: 'Accomplished Application Form',           tag: 'Required'    },
+    { group:'Admission', items:[
+      { id:'r7', label:'Entrance Exam Result / Admission Slip',   tag:'If required' },
+      { id:'r8', label:'Accomplished Application Form',           tag:'Required'    },
     ]},
   ],
-  regular: [{ group: 'Documents', items: [
-    { id: 'r1', label: 'Previous Certificate of Registration (COR)', tag: 'Required'     },
-    { id: 'r2', label: 'Student ID (current)',                        tag: 'Required'     },
-    { id: 'r3', label: 'Clearance from previous semester',            tag: 'Required'     },
-    { id: 'r4', label: 'Proof of payment or scholarship form',        tag: 'If applicable'},
+  regular: [{ group:'Documents', items:[
+    { id:'r1', label:'Previous Certificate of Registration (COR)', tag:'Required'      },
+    { id:'r2', label:'Student ID (current)',                        tag:'Required'      },
+    { id:'r3', label:'Clearance from previous semester',            tag:'Required'      },
+    { id:'r4', label:'Proof of payment or scholarship form',        tag:'If applicable' },
   ]}],
-  shiftee: [{ group: 'Shifting requirements', items: [
-    { id: 'r1', label: 'Shifting Application Form',         tag: 'Required' },
-    { id: 'r2', label: 'Clearance from current department', tag: 'Required' },
-    { id: 'r3', label: "Dean's Endorsement Letter",         tag: 'Required' },
-    { id: 'r4', label: 'Transcript of Records (internal)',  tag: 'Required' },
-    { id: 'r5', label: 'Acceptance from target department', tag: 'Required' },
+  shiftee: [{ group:'Shifting requirements', items:[
+    { id:'r1', label:'Shifting Application Form',         tag:'Required' },
+    { id:'r2', label:'Clearance from current department', tag:'Required' },
+    { id:'r3', label:"Dean's Endorsement Letter",         tag:'Required' },
+    { id:'r4', label:'Transcript of Records (internal)',  tag:'Required' },
+    { id:'r5', label:'Acceptance from target department', tag:'Required' },
   ]}],
   transferee: [
-    { group: 'Admission documents', items: [
-      { id: 'r1', label: 'Transcript of Records (TOR)', tag: 'Required'    },
-      { id: 'r2', label: 'Honorable Dismissal',         tag: 'Required'    },
-      { id: 'r3', label: 'Good Moral Certificate',      tag: 'Required'    },
-      { id: 'r4', label: 'PSA Birth Certificate',       tag: 'Required'    },
-      { id: 'r5', label: '2x2 ID photos (4 copies)',    tag: 'Required'    },
-      { id: 'r6', label: 'Medical Certificate',         tag: 'Required'    },
+    { group:'Admission documents', items:[
+      { id:'r1', label:'Transcript of Records (TOR)', tag:'Required'    },
+      { id:'r2', label:'Honorable Dismissal',         tag:'Required'    },
+      { id:'r3', label:'Good Moral Certificate',      tag:'Required'    },
+      { id:'r4', label:'PSA Birth Certificate',       tag:'Required'    },
+      { id:'r5', label:'2x2 ID photos (4 copies)',    tag:'Required'    },
+      { id:'r6', label:'Medical Certificate',         tag:'Required'    },
     ]},
-    { group: 'Additional', items: [
-      { id: 'r7', label: 'Entrance Exam Result',        tag: 'If required' },
-      { id: 'r8', label: 'Application / Admission Form',tag: 'Required'    },
+    { group:'Additional', items:[
+      { id:'r7', label:'Entrance Exam Result',         tag:'If required' },
+      { id:'r8', label:'Application / Admission Form', tag:'Required'    },
     ]},
   ],
 };
 
 const SUBJECTS = [
-  { code: 'CC 101',   name: 'Introduction to Computing',         units: 3 },
-  { code: 'CC 102',   name: 'Computer Programming 1',            units: 3 },
-  { code: 'MATH 101', name: 'Mathematics in the Modern World',   units: 3 },
-  { code: 'ENG 101',  name: 'Purposive Communication',           units: 3 },
-  { code: 'STS 101',  name: 'Science, Technology & Society',     units: 3 },
-  { code: 'NSTP 1',   name: 'National Service Training Program', units: 3 },
-  { code: 'PE 1',     name: 'Physical Education 1',              units: 2 },
-  { code: 'HUM 101',  name: 'Art Appreciation',                  units: 3 },
+  { code:'CC 101',   name:'Introduction to Computing',         units:3 },
+  { code:'CC 102',   name:'Computer Programming 1',            units:3 },
+  { code:'MATH 101', name:'Mathematics in the Modern World',   units:3 },
+  { code:'ENG 101',  name:'Purposive Communication',           units:3 },
+  { code:'STS 101',  name:'Science, Technology & Society',     units:3 },
+  { code:'NSTP 1',   name:'National Service Training Program', units:3 },
+  { code:'PE 1',     name:'Physical Education 1',              units:2 },
+  { code:'HUM 101',  name:'Art Appreciation',                  units:3 },
 ];
 
 const WIZARD_STEPS = ['Student type', 'Personal info', 'Requirements', 'Subjects', 'Review & confirm'];
 
-const PROGRAMS = [
-  { icon: 'ti-cpu',            name: 'BS Computer Science',       desc: 'Focuses on computing principles, algorithms, software development, and emerging technologies.',           tag: 'Technology',   iBg: '#e8f1fb', iC: '#0a3a6e', tBg: '#e8f1fb', tC: '#0a3a6e' },
-  { icon: 'ti-device-laptop',  name: 'BS Information Technology', desc: 'Covers information systems, networking, database management, and IT infrastructure.',                    tag: 'Technology',   iBg: '#e8f1fb', iC: '#0a3a6e', tBg: '#e8f1fb', tC: '#0a3a6e' },
-  { icon: 'ti-school',         name: 'BS Education',              desc: 'Prepares future teachers in secondary and elementary education with strong pedagogical foundations.',     tag: 'Education',    iBg: '#fff8e6', iC: '#b07a00', tBg: '#fff8e6', tC: '#b07a00' },
-  { icon: 'ti-building-bank',  name: 'BS Business Administration',desc: 'Develops business acumen in marketing, finance, management, and entrepreneurship.',                     tag: 'Business',     iBg: '#fbeaff', iC: '#6e0a9e', tBg: '#fbeaff', tC: '#6e0a9e' },
-  { icon: 'ti-stethoscope',    name: 'BS Nursing',                desc: 'Produces competent nurses equipped with clinical skills, critical thinking, and compassionate care.',    tag: 'Health',       iBg: '#e8fbf0', iC: '#0a6e3a', tBg: '#e8fbf0', tC: '#0a6e3a' },
-  { icon: 'ti-plant',          name: 'BS Agriculture',            desc: 'Trains students in modern agricultural practices, crop science, and sustainable food systems.',          tag: 'Agriculture',  iBg: '#e8f5ea', iC: '#2e7d32', tBg: '#e8f5ea', tC: '#2e7d32' },
-];
-
-const FACILITIES = [
-  { icon: 'ti-books',         name: 'Library',             desc: 'Extensive collection of academic resources and digital subscriptions',           bg: 'linear-gradient(135deg,#0a1628 0%,#0a3a6e 100%)' },
-  { icon: 'ti-cpu',           name: 'Computer Laboratory', desc: 'State-of-the-art computing facilities for IT and CS students',                   bg: 'linear-gradient(135deg,#0d2547,#0a5296)'          },
-  { icon: 'ti-stethoscope',   name: 'Science Laboratory',  desc: 'Fully equipped labs for nursing, biology, and chemistry programs',               bg: 'linear-gradient(135deg,#162d14,#2e7d32)'          },
-  { icon: 'ti-ball-football', name: 'Sports Complex',      desc: 'Basketball courts, open fields, and recreational areas for students',            bg: 'linear-gradient(135deg,#2d1647,#6e0a9e)'          },
-];
-
-const ANNOUNCEMENTS_DATA = [
-  { icon: 'ti-pencil', iBg: '#e8f1fb', iC: '#0a3a6e', title: 'Online Enrollment Now Open for A.Y. 2025–2026',             body: 'All students of NEMSU Cantilan Campus — incoming freshmen, transferees, shiftees, and regular students — may now enroll online. Prepare all required documents before proceeding.',                          date: 'May 28, 2025' },
-  { icon: 'ti-award',  iBg: '#fff8e6', iC: '#b07a00', title: 'Scholarship Applications Open for 1st Semester',             body: 'CHED, DOST, LGU, and institutional scholarship applications are being accepted at the OSAS office, Cantilan Campus. Deadline is June 15, 2025.',                                                          date: 'May 20, 2025' },
-  { icon: 'ti-trophy', iBg: '#e8fbf0', iC: '#0a6e3a', title: 'NEMSU Cantilan Achieves AACCUP Level II Accreditation',      body: "Several programs in the Cantilan Campus have successfully achieved Level II accreditation, reflecting the campus's commitment to academic quality.",                                                        date: 'May 10, 2025' },
-];
-
-const CSS = `
-  html { scroll-behavior: smooth; }
-  @keyframes pulse        { 0%,100%{opacity:1}50%{opacity:.45} }
-  @keyframes slideUp      { from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1} }
-  @keyframes fadeIn       { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)} }
-  @keyframes slideInRight { from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:translateX(0)} }
-  @keyframes slideInLeft  { from{opacity:0;transform:translateX(-32px)}to{opacity:1;transform:translateX(0)} }
-  @keyframes lp-float1    { 0%,100%{transform:translate(0,0) scale(1)} 35%{transform:translate(14px,-20px) scale(1.1)} 70%{transform:translate(-8px,12px) scale(.92)} }
-  @keyframes lp-float2    { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(-16px,18px) scale(1.06)} 68%{transform:translate(10px,-14px) scale(.95)} }
-  @keyframes lp-float3    { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(10px,-26px) scale(1.12)} }
-  @keyframes lp-ring      { 0%{transform:scale(.85);opacity:.5} 100%{transform:scale(2.6);opacity:0} }
-  @keyframes lp-shimmer   { 0%{background-position:200% center} 100%{background-position:-200% center} }
-  .lp-tl:hover   { color:#fff!important }
-  .lp-nl:hover   { color:#fff!important; border-bottom-color:#3b9eff!important }
-  .lp-pc:hover   { border-color:#1a6ebd!important; box-shadow:0 6px 24px rgba(26,110,189,.1)!important; transform:translateY(-2px)!important }
-  .lp-fc:hover   { box-shadow:0 6px 24px rgba(10,58,110,.1)!important; transform:translateY(-2px)!important }
-  .lp-ac:hover   { box-shadow:0 4px 16px rgba(10,58,110,.08)!important }
-  .lp-pi:hover   { border-color:#1a6ebd!important; box-shadow:0 2px 12px rgba(26,110,189,.1)!important }
-  .lp-fl:hover   { color:rgba(255,255,255,.75)!important }
-  .lp-bg:hover   { background:#f0f4fb!important }
-  .lp-bp:hover   { background:#0a3a6e!important }
-  .lp-bgo:hover  { background:#c87010!important }
-  .lp-bout:hover { background:rgba(255,255,255,.1)!important }
-  .lp-mc:hover   { background:rgba(255,255,255,.2)!important; color:#fff!important }
-
-  /* ── Responsive layout system ─────────────────────────────── */
-  .lp-sec       { padding:5rem 0 }
-  .lp-wrap      { max-width:1200px; margin:0 auto; padding:0 2rem }
-  .lp-hero-grid { display:grid; grid-template-columns:1fr 420px; gap:4rem; align-items:center; width:100%; padding:5rem 2rem 7rem }
-  .lp-hero-rt   { display:flex; flex-direction:column; gap:12px }
-  .lp-hero-h1   { font-size:40px; font-weight:800; color:#fff; line-height:1.2; margin-bottom:.75rem }
-  .lp-stats     { display:flex; gap:2.5rem; padding-top:1.5rem; border-top:1px solid rgba(255,255,255,.1) }
-  .lp-info4     { display:grid; grid-template-columns:repeat(4,1fr) }
-  .lp-ab2       { display:grid; grid-template-columns:1fr 1fr; gap:5rem; align-items:center }
-  .lp-vm2       { display:grid; grid-template-columns:1fr 1fr; gap:1px }
-  .lp-p3        { display:grid; grid-template-columns:repeat(3,1fr); gap:14px }
-  .lp-f4        { display:grid; grid-template-columns:repeat(4,1fr); gap:14px }
-  .lp-a21       { display:grid; grid-template-columns:2fr 1fr; gap:24px }
-  .lp-ft-grid   { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:3rem; margin-bottom:2.5rem }
-  .lp-topinfo   { display:flex; gap:1.25rem }
-  .lp-navlinks  { display:flex; flex:1 }
-  .lp-burger    { display:none; cursor:pointer; background:rgba(255,255,255,.08); border:none; color:rgba(255,255,255,.7); border-radius:6px; padding:7px 9px; font-size:18px; align-items:center; justify-content:center; flex-shrink:0; margin-left:auto }
-  .lp-mob       { display:none; flex-direction:column; position:absolute; top:68px; left:0; right:0; background:#0d2547; border-top:1px solid rgba(255,255,255,.08); z-index:98; box-shadow:0 8px 24px rgba(0,0,0,.4) }
-  .lp-mob.open  { display:flex }
-  .lp-mob a     { padding:14px 2rem; font-size:14px; color:rgba(255,255,255,.65); text-decoration:none; border-bottom:1px solid rgba(255,255,255,.06); transition:background .15s,color .15s }
-  .lp-mob a:hover { background:rgba(255,255,255,.06); color:#fff }
-
-  @media(max-width:1024px){
-    .lp-hero-grid { grid-template-columns:1fr; padding:3.5rem 2rem 5rem }
-    .lp-hero-rt   { display:none }
-    .lp-ft-grid   { grid-template-columns:1fr 1fr; gap:2rem }
-  }
-  @media(max-width:768px){
-    .lp-sec       { padding:3rem 0 }
-    .lp-wrap      { padding:0 1.25rem }
-    .lp-hero-grid { padding:2.5rem 1.25rem 4rem }
-    .lp-hero-h1   { font-size:28px }
-    .lp-stats     { gap:1.5rem }
-    .lp-info4     { grid-template-columns:repeat(2,1fr) }
-    .lp-ab2       { grid-template-columns:1fr; gap:2.5rem }
-    .lp-vm2       { grid-template-columns:1fr }
-    .lp-p3        { grid-template-columns:repeat(2,1fr) }
-    .lp-f4        { grid-template-columns:repeat(2,1fr) }
-    .lp-a21       { grid-template-columns:1fr }
-    .lp-ft-grid   { grid-template-columns:1fr 1fr; gap:1.5rem }
-    .lp-topinfo   { display:none }
-    .lp-navlinks  { display:none }
-    .lp-burger    { display:flex }
-  }
-  @media(max-width:480px){
-    .lp-sec       { padding:2rem 0 }
-    .lp-wrap      { padding:0 1rem }
-    .lp-hero-grid { padding:2rem 1rem 3rem }
-    .lp-hero-h1   { font-size:22px }
-    .lp-stats     { flex-wrap:wrap; gap:1.25rem }
-    .lp-info4     { grid-template-columns:1fr }
-    .lp-p3        { grid-template-columns:1fr }
-    .lp-f4        { grid-template-columns:1fr }
-    .lp-ft-grid   { grid-template-columns:1fr }
-  }
-`;
-
 /* ══════════════════════════════════════════════════════════════
-   ANIMATION HOOKS
+   HOOKS & HELPERS
 ══════════════════════════════════════════════════════════════ */
 function useInView(threshold = 0.12) {
   const ref = useRef(null);
-  const [visible, setVisible] = useState(false);
+  const [v, setV] = useState(false);
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) { setVisible(true); obs.disconnect(); }
-    }, { threshold });
-    obs.observe(el);
-    return () => obs.disconnect();
+    const el = ref.current; if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setV(true); obs.disconnect(); } }, { threshold });
+    obs.observe(el); return () => obs.disconnect();
   }, []);
-  return [ref, visible];
+  return [ref, v];
 }
 
-function useCountUp(end, duration = 1800) {
-  const ref  = useRef(null);
-  const [val, setVal]     = useState(0);
+function useCountUp(end, duration = 1600) {
+  const ref = useRef(null);
+  const [val, setVal]       = useState(0);
   const [active, setActive] = useState(false);
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) { setActive(true); obs.disconnect(); }
-    }, { threshold: 0.4 });
-    obs.observe(el);
-    return () => obs.disconnect();
+    const el = ref.current; if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setActive(true); obs.disconnect(); } }, { threshold: 0.4 });
+    obs.observe(el); return () => obs.disconnect();
   }, []);
   useEffect(() => {
     if (!active) return;
@@ -221,61 +687,49 @@ function useCountUp(end, duration = 1800) {
   return [ref, val];
 }
 
-/* ── Floating particles (hero background) ────────────────────── */
-const PARTICLES = [
-  { w: 6,  top: '13%', left: '6%',  delay: 0,   dur: 7,   op: .22, a: 1 },
-  { w: 10, top: '22%', left: '90%', delay: 1.3, dur: 9,   op: .14, a: 2 },
-  { w: 4,  top: '55%', left: '3%',  delay: 2,   dur: 6.5, op: .3,  a: 3 },
-  { w: 8,  top: '72%', left: '83%', delay: .6,  dur: 8,   op: .18, a: 1 },
-  { w: 5,  top: '38%', left: '71%', delay: 1.8, dur: 7.5, op: .24, a: 2 },
-  { w: 7,  top: '84%', left: '43%', delay: 3,   dur: 9.5, op: .19, a: 3 },
-  { w: 3,  top: '9%',  left: '53%', delay: 2.5, dur: 6,   op: .35, a: 1 },
-  { w: 9,  top: '47%', left: '19%', delay: .9,  dur: 8.5, op: .13, a: 2 },
-  { w: 4,  top: '64%', left: '62%', delay: 1.5, dur: 7,   op: .28, a: 3 },
-  { w: 6,  top: '29%', left: '35%', delay: 3.5, dur: 10,  op: .15, a: 1 },
-  { w: 5,  top: '18%', left: '78%', delay: 4,   dur: 8,   op: .2,  a: 2 },
-  { w: 3,  top: '78%', left: '24%', delay: 1.1, dur: 7,   op: .26, a: 3 },
-];
-function FloatingParticles() {
+function Reveal({ children, delay = 0, className = '' }) {
+  const [ref, v] = useInView();
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
-      {PARTICLES.map((p, i) => (
-        <div key={i} style={{ position: 'absolute', top: p.top, left: p.left, width: p.w, height: p.w, borderRadius: '50%', background: `rgba(59,158,255,${p.op})`, animation: `lp-float${p.a} ${p.dur}s ease-in-out ${p.delay}s infinite` }} />
-      ))}
-    </div>
-  );
-}
-
-/* ── Stat counter ─────────────────────────────────────────────── */
-function StatCounter({ end, suffix, label }) {
-  const [ref, val] = useCountUp(end);
-  return (
-    <div ref={ref}>
-      <div style={{ fontSize: 26, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
-        {val.toLocaleString()}<sup style={{ fontSize: 15, color: '#f5c842' }}>{suffix}</sup>
-      </div>
-      <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '.07em' }}>{label}</div>
-    </div>
-  );
-}
-
-/* ── Reveal wrapper ───────────────────────────────────────────── */
-function Reveal({ children, delay = 0, style: extra = {} }) {
-  const [ref, visible] = useInView();
-  return (
-    <div ref={ref} style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(30px)', transition: `opacity .65s ${delay}s cubic-bezier(.4,0,.2,1), transform .65s ${delay}s cubic-bezier(.4,0,.2,1)`, ...extra }}>
+    <div ref={ref} className={`reveal${v ? ' in' : ''} ${className}`}
+      style={{ transitionDelay: `${delay}s` }}>
       {children}
     </div>
   );
 }
 
-/* ── Date helpers ─────────────────────────────────────────────── */
+function Img({ src, alt = '' }) {
+  return <img src={src} alt={alt} loading="lazy" />;
+}
+
+function StatCell({ num, suffix, lbl, desc }) {
+  const [ref, val] = useCountUp(num);
+  return (
+    <div className="stat-cell" ref={ref}>
+      <div className="stat-num">{val.toLocaleString()}<sup>{suffix}</sup></div>
+      <div className="stat-lbl">{lbl}</div>
+      <div className="stat-desc">{desc}</div>
+    </div>
+  );
+}
+
+/* ── Date helpers (existing, preserved) ── */
 function fmtDateRange(start, end) {
-  const f = d => new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+  const f = d => new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month:'short', day:'numeric' });
   return `${f(start)} – ${f(end)}`;
 }
 function fmtDate(iso) {
-  return new Date(iso).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' });
+}
+
+/* ── Spotlight loader ── */
+function loadActiveSpotlight() {
+  try {
+    const raw = localStorage.getItem(SPOTLIGHT_KEY);
+    if (!raw) return SPOTLIGHT_FALLBACK;
+    const posts = JSON.parse(raw);
+    if (!Array.isArray(posts) || posts.length === 0) return SPOTLIGHT_FALLBACK;
+    return posts.find(p => p.active) || posts[0] || SPOTLIGHT_FALLBACK;
+  } catch { return SPOTLIGHT_FALLBACK; }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -283,380 +737,315 @@ function fmtDate(iso) {
 ══════════════════════════════════════════════════════════════ */
 export default function LandingPage() {
   const navigate = useNavigate();
-  const [typePickOpen, setTypePickOpen] = useState(false);
-  const [enrollOpen,   setEnrollOpen]   = useState(false);
-  const [landingData,  setLandingData]  = useState(null);
+  const [screen,      setScreen]      = useState(null);   // 'picker' | null
+  const [enrollOpen,  setEnrollOpen]  = useState(false);
+  const [scrolled,    setScrolled]    = useState(false);
+  const [landingData, setLandingData] = useState(null);
+  const [activeNav,   setActiveNav]   = useState('#home');
 
-  function openEnroll()    { setTypePickOpen(true);  document.body.style.overflow = 'hidden'; }
-  function closeTypePick() { setTypePickOpen(false); document.body.style.overflow = '';       }
-  function closeEnroll()   { setEnrollOpen(false);   document.body.style.overflow = '';       }
-
-  function handleNewStudent() {
-    setTypePickOpen(false);
-    setEnrollOpen(true);
-    // body overflow stays hidden for the enrollment modal
-  }
-  function handleReturningStudent() {
-    setTypePickOpen(false);
-    document.body.style.overflow = '';
-    navigate('/login');
-  }
+  function openEnroll()          { setScreen('picker'); document.body.style.overflow = 'hidden'; }
+  function openLogin()           { navigate('/login');  }
+  function openSignup()          { navigate('/signup'); }
+  function handleNewStudent()    { setScreen(null); setEnrollOpen(true); }
+  function handleReturning()     { setScreen(null); document.body.style.overflow = ''; navigate('/login'); }
+  function closeEnroll()         { setEnrollOpen(false); document.body.style.overflow = ''; }
+  function closeModal()          { setScreen(null); document.body.style.overflow = ''; }
 
   useEffect(() => () => { document.body.style.overflow = ''; }, []);
+
   useEffect(() => {
-    const anyOpen = typePickOpen || enrollOpen;
-    if (!anyOpen) return;
-    const fn = e => {
+    const fn = () => setScrolled(window.scrollY > 4);
+    fn(); window.addEventListener('scroll', fn);
+    return () => window.removeEventListener('scroll', fn);
+  }, []);
+
+  useEffect(() => {
+    const sectionIds = NAV_LINKS.map(l => l.href.slice(1));
+    const observers = sectionIds.map(id => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveNav('#' + id); },
+        { threshold: 0.2, rootMargin: '-82px 0px -40% 0px' }
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => observers.forEach(o => o?.disconnect());
+  }, []);
+
+  useEffect(() => {
+    if (!screen && !enrollOpen) return;
+    const k = e => {
       if (e.key !== 'Escape') return;
-      if (enrollOpen)   closeEnroll();
-      else              closeTypePick();
+      enrollOpen ? closeEnroll() : closeModal();
     };
-    window.addEventListener('keydown', fn);
-    return () => window.removeEventListener('keydown', fn);
-  }, [typePickOpen, enrollOpen]);
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [screen, enrollOpen]);
+
   useEffect(() => {
-    api.get('/enrollment/public/landing/')
-      .then(res => setLandingData(res.data))
-      .catch(() => {});
+    api.get('/enrollment/public/landing/').then(r => setLandingData(r.data)).catch(() => {});
   }, []);
 
   return (
-    <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", background: '#f4f6fb', color: '#0a1628' }}>
+    <>
       <style>{CSS}</style>
-      <Topbar />
-      <Navbar onEnroll={openEnroll} />
-      <Hero onEnroll={openEnroll} term={landingData?.term} schedules={landingData?.enrollment_schedules} />
+      <Topbar onLogin={openLogin} onSignup={openSignup} />
+      <Navbar scrolled={scrolled} onEnroll={openEnroll} activeNav={activeNav} onNavClick={setActiveNav} />
+      <Hero onEnroll={openEnroll} term={landingData?.term} />
+      <AudiencePortals onLogin={openLogin} onEnroll={openEnroll} />
+      <Spotlight />
       <InfoStrip />
-      <AboutSection />
+      <About />
+      <Stats />
       <VisionMission />
-      <ProgramsSection programs={landingData?.programs} />
-      <FacilitiesSection />
-      <AnnouncementsSection onEnroll={openEnroll} announcements={landingData?.announcements} schedules={landingData?.enrollment_schedules} />
-      <CtaBanner onEnroll={openEnroll} />
-      <SiteFooter onEnroll={openEnroll} />
-      {typePickOpen && (
-        <StudentTypePicker
-          onClose={closeTypePick}
+      <Programs programs={landingData?.programs} />
+      <Life />
+      <Facilities />
+      <News />
+      <CtaBand onEnroll={openEnroll} onLogin={openLogin} />
+      <Footer onEnroll={openEnroll} onLogin={openLogin} onSignup={openSignup} />
+      {screen === 'picker' && (
+        <PickerModal
+          onClose={closeModal}
           onNewStudent={handleNewStudent}
-          onReturningStudent={handleReturningStudent}
+          onReturningStudent={handleReturning}
         />
       )}
-      {enrollOpen && <EnrollmentModal onClose={closeEnroll} term={landingData?.term} programs={landingData?.programs ?? []} />}
-    </div>
+      {enrollOpen && (
+        <EnrollmentModal
+          onClose={closeEnroll}
+          term={landingData?.term}
+          programs={landingData?.programs ?? []}
+        />
+      )}
+    </>
   );
 }
 
-/* ── Student type picker ─────────────────────────────────────── */
-function StudentTypePicker({ onClose, onNewStudent, onReturningStudent }) {
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,.55)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ background: '#fff', borderRadius: 20, padding: '2.5rem 2rem', width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(10,22,40,.25)', animation: 'slideUp .22s ease' }}
-      >
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <img src="/logo.png" alt="NEMSU" style={{ width: 52, height: 52, borderRadius: '50%', border: '2px solid #e0e7ff', marginBottom: '0.75rem' }} />
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0a1628', margin: '0 0 .35rem' }}>Are you a new or returning student?</h2>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>Select the option that applies to you to continue.</p>
-        </div>
-
-        {/* Cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* New student */}
-          <button
-            onClick={onNewStudent}
-            style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f0f7ff', border: '2px solid #bfdbfe', borderRadius: 14, padding: '1.1rem 1.25rem', cursor: 'pointer', textAlign: 'left', transition: 'border-color .15s,background .15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#dbeafe'; e.currentTarget.style.borderColor = '#3b82f6'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#f0f7ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
-          >
-            <div style={{ width: 48, height: 48, borderRadius: 12, background: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <i className="ti ti-user-plus" style={{ fontSize: 24, color: '#fff' }} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#1e3a5f' }}>New Student</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Freshman or transferee enrolling for the first time</div>
-            </div>
-            <i className="ti ti-chevron-right" style={{ fontSize: 18, color: '#93c5fd', marginLeft: 'auto' }} />
-          </button>
-
-          {/* Returning student */}
-          <button
-            onClick={onReturningStudent}
-            style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f0fdf4', border: '2px solid #bbf7d0', borderRadius: 14, padding: '1.1rem 1.25rem', cursor: 'pointer', textAlign: 'left', transition: 'border-color .15s,background .15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#dcfce7'; e.currentTarget.style.borderColor = '#4ade80'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#f0fdf4'; e.currentTarget.style.borderColor = '#bbf7d0'; }}
-          >
-            <div style={{ width: 48, height: 48, borderRadius: 12, background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <i className="ti ti-login" style={{ fontSize: 24, color: '#fff' }} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#14532d' }}>Returning Student</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Already have an account — log in to continue enrollment</div>
-            </div>
-            <i className="ti ti-chevron-right" style={{ fontSize: 18, color: '#86efac', marginLeft: 'auto' }} />
-          </button>
-        </div>
-
-        {/* Dismiss */}
-        <button
-          onClick={onClose}
-          style={{ display: 'block', width: '100%', marginTop: '1.25rem', padding: '9px', background: 'none', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 13, color: '#6b7280', cursor: 'pointer' }}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ── Topbar ───────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   SECTION STUBS — replaced one at a time
+══════════════════════════════════════════════════════════════ */
 function Topbar() {
   return (
-    <div style={{ background: '#0a1628', color: 'rgba(255,255,255,.5)', fontSize: 11, padding: '6px 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div className="lp-topinfo">
-        {[
-          { icon: 'ti-map-pin', text: 'Cantilan, Surigao del Sur, Philippines' },
-          { icon: 'ti-phone',   text: '(086) 211-3000' },
-          { icon: 'ti-mail',    text: 'cantilan@nemsu.edu.ph' },
-        ].map(c => (
-          <span key={c.text} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <i className={`ti ${c.icon}`} />{c.text}
+    <div className="topbar">
+      <div className="topbar-inner">
+        <div className="topbar-info">
+          <span><i className="ti ti-map-pin" />Cantilan, Surigao del Sur, Philippines</span>
+          <span><i className="ti ti-phone" />(086) 211-3000</span>
+          <span><i className="ti ti-mail" />cantilan@nemsu.edu.ph</span>
+        </div>
+        <div className="topbar-auth">
+          <span className="topbar-portal-pill">
+            <i className="ti ti-lock" style={{ fontSize: 10 }} /> Portal access
           </span>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
-        <Link to="/login"           className="lp-tl" style={{ color: 'rgba(255,255,255,.5)', textDecoration: 'none', marginLeft: '.75rem', transition: 'color .15s', whiteSpace: 'nowrap' }}>Log In</Link>
-        <Link to="/signup"          className="lp-tl" style={{ color: 'rgba(255,255,255,.5)', textDecoration: 'none', marginLeft: '.75rem', transition: 'color .15s', whiteSpace: 'nowrap' }}>Sign Up</Link>
+          <Link to="/login">Log in</Link>
+          <span className="divider">·</span>
+          <Link to="/signup">Sign up</Link>
+        </div>
       </div>
     </div>
   );
 }
-
-/* ── Navbar ───────────────────────────────────────────────────── */
-function Navbar({ onEnroll }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const links = [
-    { label: 'Home',          href: '#home'          },
-    { label: 'About',         href: '#about'         },
-    { label: 'Programs',      href: '#programs'      },
-    { label: 'Facilities',    href: '#facilities'    },
-    { label: 'Announcements', href: '#announcements' },
-  ];
-  function closeMenu() { setMenuOpen(false); }
+function Navbar({ scrolled, onEnroll, activeNav, onNavClick }) {
   return (
-    <nav style={{ background: '#0d2547', position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid rgba(255,255,255,.08)', boxShadow: '0 2px 16px rgba(0,0,0,.3)' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: 68, gap: '1.5rem' }}>
-        <a href="#home" onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', flexShrink: 0 }}>
-          <img src="/logo.png" alt="NEMSU" style={{ width: 44, height: 44, borderRadius: '50%', border: '2px solid rgba(255,255,255,.2)', objectFit: 'contain' }} />
-          <div style={{ lineHeight: 1.25 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0 }}>
-              NEMSU{' '}
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, padding: '3px 10px', borderRadius: 99, background: 'rgba(232,160,32,.15)', border: '1px solid rgba(232,160,32,.3)', color: '#f5c842', fontWeight: 600, letterSpacing: '.04em', marginLeft: '.5rem' }}>
-                <i className="ti ti-map-pin" style={{ fontSize: 9 }} /> Cantilan Campus
-              </span>
-            </p>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,.45)', letterSpacing: '.03em' }}>North Eastern Mindanao State University</span>
+    <nav className={`nav${scrolled ? ' scrolled' : ''}`}>
+      <div className="nav-inner">
+        <a href="#home" className="brand" onClick={() => onNavClick('#home')}>
+          <img src="/logo.png" alt="NEMSU" className="brand-logo" />
+          <div className="brand-text">
+            <div className="brand-name">NEMSUonePortal</div>
+            <div className="brand-sub">Cantilan Campus · North Eastern Mindanao State University</div>
           </div>
         </a>
-
-        <div className="lp-navlinks">
-          {links.map(l => (
-            <a key={l.label} href={l.href} className="lp-nl" style={{ padding: '0 14px', height: 68, display: 'flex', alignItems: 'center', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,.5)', textDecoration: 'none', borderBottom: '2px solid transparent', transition: 'all .15s' }}>
+        <div className="nav-links">
+          {NAV_LINKS.map(l => (
+            <a key={l.label} href={l.href} className={`nav-link${activeNav === l.href ? ' active' : ''}`}
+              onClick={() => onNavClick(l.href)}>
               {l.label}
             </a>
           ))}
         </div>
-
-        <button className="lp-bp" onClick={onEnroll} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid #1a6ebd', background: '#1a6ebd', color: '#fff', transition: 'all .15s', marginLeft: 'auto', flexShrink: 0 }}>
-          <i className="ti ti-pencil" /> Enroll now
+        <button className="btn btn-primary nav-cta" onClick={onEnroll}>
+          Enroll now <i className="ti ti-arrow-right" />
         </button>
-
-        <button className="lp-burger" onClick={() => setMenuOpen(p => !p)} aria-label="Toggle menu">
-          <i className={menuOpen ? 'ti ti-x' : 'ti ti-menu-2'} />
+        <button className="burger" aria-label="Menu">
+          <i className="ti ti-menu-2" />
         </button>
-      </div>
-
-      <div className={`lp-mob${menuOpen ? ' open' : ''}`}>
-        {links.map(l => (
-          <a key={l.label} href={l.href} onClick={closeMenu}>{l.label}</a>
-        ))}
-        <div style={{ padding: '12px 2rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-          <button className="lp-bp" onClick={() => { onEnroll(); closeMenu(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid #1a6ebd', background: '#1a6ebd', color: '#fff' }}>
-            <i className="ti ti-pencil" /> Enroll now
-          </button>
-        </div>
       </div>
     </nav>
   );
 }
-
-/* ── Hero ─────────────────────────────────────────────────────── */
-function Hero({ onEnroll, term, schedules }) {
-  // undefined = data not yet loaded; true/false = real API value
-  const isEnrollOpen = term != null ? term.enrollment_open : undefined;
-  const SCHED = schedules?.length
-    ? schedules.map(s => ({ type: s.student_type_display, dates: fmtDateRange(s.start_date, s.end_date) }))
-    : [
-        { type: 'Freshmen',         dates: 'June 2 – 5, 2025'   },
-        { type: 'Transferees',      dates: 'June 6 – 8, 2025'   },
-        { type: 'Shiftees',         dates: 'June 9 – 11, 2025'  },
-        { type: 'Regular students', dates: 'June 12 – 20, 2025' },
-      ];
-  const INFO = [
-    { label: 'Campus',            value: 'Cantilan, Surigao del Sur',                                              special: false },
-    { label: 'Academic year',     value: term ? `${term.year}, ${term.semester_display}` : '2025–2026, 1st Sem',   special: false },
-    { label: 'Office hours',      value: '8AM – 5PM, Mon–Fri',                                                     special: false },
-    { label: 'Enrollment status', value: isEnrollOpen == null ? '—' : isEnrollOpen ? 'Open' : 'Closed',            special: true  },
-  ];
+function Hero({ onEnroll, term }) {
+  const isOpen = term != null ? term.enrollment_open : null;
+  const year   = term?.year ?? '2025 – 2026';
   return (
-    <section id="home" style={{ position: 'relative', background: '#0a1628', overflow: 'hidden', minHeight: 580, display: 'flex', alignItems: 'center' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,#050e1c 0%,#0a1f42 35%,#0a3264 65%,#084a8a 100%)' }} />
-      <div style={{ position: 'absolute', inset: 0, opacity: .05, backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(255,255,255,.8) 59px,rgba(255,255,255,.8) 60px),repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(255,255,255,.8) 59px,rgba(255,255,255,.8) 60px)' }} />
-      <div style={{ position: 'absolute', right: -80, top: -80, width: 500, height: 500, background: 'radial-gradient(circle,rgba(59,158,255,.18) 0%,transparent 70%)' }} />
-      <div style={{ position: 'absolute', left: -60, bottom: -60, width: 380, height: 380, background: 'radial-gradient(circle,rgba(26,110,189,.14) 0%,transparent 70%)' }} />
-      {/* Pulsing rings */}
-      <div style={{ position: 'absolute', right: '16%', top: '18%', width: 180, height: 180, borderRadius: '50%', border: '1.5px solid rgba(59,158,255,.2)', animation: 'lp-ring 4.5s ease-out infinite', zIndex: 1 }} />
-      <div style={{ position: 'absolute', right: '16%', top: '18%', width: 180, height: 180, borderRadius: '50%', border: '1.5px solid rgba(59,158,255,.15)', animation: 'lp-ring 4.5s ease-out 2.25s infinite', zIndex: 1 }} />
-      <div style={{ position: 'absolute', left: '8%',  bottom: '20%', width: 120, height: 120, borderRadius: '50%', border: '1px solid rgba(232,160,32,.15)', animation: 'lp-ring 5s ease-out 1s infinite', zIndex: 1 }} />
-      <FloatingParticles />
-
-      <div className="lp-hero-grid" style={{ position: 'relative', zIndex: 2, maxWidth: 1200, margin: '0 auto' }}>
-        {/* Left */}
-        <div>
-          {isEnrollOpen != null && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11, letterSpacing: '.1em', color: '#f5c842', textTransform: 'uppercase', marginBottom: '1.25rem', background: 'rgba(232,160,32,.1)', padding: '5px 14px', borderRadius: 99, border: '1px solid rgba(232,160,32,.25)', fontWeight: 600 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: isEnrollOpen ? '#4ade80' : '#f87171', display: 'inline-block', boxShadow: `0 0 6px ${isEnrollOpen ? '#4ade80' : '#f87171'}`, animation: 'pulse 2s infinite' }} />
-              {isEnrollOpen ? 'Enrollment now open' : 'Enrollment closed'} — A.Y. {term.year}
-            </div>
-          )}
-          <h1 className="lp-hero-h1">
-            North Eastern Mindanao<br />State University
-            <span style={{ color: '#f5c842', display: 'block', fontSize: 28, fontWeight: 600, marginTop: 4 }}>
-              <i className="ti ti-map-pin" style={{ fontSize: 22, verticalAlign: -3, marginRight: 6 }} />Cantilan Campus
-            </span>
-          </h1>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.5)', marginBottom: '1rem', letterSpacing: '.02em' }}>Cantilan, Surigao del Sur, Philippines</p>
-          <p style={{ fontSize: 15, color: 'rgba(255,255,255,.65)', lineHeight: 1.75, marginBottom: '2rem', maxWidth: 500 }}>
-            Committed to delivering quality higher education, cutting-edge research, and meaningful community service to the people of northeastern Mindanao.
-          </p>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: '2.25rem' }}>
-            <button className="lp-bgo" onClick={onEnroll} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 28px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: '1px solid #e8a020', background: '#e8a020', color: '#fff', transition: 'all .15s' }}>
-              <i className="ti ti-pencil" /> Start enrollment
-            </button>
-            <a href="#announcements" className="lp-bout" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 28px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: '1px solid rgba(255,255,255,.3)', background: 'transparent', color: 'rgba(255,255,255,.85)', textDecoration: 'none', transition: 'all .15s' }}>
-              <i className="ti ti-bell" /> Announcements
-            </a>
-          </div>
-          <div className="lp-stats">
-            <StatCounter end={5000} suffix="+" label="Students enrolled" />
-            <StatCounter end={20}   suffix="+" label="Programs offered"  />
-            <StatCounter end={50}   suffix="+" label="Years of service"  />
-          </div>
+    <section id="home" className="hero">
+      <div className="hero-photo">
+        <Img src={PHOTO.hero} alt="NEMSU Cantilan Campus" />
+      </div>
+      <div className="hero-content">
+        <div className="hero-eyebrow">
+          A.Y. {year}
+          <span className="hero-status-pill">
+            <span
+              className="dot"
+              style={isOpen === false
+                ? { background:'#f87171', boxShadow:'0 0 0 4px rgba(248,113,113,.18)' }
+                : {}}
+            />
+            {isOpen === false ? 'Enrollment closed' : 'Enrollment open'}
+          </span>
         </div>
-
-        {/* Right cards */}
-        <div className="lp-hero-rt">
-          <div style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '18px 20px', backdropFilter: 'blur(8px)' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,.4)', textTransform: 'uppercase', letterSpacing: '.09em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i className="ti ti-calendar-event" /> Enrollment schedule
-            </div>
-            {SCHED.map((r, i) => (
-              <div key={r.type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '7px 0', borderBottom: i < SCHED.length - 1 ? '1px solid rgba(255,255,255,.07)' : 'none' }}>
-                <span style={{ color: 'rgba(255,255,255,.55)' }}>{r.type}</span>
-                <span style={{ color: '#fff', fontWeight: 500 }}>{r.dates}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '18px 20px', backdropFilter: 'blur(8px)' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,.4)', textTransform: 'uppercase', letterSpacing: '.09em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i className="ti ti-info-circle" /> Quick info
-            </div>
-            {INFO.map((r, i) => (
-              <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '7px 0', borderBottom: i < INFO.length - 1 ? '1px solid rgba(255,255,255,.07)' : 'none' }}>
-                <span style={{ color: 'rgba(255,255,255,.55)' }}>{r.label}</span>
-                {r.special
-                  ? isEnrollOpen == null
-                    ? <span style={{ color: 'rgba(255,255,255,.4)', fontWeight: 500 }}>—</span>
-                    : <span style={{ color: isEnrollOpen ? '#4ade80' : '#f87171', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: isEnrollOpen ? '#4ade80' : '#f87171', display: 'inline-block', boxShadow: `0 0 6px ${isEnrollOpen ? '#4ade80' : '#f87171'}`, ...(isEnrollOpen ? { animation: 'pulse 2s infinite' } : {}) }} />
-                        {r.value}
-                      </span>
-                  : <span style={{ color: '#fff', fontWeight: 500 }}>{r.value}</span>
-                }
-              </div>
-            ))}
-          </div>
+        <h1>
+          A regional <em>university</em><br />
+          built for the next<br />
+          generation.
+        </h1>
+        <p className="hero-sub">
+          NEMSU Cantilan Campus delivers quality higher education, applied research,
+          and meaningful community service to northeastern Mindanao.
+        </p>
+        <div className="hero-actions">
+          <button className="btn btn-onDark" onClick={onEnroll}>
+            Begin enrollment <i className="ti ti-arrow-right" />
+          </button>
+          <a href="#news" className="btn btn-onDark-ghost">
+            Latest news &amp; updates
+          </a>
         </div>
       </div>
-
-      <svg viewBox="0 0 1440 60" preserveAspectRatio="none" style={{ position: 'absolute', bottom: -2, left: 0, right: 0, display: 'block', width: '100%', height: 60, zIndex: 3 }}>
-        <path d="M0,60 Q720,0 1440,60 L1440,60 L0,60 Z" fill="#f4f6fb" />
-      </svg>
+      <div className="hero-scroll">
+        <span>Scroll</span>
+        <i className="ti ti-chevron-down" />
+      </div>
+    </section>
+  );
+}
+function AudiencePortals({ onLogin, onEnroll }) {
+  return (
+    <section className="portals">
+      <div className="portals-inner">
+        <div className="portals-label">
+          <div className="micro">Find your portal</div>
+          <div className="lbl">I am a…</div>
+        </div>
+        {PORTALS.map(p => (
+          <a
+            key={p.name}
+            href="#"
+            onClick={e => { e.preventDefault(); (p.action === 'enroll' ? onEnroll : onLogin)(); }}
+            className="portal"
+          >
+            <div className="portal-text">
+              <div className="micro">{p.kind}</div>
+              <div className="name">{p.name}</div>
+            </div>
+            <i className="ti ti-arrow-up-right" />
+          </a>
+        ))}
+      </div>
     </section>
   );
 }
 
-/* ── Info strip ───────────────────────────────────────────────── */
+function Spotlight() {
+  const [post, setPost] = useState(loadActiveSpotlight);
+  useEffect(() => {
+    const onUpdate = () => setPost(loadActiveSpotlight());
+    window.addEventListener('spotlight-updated', onUpdate);
+    window.addEventListener('storage', onUpdate);
+    return () => {
+      window.removeEventListener('spotlight-updated', onUpdate);
+      window.removeEventListener('storage', onUpdate);
+    };
+  }, []);
+
+  return (
+    <section className="spot">
+      <div className="lp-wrap">
+        <Reveal>
+          <div className="spot-head">
+            <div>
+              <div className="eyebrow">In focus</div>
+              <h2 className="h-section" style={{ marginTop: '1rem' }}>From the <em>Cantilan</em> Campus.</h2>
+            </div>
+            <a href="#stories" className="btn-link">All stories <i className="ti ti-arrow-right" /></a>
+          </div>
+        </Reveal>
+        <div className="spot-grid">
+          <Reveal>
+            <div className="spot-image" data-tag={post.tag}>
+              <Img src={post.imageUrl} alt={post.title} />
+            </div>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <div className="spot-body">
+              <div className="spot-meta">{post.category}</div>
+              <h3>{post.title}</h3>
+              <p>{post.body}</p>
+              <div className="spot-byline">{post.byline} · {post.createdAt}</div>
+              <a href="#read" className="btn-link" style={{ alignSelf: 'flex-start' }}>
+                Read the full story <i className="ti ti-arrow-right" />
+              </a>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
 function InfoStrip() {
   const cells = [
-    { icon: 'ti-calendar-event', title: 'Enrollment period',  text: 'June 2 – June 20, 2025'         },
-    { icon: 'ti-building',       title: 'Registrar office',   text: 'Mon – Fri, 8:00 AM – 5:00 PM'   },
-    { icon: 'ti-map-pin',        title: 'Campus location',    text: 'Cantilan, Surigao del Sur'        },
-    { icon: 'ti-mail',           title: 'Contact',            text: 'cantilan@nemsu.edu.ph'            },
+    { icon: 'ti-calendar-event', label: 'Enrollment period', val: 'Jun 2 – Jun 20, 2025' },
+    { icon: 'ti-building',       label: 'Registrar office',  val: 'Mon – Fri · 8:00 AM – 5:00 PM' },
+    { icon: 'ti-map-pin',        label: 'Campus location',   val: 'Cantilan, Surigao del Sur' },
+    { icon: 'ti-mail',           label: 'Contact',           val: 'cantilan@nemsu.edu.ph' },
   ];
   return (
-    <div className="lp-info4" style={{ background: '#fff', borderBottom: '1px solid #dde6f0' }}>
-      {cells.map((c, i) => (
-        <div key={c.title} style={{ padding: '14px 18px', borderRight: i < cells.length - 1 ? '1px solid #dde6f0' : 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <i className={`ti ${c.icon}`} style={{ fontSize: 20, color: '#1a6ebd', flexShrink: 0 }} />
-          <div>
-            <strong style={{ fontSize: 12, color: '#0a1628', display: 'block' }}>{c.title}</strong>
-            <p style={{ fontSize: 11, color: '#5a7a9a', marginTop: 1, margin: 0 }}>{c.text}</p>
+    <div className="info-strip">
+      <div className="info-inner">
+        {cells.map(c => (
+          <div key={c.label} className="info-cell">
+            <i className={`ti ${c.icon}`} />
+            <div>
+              <div className="micro">{c.label}</div>
+              <div className="val">{c.val}</div>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
 
-/* ── About ────────────────────────────────────────────────────── */
-function AboutSection() {
-  const pillars = [
-    { icon: 'ti-book',              title: 'Instruction', desc: 'Quality academic delivery' },
-    { icon: 'ti-microscope',        title: 'Research',    desc: 'Innovation & discovery'    },
-    { icon: 'ti-heart-handshake',   title: 'Extension',   desc: 'Community engagement'      },
-    { icon: 'ti-building-factory',  title: 'Production',  desc: 'Sustainable enterprise'    },
-  ];
+function About() {
   return (
-    <section id="about" className="lp-sec" style={{ background: '#fff' }}>
+    <section id="about" className="about">
       <div className="lp-wrap">
-        <div className="lp-ab2">
-          <Reveal delay={0}>
-            <div style={{ position: 'relative' }}>
-              <div style={{ width: 280, height: 280, borderRadius: '50%', background: 'linear-gradient(135deg,#e8f1fb,#c4dcf5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #1a6ebd', padding: 18, margin: '0 auto' }}>
-                <img src="/logo.png" alt="NEMSU Cantilan" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'contain' }} />
+        <div className="about-grid">
+          <Reveal>
+            <div className="about-visual">
+              <Img src={PHOTO.about} alt="About NEMSU Cantilan" />
+              <div className="about-badge">
+                <div className="micro">Accredited</div>
+                <div className="v">AACCUP Level II</div>
               </div>
-              <div style={{ position: 'absolute', top: -16, right: 20, background: '#e8a020', color: '#fff', fontSize: 11, fontWeight: 700, padding: '6px 14px', borderRadius: 99 }}>Est. NEMSU Cantilan</div>
             </div>
           </Reveal>
-          <Reveal delay={0.15}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#1a6ebd', marginBottom: '.75rem' }}>About the campus</div>
-              <h2 style={{ fontSize: 30, fontWeight: 700, color: '#0a1628', lineHeight: 1.3, marginBottom: '.75rem' }}>NEMSU <span style={{ color: '#1a6ebd' }}>Cantilan Campus</span></h2>
-              <p style={{ fontSize: 14, color: '#5a7a9a', lineHeight: 1.75, maxWidth: 600, margin: 0 }}>The NEMSU Cantilan Campus is one of the key campuses of North Eastern Mindanao State University, located in the municipality of Cantilan in the province of Surigao del Sur. It serves students from Cantilan and surrounding municipalities, providing accessible and quality higher education to the community.</p>
-              <p style={{ fontSize: 14, color: '#5a7a9a', lineHeight: 1.75, maxWidth: 600, marginTop: '1rem' }}>The campus offers a wide range of undergraduate programs in technology, education, business, health sciences, and the arts — all aligned with NEMSU's vision of producing globally competitive and morally upright graduates.</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: '1.75rem' }}>
-                {pillars.map(p => (
-                  <div key={p.title} className="lp-pi" style={{ padding: 14, border: '1px solid #dde6f0', borderRadius: 10, background: '#f4f6fb', display: 'flex', alignItems: 'flex-start', gap: 10, transition: 'border-color .15s,box-shadow .15s' }}>
-                    <i className={`ti ${p.icon}`} style={{ fontSize: 20, color: '#1a6ebd', flexShrink: 0, marginTop: 1 }} />
-                    <div>
-                      <strong style={{ fontSize: 12, fontWeight: 700, color: '#0a1628', display: 'block' }}>{p.title}</strong>
-                      <span style={{ fontSize: 11, color: '#5a7a9a', marginTop: 2, display: 'block' }}>{p.desc}</span>
-                    </div>
+          <Reveal delay={0.1}>
+            <div className="about-copy">
+              <div className="eyebrow">About the campus</div>
+              <h2 className="h-section">A regional institution rooted in <em>community</em>, oriented toward <em>excellence</em>.</h2>
+              <p>The NEMSU Cantilan Campus is one of the key campuses of North Eastern Mindanao State University, located in the municipality of Cantilan in the province of Surigao del Sur. It serves students from Cantilan and surrounding municipalities, providing accessible and quality higher education to the community.</p>
+              <p>The campus offers a wide range of undergraduate programs in technology, education, business, health sciences, and the arts — aligned with NEMSU's vision of producing globally competitive and morally upright graduates.</p>
+              <div className="pillars">
+                {PILLARS.map(p => (
+                  <div key={p.title} className="pillar">
+                    <span className="num">— {p.num}</span>
+                    <div className="title">{p.title}</div>
+                    <div className="desc">{p.desc}</div>
                   </div>
                 ))}
               </div>
@@ -667,217 +1056,54 @@ function AboutSection() {
     </section>
   );
 }
+function Stats() {
+  return (
+    <section className="stats">
+      <div className="stats-inner">
+        <Reveal>
+          <div className="stats-head">
+            <div className="eyebrow on-dark">By the numbers</div>
+            <h2 className="h-section on-dark" style={{ marginTop: '1.25rem' }}>
+              A campus that <em>scales</em> with the region it serves.
+            </h2>
+          </div>
+        </Reveal>
+        <div className="stats-grid">
+          {STATS.map(s => (
+            <StatCell key={s.lbl} {...s} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-/* ── Vision & Mission ─────────────────────────────────────────── */
 function VisionMission() {
-  const cards = [
-    { icon: 'ti-eye',  title: 'Our Vision',  text: 'A premier state university producing globally competitive and morally upright graduates who are agents of change for sustainable national development.' },
-    { icon: 'ti-flag', title: 'Our Mission', text: 'To provide quality higher technological and professional education, advance research and development, and render extension and production services responsive to the needs of the community in northeastern Mindanao.' },
-  ];
   return (
-    <section className="lp-sec" style={{ background: '#0a1628' }}>
-      <div className="lp-wrap">
-        <div className="lp-vm2" style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,.1)' }}>
-          {cards.map((c, i) => (
-            <Reveal key={c.title} delay={i * 0.15}>
-              <div style={{ background: 'rgba(255,255,255,.04)', padding: '2.5rem', borderRight: i === 0 ? '1px solid rgba(255,255,255,.08)' : 'none', height: '100%' }}>
-                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(26,110,189,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-                  <i className={`ti ${c.icon}`} style={{ fontSize: 22, color: '#3b9eff' }} />
-                </div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: '.75rem' }}>{c.title}</h3>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,.6)', lineHeight: 1.8, margin: 0 }}>{c.text}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Programs ─────────────────────────────────────────────────── */
-const DEPT_STYLE = {
-  DCS:  { icon: 'ti-cpu',           iBg: '#e8f1fb', iC: '#0a3a6e', tBg: '#e8f1fb', tC: '#0a3a6e' },
-  DIT:  { icon: 'ti-tool',          iBg: '#fff3e6', iC: '#c87010', tBg: '#fff3e6', tC: '#c87010' },
-  DBM:  { icon: 'ti-building-bank', iBg: '#fbeaff', iC: '#6e0a9e', tBg: '#fbeaff', tC: '#6e0a9e' },
-  DGTT: { icon: 'ti-school',        iBg: '#e8fbf0', iC: '#0a6e3a', tBg: '#e8fbf0', tC: '#0a6e3a' },
-  CCJE: { icon: 'ti-shield-check',  iBg: '#ffebeb', iC: '#8e1010', tBg: '#ffebeb', tC: '#8e1010' },
-};
-const DEPT_STYLE_DEFAULT = { icon: 'ti-certificate', iBg: '#f0f4fb', iC: '#3a5a8a', tBg: '#f0f4fb', tC: '#3a5a8a' };
-
-function ProgramsSection({ programs }) {
-  const loading = programs === undefined;
-  const items   = programs ?? [];
-
-  return (
-    <section id="programs" className="lp-sec" style={{ background: '#f4f6fb' }}>
+    <section className="vm">
       <div className="lp-wrap">
         <Reveal>
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#1a6ebd', marginBottom: '.75rem' }}>Academic programs</div>
-            <h2 style={{ fontSize: 30, fontWeight: 700, color: '#0a1628', lineHeight: 1.3, marginBottom: '.75rem' }}>Programs offered at <span style={{ color: '#1a6ebd' }}>Cantilan Campus</span></h2>
-            <p style={{ fontSize: 14, color: '#5a7a9a', lineHeight: 1.75, maxWidth: 600, margin: '0 auto' }}>Choose from a range of undergraduate programs designed to prepare you for a successful career.</p>
+          <div className="vm-head">
+            <div className="eyebrow">Our purpose</div>
+            <h2 className="h-section" style={{ marginTop: '1.25rem' }}>
+              Guided by a clear <em>vision</em> and a steady <em>mission</em>.
+            </h2>
           </div>
         </Reveal>
-
-        {loading ? (
-          <div className="lp-p3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} style={{ border: '1px solid #dde6f0', borderRadius: 12, padding: 20, background: '#fff', minHeight: 140 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 10, background: '#eef2f8', marginBottom: 12 }} />
-                <div style={{ height: 11, width: '60%', background: '#eef2f8', borderRadius: 4, marginBottom: 8 }} />
-                <div style={{ height: 9,  width: '90%', background: '#eef2f8', borderRadius: 4, marginBottom: 4 }} />
-                <div style={{ height: 9,  width: '70%', background: '#eef2f8', borderRadius: 4 }} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="lp-p3">
-            {items.map((p, i) => {
-              const s = DEPT_STYLE[p.department_code] ?? DEPT_STYLE_DEFAULT;
-              return (
-                <Reveal key={p.id} delay={i * 0.05}>
-                  <div className="lp-pc" style={{ border: '1px solid #dde6f0', borderRadius: 12, padding: 20, background: '#fff', transition: 'border-color .2s,box-shadow .2s,transform .2s', height: '100%' }}>
-                    <div style={{ width: 42, height: 42, borderRadius: 10, background: s.iBg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                      <i className={`ti ${s.icon}`} style={{ fontSize: 20, color: s.iC }} />
-                    </div>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, color: '#0a1628', marginBottom: 5 }}>{p.name}</h4>
-                    <p style={{ fontSize: 11, color: '#5a7a9a', lineHeight: 1.65, margin: 0 }}>
-                      {p.description || `Offered by the ${p.department_name} at NEMSU Cantilan Campus.`}
-                    </p>
-                    <span style={{ display: 'inline-block', fontSize: 10, padding: '2px 9px', borderRadius: 99, marginTop: 10, fontWeight: 600, background: s.tBg, color: s.tC }}>{p.department_code}</span>
-                  </div>
-                </Reveal>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/* ── Facilities ───────────────────────────────────────────────── */
-function FacilitiesSection() {
-  return (
-    <section id="facilities" className="lp-sec" style={{ background: '#fff' }}>
-      <div className="lp-wrap">
-        <Reveal>
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#1a6ebd', marginBottom: '.75rem' }}>Campus facilities</div>
-            <h2 style={{ fontSize: 30, fontWeight: 700, color: '#0a1628', lineHeight: 1.3, marginBottom: '.75rem' }}>Built for <span style={{ color: '#1a6ebd' }}>student success</span></h2>
-            <p style={{ fontSize: 14, color: '#5a7a9a', lineHeight: 1.75, maxWidth: 600, margin: '0 auto' }}>The Cantilan Campus provides modern facilities to support academic, research, and extracurricular activities.</p>
-          </div>
-        </Reveal>
-        <div className="lp-f4">
-          {FACILITIES.map((f, i) => (
-            <Reveal key={f.name} delay={i * 0.1}>
-              <div className="lp-fc" style={{ border: '1px solid #dde6f0', borderRadius: 12, overflow: 'hidden', background: '#f4f6fb', textAlign: 'center', transition: 'box-shadow .2s,transform .2s' }}>
-                <div style={{ height: 100, background: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <i className={`ti ${f.icon}`} style={{ fontSize: 36, color: 'rgba(255,255,255,.35)' }} />
-                </div>
-                <div style={{ padding: 14 }}>
-                  <h4 style={{ fontSize: 12, fontWeight: 700, color: '#0a1628', marginBottom: 4 }}>{f.name}</h4>
-                  <p style={{ fontSize: 11, color: '#5a7a9a', margin: 0 }}>{f.desc}</p>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-const ANN_ICON_PRESETS = [
-  { icon: 'ti-bell',   iBg: '#e8f1fb', iC: '#0a3a6e' },
-  { icon: 'ti-award',  iBg: '#fff8e6', iC: '#b07a00' },
-  { icon: 'ti-trophy', iBg: '#e8fbf0', iC: '#0a6e3a' },
-];
-
-/* ── Announcements ────────────────────────────────────────────── */
-function AnnouncementsSection({ onEnroll, announcements, schedules }) {
-  const annList = announcements?.length
-    ? announcements.map((a, i) => ({
-        ...ANN_ICON_PRESETS[i % ANN_ICON_PRESETS.length],
-        title: a.title,
-        body:  a.body,
-        date:  fmtDate(a.created_at),
-      }))
-    : ANNOUNCEMENTS_DATA;
-
-  const SCHED_FALLBACK = [
-    { type: 'Freshmen',    dates: 'June 2 – 5'   },
-    { type: 'Transferees', dates: 'June 6 – 8'   },
-    { type: 'Shiftees',    dates: 'June 9 – 11'  },
-    { type: 'Regular',     dates: 'June 12 – 20' },
-  ];
-  const schedList = schedules?.length
-    ? schedules.map(s => ({ type: s.student_type_display, dates: fmtDateRange(s.start_date, s.end_date) }))
-    : SCHED_FALLBACK;
-  return (
-    <section id="announcements" className="lp-sec" style={{ background: '#f4f6fb' }}>
-      <div className="lp-wrap">
-        <Reveal>
-          <div style={{ marginBottom: '3rem' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#1a6ebd', marginBottom: '.75rem' }}>Latest updates</div>
-            <h2 style={{ fontSize: 30, fontWeight: 700, color: '#0a1628', lineHeight: 1.3 }}>Announcements & <span style={{ color: '#1a6ebd' }}>news</span></h2>
-          </div>
-        </Reveal>
-        <div className="lp-a21">
-          {/* Main */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {annList.map((a, i) => (
-              <Reveal key={a.title} delay={i * 0.1}>
-                <div className="lp-ac" style={{ background: '#fff', border: '1px solid #dde6f0', borderRadius: 12, padding: '18px 20px', display: 'flex', gap: 14, transition: 'box-shadow .2s' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: a.iBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <i className={`ti ${a.icon}`} style={{ fontSize: 18, color: a.iC }} />
-                  </div>
-                  <div>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, color: '#0a1628', marginBottom: 4 }}>{a.title}</h4>
-                    <p style={{ fontSize: 12, color: '#5a7a9a', lineHeight: 1.65, margin: 0 }}>{a.body}</p>
-                    <div style={{ fontSize: 11, color: '#1a6ebd', fontWeight: 600, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <i className="ti ti-calendar" /> {a.date}
-                    </div>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-
-          {/* Side */}
-          <Reveal delay={0.2}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ background: '#fff', border: '1px solid #dde6f0', borderRadius: 12, padding: 18 }}>
-              <div style={widgetTitle}>Contact us</div>
-              {[
-                { icon: 'ti-phone',   text: '(086) 211-3000',          link: false },
-                { icon: 'ti-mail',    text: 'cantilan@nemsu.edu.ph',    link: true  },
-                { icon: 'ti-world',   text: 'www.nemsu.edu.ph',         link: true  },
-                { icon: 'ti-map-pin', text: 'Cantilan, Surigao del Sur',link: false },
-                { icon: 'ti-clock',   text: 'Mon–Fri, 8:00AM – 5:00PM',link: false },
-              ].map(c => (
-                <div key={c.text} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: '#5a7a9a', marginBottom: 9 }}>
-                  <i className={`ti ${c.icon}`} style={{ fontSize: 16, color: '#1a6ebd', flexShrink: 0 }} />
-                  {c.link ? <a href="#" style={{ color: '#1a6ebd', textDecoration: 'none' }}>{c.text}</a> : <span>{c.text}</span>}
-                </div>
-              ))}
+        <div className="vm-grid">
+          <Reveal>
+            <div className="vm-card">
+              <span className="vm-num">— Vision</span>
+              <h3>A premier state university producing <em>globally competitive</em> graduates.</h3>
+              <p>To produce morally upright graduates who are agents of change for sustainable national development, equipped with the knowledge and values to serve the community and the country.</p>
             </div>
-
-            <div style={{ background: '#fff', border: '1px solid #dde6f0', borderRadius: 12, padding: 18 }}>
-              <div style={widgetTitle}>Enrollment schedule</div>
-              {schedList.map((s, i) => (
-                <div key={s.type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '7px 0', borderBottom: i < schedList.length - 1 ? '1px solid #dde6f0' : 'none', alignItems: 'center' }}>
-                  <span style={{ color: '#5a7a9a' }}>{s.type}</span>
-                  <span style={{ fontWeight: 600, fontSize: 11, color: '#0a1628' }}>{s.dates}</span>
-                </div>
-              ))}
+          </Reveal>
+          <Reveal delay={0.1}>
+            <div className="vm-card">
+              <span className="vm-num">— Mission</span>
+              <h3>Quality education, advanced research, and <em>community engagement</em>.</h3>
+              <p>To provide quality higher technological and professional education, advance research and development, and render extension and production services responsive to the needs of the community in northeastern Mindanao.</p>
             </div>
-
-            <button className="lp-bp" onClick={onEnroll} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid #1a6ebd', background: '#1a6ebd', color: '#fff', transition: 'all .15s', width: '100%' }}>
-              <i className="ti ti-pencil" /> Enroll now
-            </button>
-          </div>
           </Reveal>
         </div>
       </div>
@@ -885,64 +1111,219 @@ function AnnouncementsSection({ onEnroll, announcements, schedules }) {
   );
 }
 
-/* ── CTA Banner ───────────────────────────────────────────────── */
-function CtaBanner({ onEnroll }) {
+function Programs({ programs }) {
+  const list = programs?.length
+    ? programs.map((p, i) => ({
+        num:  String(i + 1).padStart(2, '0'),
+        name: p.name,
+        dept: p.department ?? p.dept ?? '',
+        desc: p.description ?? p.desc ?? '',
+      }))
+    : PROGRAMS_STATIC;
+
   return (
-    <div className="lp-sec" style={{ background: 'linear-gradient(135deg,#0a1628 0%,#0a3a6e 100%)' }}>
-      <div className="lp-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2rem', flexWrap: 'wrap' }}>
-        <Reveal style={{ flex: 1 }}>
-          <div>
-            <h2 style={{ fontSize: 26, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Ready to start your journey at NEMSU Cantilan?</h2>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,.6)', margin: 0 }}>Enrollment for A.Y. 2025–2026 is open. Complete your application online in minutes.</p>
+    <section id="programs" className="progs">
+      <div className="lp-wrap">
+        <Reveal>
+          <div className="progs-head">
+            <div>
+              <div className="eyebrow">Academic programs</div>
+              <h2 className="h-section" style={{ marginTop: '1rem' }}>
+                Undergraduate programs at <em>Cantilan Campus</em>.
+              </h2>
+            </div>
+            <a href="#enroll" className="btn-link">All programs <i className="ti ti-arrow-right" /></a>
           </div>
         </Reveal>
-        <Reveal delay={0.15}>
-          <button className="lp-bgo" onClick={onEnroll} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 28px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: '1px solid #e8a020', background: '#e8a020', color: '#fff', transition: 'all .15s', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            <i className="ti ti-pencil" /> Begin enrollment
-          </button>
-        </Reveal>
+        <div className="progs-grid">
+          {list.map((p, i) => (
+            <Reveal key={p.name} delay={i * 0.04}>
+              <article className="prog">
+                <div className="prog-num">— {p.num}</div>
+                <i className="ti ti-arrow-up-right arrow" />
+                <h4>{p.name}</h4>
+                <div className="dept">Dept. of {p.dept}</div>
+                <p>{p.desc}</p>
+              </article>
+            </Reveal>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
+  );
+}
+function Life() {
+  return (
+    <section id="life" className="life">
+      <div className="lp-wrap">
+        <Reveal>
+          <div className="life-head">
+            <div>
+              <div className="eyebrow">Campus life</div>
+              <h2 className="h-section" style={{ marginTop: '1rem' }}>Life at <em>Cantilan</em>.</h2>
+            </div>
+            <a href="#life-all" className="btn-link">Explore campus <i className="ti ti-arrow-right" /></a>
+          </div>
+        </Reveal>
+        <div className="life-grid">
+          {LIFE.map(l => (
+            <a key={l.id} href="#" className={`life-item ${l.cls}`}>
+              <Img src={PHOTO[l.photoKey]} alt={l.title} />
+              <div className="meta">
+                <div className="micro">{l.tag}</div>
+                <div className="title">{l.title}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
-/* ── Footer ───────────────────────────────────────────────────── */
-function SiteFooter({ onEnroll }) {
+function Facilities() {
   return (
-    <footer style={{ background: '#0a1628', padding: '3rem 0 1.5rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
+    <section id="facilities" className="facs">
       <div className="lp-wrap">
-        <div className="lp-ft-grid">
-          <div>
-            <img src="/logo.png" alt="NEMSU" style={{ width: 52, height: 52, borderRadius: '50%', border: '2px solid rgba(255,255,255,.15)', marginBottom: 12, objectFit: 'contain' }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,.75)', display: 'block' }}>North Eastern Mindanao State University</span>
-            <span style={{ fontSize: 11, color: '#f5c842', display: 'block', marginBottom: 8 }}>Cantilan Campus</span>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,.35)', lineHeight: 1.7, margin: 0 }}>Cantilan, Surigao del Sur, Philippines. Committed to quality education, research, and community service for the people of northeastern Mindanao.</p>
+        <Reveal>
+          <div className="facs-head">
+            <div className="eyebrow on-dark">Campus facilities</div>
+            <h2 className="h-section on-dark" style={{ marginTop: '1.25rem' }}>
+              Built for <em>student success</em>.
+            </h2>
+            <p>The Cantilan Campus provides modern facilities to support academic, research, and extracurricular activities — accessible to every student across all programs.</p>
           </div>
-          <FooterCol title="Quick links" links={[
-            { label: 'About the campus',  href: '#about'         },
-            { label: 'Programs offered',  href: '#programs'      },
-            { label: 'Campus facilities', href: '#facilities'    },
-            { label: 'Announcements',     href: '#announcements' },
-          ]} />
-          <div>
-            <h4 style={footerH4}>Student services</h4>
-            <a href="#" onClick={e => { e.preventDefault(); onEnroll(); }} className="lp-fl" style={footerLink}>Online enrollment</a>
-            {['Scholarship info', 'Student handbook', 'Registrar services', 'OSAS office'].map(l => (
-              <a key={l} href="#" className="lp-fl" style={footerLink}>{l}</a>
-            ))}
-          </div>
-          <FooterCol title="Contact" links={[
-            { label: '(086) 211-3000',       href: '#' },
-            { label: 'cantilan@nemsu.edu.ph', href: '#' },
-            { label: 'www.nemsu.edu.ph',      href: '#' },
-            { label: 'Facebook page',         href: '#' },
-          ]} />
+        </Reveal>
+        <div className="facs-grid">
+          {FACILITIES.map((f, i) => (
+            <Reveal key={f.name} delay={i * 0.05}>
+              <article className="fac">
+                <i className={`ti ${f.icon}`} />
+                <h4>{f.name}</h4>
+                <p>{f.desc}</p>
+              </article>
+            </Reveal>
+          ))}
         </div>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'rgba(255,255,255,.25)', flexWrap: 'wrap', gap: '.5rem' }}>
-          <span>&copy; 2025 NEMSU Cantilan Campus. All rights reserved.</span>
+      </div>
+    </section>
+  );
+}
+
+function News() {
+  return (
+    <section id="news" className="news">
+      <div className="lp-wrap">
+        <Reveal>
+          <div className="news-head">
+            <div>
+              <div className="eyebrow">News &amp; updates</div>
+              <h2 className="h-section" style={{ marginTop: '1rem' }}>
+                What's happening on <em>campus</em>.
+              </h2>
+            </div>
+            <a href="#all-news" className="btn-link">All news <i className="ti ti-arrow-right" /></a>
+          </div>
+        </Reveal>
+        <div className="news-grid">
+          {NEWS.map((n, i) => (
+            <Reveal key={n.id} delay={i * 0.06}>
+              <a href="#" className="news-card">
+                <div className="news-card-image">
+                  <Img src={PHOTO[n.photoKey]} alt={n.title} />
+                  <div className="news-card-tag">{n.tag}</div>
+                </div>
+                <div className="news-card-body">
+                  <div className="news-card-date">{n.my.split(' ')[0]} {n.day}, {n.my.split(' ')[1]}</div>
+                  <h3>{n.title}</h3>
+                  <p>{n.body}</p>
+                  <span className="read">Read more <i className="ti ti-arrow-right" /></span>
+                </div>
+              </a>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+function CtaBand({ onEnroll, onLogin }) {
+  return (
+    <section className="cta">
+      <div className="cta-inner">
+        <div>
+          <h2 className="h-section">Ready to begin your <em>journey</em>?</h2>
+          <p>Submit your enrollment online for A.Y. 2025–2026. Whether you're an incoming freshman, transferee, shiftee, or returning student, you can apply in minutes.</p>
+        </div>
+        <div className="cta-actions">
+          <button className="btn btn-gold" onClick={onEnroll}>
+            Begin enrollment <i className="ti ti-arrow-right" />
+          </button>
+          <button className="btn btn-onDark-ghost" onClick={onLogin}>
+            <i className="ti ti-login" /> Student login
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer({ onEnroll, onLogin, onSignup }) {
+  return (
+    <footer className="footer">
+      <div className="lp-wrap">
+        <div className="footer-grid">
           <div>
-            <a href="#" className="lp-fl" style={{ color: 'rgba(255,255,255,.35)', textDecoration: 'none', marginLeft: '1rem', transition: 'color .15s' }}>Privacy policy</a>
-            <a href="#" className="lp-fl" style={{ color: 'rgba(255,255,255,.35)', textDecoration: 'none', marginLeft: '1rem', transition: 'color .15s' }}>Terms of use</a>
+            <div className="footer-brand">
+              <img src="/logo.png" alt="NEMSU" />
+              <div>
+                <div className="footer-brand-name">NEMSUonePortal</div>
+                <div className="footer-brand-sub">Cantilan Campus · NEMSU</div>
+              </div>
+            </div>
+            <p className="footer-tagline">
+              The official student portal of North Eastern Mindanao State University — Cantilan Campus.
+              Centralized academic services for students, faculty, and staff.
+            </p>
+            <div className="footer-contact">
+              <span><i className="ti ti-map-pin" />Cantilan, Surigao del Sur, Philippines</span>
+              <span><i className="ti ti-phone" />(086) 211-3000</span>
+              <span><i className="ti ti-mail" />cantilan@nemsu.edu.ph</span>
+            </div>
+          </div>
+          <div>
+            <h5>Portal</h5>
+            <div className="footer-links">
+              <a onClick={onLogin} style={{ cursor: 'pointer' }}>Log in</a>
+              <a onClick={onSignup} style={{ cursor: 'pointer' }}>Sign up</a>
+              <a onClick={onEnroll} style={{ cursor: 'pointer' }}>Enroll now</a>
+              <a href="#news">News &amp; updates</a>
+            </div>
+          </div>
+          <div>
+            <h5>About</h5>
+            <div className="footer-links">
+              <a href="#about">The campus</a>
+              <a href="#programs">Programs</a>
+              <a href="#facilities">Facilities</a>
+              <a href="#life">Campus life</a>
+            </div>
+          </div>
+          <div>
+            <h5>Office hours</h5>
+            <div className="footer-links">
+              <span>Mon – Fri</span>
+              <span>8:00 AM – 5:00 PM</span>
+              <span>Closed on holidays</span>
+            </div>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <span>© 2026 NEMSUonePortal · NEMSU Cantilan Campus. All rights reserved.</span>
+          <div>
+            <a href="#priv">Privacy</a>
+            <a href="#terms">Terms</a>
+            <a href="#data">Data privacy</a>
           </div>
         </div>
       </div>
@@ -950,440 +1331,355 @@ function SiteFooter({ onEnroll }) {
   );
 }
 
-function FooterCol({ title, links }) {
+function PickerModal({ onClose, onNewStudent, onReturningStudent }) {
   return (
-    <div>
-      <h4 style={footerH4}>{title}</h4>
-      {links.map(l => <a key={l.label} href={l.href} className="lp-fl" style={footerLink}>{l.label}</a>)}
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════
-   ENROLLMENT MODAL
-══════════════════════════════════════════════════════════════ */
-const YEAR_LEVEL_MAP = { '1st Year': 1, '2nd Year': 2, '3rd Year': 3, '4th Year': 4 };
-
-function EnrollmentModal({ onClose, term, programs }) {
-  const [step,             setStep]             = useState(1);
-  const [dir,              setDir]              = useState('forward');
-  const [studentType,      setStudentType]      = useState('freshman');
-  const [checkedReqs,      setCheckedReqs]      = useState(new Set());
-  const [reqFiles,         setReqFiles]         = useState({});   // { [reqId]: File }
-  const [selectedSubjects, setSelectedSubjects] = useState(new Set());
-  const [submitting,       setSubmitting]       = useState(false);
-  const [submitError,      setSubmitError]      = useState('');
-  const [referenceNumber,  setReferenceNumber]  = useState('');
-  const [personalInfo,     setPersonalInfo]     = useState({
-    lastName: '', firstName: '', middleName: '', suffix: 'None',
-    dob: '', sex: 'Male', email: '', contact: '',
-    program: '', yearLevel: '1st Year',
-  });
-
-  const defaultProgram = programs.length > 0 ? programs[0].name : 'BS Information Technology';
-  const effectiveProgram = personalInfo.program || defaultProgram;
-
-  const progress   = step <= 5 ? (step / 5) * 100 : 100;
-  const totalUnits = [...selectedSubjects].reduce((s, id) => s + SUBJECTS[parseInt(id.replace('s', ''))].units, 0);
-  const isPreaEnroll = studentType === 'freshman' || studentType === 'transferee';
-
-  function goTo(n) { setDir(n > step ? 'forward' : 'back'); setStep(n); }
-  function selectType(t) { setStudentType(t); setCheckedReqs(new Set()); }
-  function toggleReq(id) { setCheckedReqs(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
-  function toggleSubject(id) { setSelectedSubjects(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
-
-  async function handleSubmit() {
-    if (isPreaEnroll) {
-      setSubmitting(true);
-      setSubmitError('');
-      try {
-        const res = await api.post('/enrollment/public/pre-enroll/', {
-          student_type:   studentType,
-          first_name:     personalInfo.firstName,
-          last_name:      personalInfo.lastName,
-          middle_name:    personalInfo.middleName,
-          suffix:         personalInfo.suffix === 'None' ? '' : personalInfo.suffix,
-          email:          personalInfo.email,
-          contact_number: personalInfo.contact,
-          date_of_birth:  personalInfo.dob || null,
-          sex:            personalInfo.sex,
-          program_name:   effectiveProgram,
-          year_level:     YEAR_LEVEL_MAP[personalInfo.yearLevel] ?? 1,
-          term_id:        term?.id ?? null,
-        });
-        const pendingId = res.data.pending_id;
-        // Upload any attached PDF files (fire-and-forget; don't block success screen)
-        const fileEntries = Object.entries(reqFiles);
-        if (pendingId && fileEntries.length > 0) {
-          await Promise.allSettled(
-            fileEntries.map(([reqId, file]) => {
-              const fd = new FormData();
-              fd.append('requirement_label', file.reqLabel);
-              fd.append('file', file.fileObj);
-              return api.post(`/enrollment/public/pre-enroll/${pendingId}/upload/`, fd, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-              });
-            })
-          );
-        }
-        setReferenceNumber(res.data.reference_number);
-        setStep(6);
-      } catch (err) {
-        const d = err.response?.data;
-        setSubmitError(
-          d?.email?.[0] || d?.detail || d?.non_field_errors?.[0] || 'Submission failed. Please try again.'
-        );
-      } finally {
-        setSubmitting(false);
-      }
-    } else {
-      setStep(6);
-    }
-  }
-
-  function restart() {
-    setStep(1); setStudentType('freshman'); setCheckedReqs(new Set()); setReqFiles({}); setSelectedSubjects(new Set());
-    setSubmitError(''); setReferenceNumber('');
-    setPersonalInfo({ lastName: '', firstName: '', middleName: '', suffix: 'None', dob: '', sex: 'Male', email: '', contact: '', program: '', yearLevel: '1st Year' });
-  }
-
-  return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(5,14,28,.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
-      <div style={{ background: '#fff', width: '100%', maxWidth: 980, maxHeight: '92vh', borderRadius: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideUp .3s cubic-bezier(.4,0,.2,1)' }}>
-
-        {/* Header */}
-        <div style={{ background: '#0d2547', padding: '1.25rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-          <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>
-              <i className="ti ti-pencil" style={{ marginRight: 8, verticalAlign: -2 }} />
-              Online Enrollment{term ? ` — A.Y. ${term.year}` : ''}
-            </h2>
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,.45)', marginTop: 2, margin: '2px 0 0' }}>NEMSU Cantilan Campus &nbsp;|&nbsp; Cantilan, Surigao del Sur</p>
+    <div className="modal-back" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <div className="modal-head-brand">
+            <img src="/logo.png" alt="NEMSU" />
+            <div>
+              <div className="name">NEMSUonePortal</div>
+              <div className="sub">Begin enrollment</div>
+            </div>
           </div>
-          <button className="lp-mc" onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,.1)', border: 'none', color: 'rgba(255,255,255,.7)', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .15s' }}>
+          <button className="modal-close" onClick={onClose} aria-label="Close">
             <i className="ti ti-x" />
           </button>
         </div>
-
-        {/* Body */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {/* Sidebar */}
-          <aside style={{ width: 215, flexShrink: 0, background: '#f8fafd', borderRight: '1px solid #dde6f0', padding: '1.25rem 0', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '.875rem 1.25rem 1rem', borderBottom: '1px solid #dde6f0', marginBottom: '.75rem' }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#0a1628', margin: 0 }}>Enrollment wizard</p>
-              <span style={{ fontSize: 11, color: '#7a92ab' }}>Complete all 5 steps</span>
-            </div>
-            <nav style={{ flex: 1, padding: '0 .625rem' }}>
-              {WIZARD_STEPS.map((label, i) => {
-                const n = i + 1, active = n === step, done = n < step || step === 6;
-                return (
-                  <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 11px', borderRadius: 8, marginBottom: 2, background: active ? '#fff' : 'transparent', boxShadow: active ? '0 1px 4px rgba(10,58,110,.08)' : 'none' }}>
-                    <div style={{ width: 23, height: 23, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, flexShrink: 0, border: done || active ? 'none' : '1.5px solid #c5d4e8', color: done || active ? '#fff' : '#7a92ab', background: done ? '#1a6ebd' : active ? '#0a3a6e' : '#fff' }}>
-                      {done ? <i className="ti ti-check" style={{ fontSize: 11 }} /> : n}
-                    </div>
-                    <span style={{ fontSize: 12, color: active ? '#0a1628' : '#7a92ab', fontWeight: active ? 600 : 400 }}>{label}</span>
-                  </div>
-                );
-              })}
-            </nav>
-            <div style={{ padding: '.875rem 1.25rem', marginTop: 'auto', borderTop: '1px solid #dde6f0' }}>
-              <p style={{ fontSize: 10, color: '#7a92ab', margin: 0 }}>Need help?</p>
-              <a href="mailto:cantilan@nemsu.edu.ph" style={{ fontSize: 12, color: '#1a6ebd', textDecoration: 'none', display: 'block', marginTop: 2 }}>cantilan@nemsu.edu.ph</a>
-            </div>
-          </aside>
-
-          {/* Main */}
-          <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ height: 3, background: '#e8eef8', flexShrink: 0 }}>
-              <div style={{ height: '100%', background: '#1a6ebd', width: `${progress}%`, transition: 'width .35s cubic-bezier(.4,0,.2,1)' }} />
-            </div>
-
-            <div key={step} style={{ flex: 1, padding: '1.75rem 2rem', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-
-              {/* Step 1 */}
-              {step === 1 && (
-                <div style={panel(dir)}>
-                  <MHead title="Select student type" sub="Choose the category that best describes your enrollment status." />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: '1.25rem' }}>
-                    {['freshman', 'transferee'].map(t => (
-                      <div key={t} onClick={() => selectType(t)} style={{ border: `1.5px solid ${studentType === t ? '#1a6ebd' : '#dde6f0'}`, borderRadius: 10, padding: 16, cursor: 'pointer', background: studentType === t ? '#e8f1fb' : '#fff', boxShadow: studentType === t ? '0 0 0 3px rgba(26,110,189,.1)' : 'none', transition: 'all .15s' }}>
-                        <i className={`ti ${TYPE_ICONS[t]}`} style={{ fontSize: 22, color: studentType === t ? '#0a3a6e' : '#7a92ab', marginBottom: 8, display: 'block' }} />
-                        <strong style={{ fontSize: 14, fontWeight: 700, color: '#0a1628', display: 'block' }}>{TYPE_LABELS[t]}</strong>
-                        <span style={{ fontSize: 11, color: '#7a92ab', marginTop: 3, display: 'block' }}>{TYPE_DESCS[t]}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={hintBox}><i className="ti ti-info-circle" style={{ fontSize: 16, flexShrink: 0 }} /><span>{TYPE_HINTS[studentType]}</span></div>
-                  <BtnRow><Btn primary onClick={() => goTo(2)}>Continue <i className="ti ti-arrow-right" /></Btn></BtnRow>
-                </div>
-              )}
-
-              {/* Step 2 */}
-              {step === 2 && (
-                <div style={panel(dir)}>
-                  <MHead title="Personal information" sub="Enter your details as they appear on official documents." />
-                  <div style={fRow}><MInput label="Last name"   placeholder="Dela Cruz"              value={personalInfo.lastName}   onChange={v => setPersonalInfo(p => ({ ...p, lastName:   v }))} /><MInput label="First name"  placeholder="Juan"                   value={personalInfo.firstName}  onChange={v => setPersonalInfo(p => ({ ...p, firstName:  v }))} /></div>
-                  <div style={fRow}><MInput label="Middle name" placeholder="Santos"                 value={personalInfo.middleName} onChange={v => setPersonalInfo(p => ({ ...p, middleName: v }))} /><MSelect label="Suffix"       value={personalInfo.suffix}    onChange={v => setPersonalInfo(p => ({ ...p, suffix:     v }))} options={['None','Jr.','Sr.','II','III']} /></div>
-                  <div style={fRow}><MInput label="Date of birth" type="date"                        value={personalInfo.dob}        onChange={v => setPersonalInfo(p => ({ ...p, dob:        v }))} /><MSelect label="Sex"          value={personalInfo.sex}       onChange={v => setPersonalInfo(p => ({ ...p, sex:        v }))} options={['Male','Female']} /></div>
-                  <div style={{ ...fRow, gridTemplateColumns: '1fr' }}><MInput label="Email address" type="email" placeholder="juan.delacruz@email.com" value={personalInfo.email} onChange={v => setPersonalInfo(p => ({ ...p, email: v }))} /></div>
-                  <div style={fRow}><MInput label="Contact number" placeholder="09XX XXX XXXX"       value={personalInfo.contact}    onChange={v => setPersonalInfo(p => ({ ...p, contact:    v }))} /><MSelect label="Program / course" value={effectiveProgram} onChange={v => setPersonalInfo(p => ({ ...p, program: v }))} options={programs.length > 0 ? programs.map(pg => pg.name) : ['BS Computer Science','BS Information Technology','BS Education','BS Business Administration','BS Nursing','BS Agriculture']} /></div>
-                  <div style={fRow}>
-                    <div>
-                      <label style={fLabel}>Campus</label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', border: '1px solid #c8d8f0', borderRadius: 8, background: '#f0f6ff', fontSize: 13, color: '#0a3a6e', fontWeight: 500 }}>
-                        <i className="ti ti-lock" style={{ fontSize: 15 }} /> NEMSU Cantilan Campus
-                      </div>
-                    </div>
-                    {studentType === 'freshman' ? (
-                      <div>
-                        <label style={fLabel}>Year level</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', border: '1px solid #c8d8f0', borderRadius: 8, background: '#f0f6ff', fontSize: 13, color: '#0a3a6e', fontWeight: 500 }}>
-                          <i className="ti ti-lock" style={{ fontSize: 15 }} /> 1st Year
-                        </div>
-                      </div>
-                    ) : (
-                      <MSelect label="Year level" value={personalInfo.yearLevel} onChange={v => setPersonalInfo(p => ({ ...p, yearLevel: v }))} options={['1st Year','2nd Year','3rd Year','4th Year']} />
-                    )}
-                  </div>
-                  <BtnRow><Btn onClick={() => goTo(1)}><i className="ti ti-arrow-left" /> Back</Btn><Btn primary onClick={() => goTo(3)}>Continue <i className="ti ti-arrow-right" /></Btn></BtnRow>
-                </div>
-              )}
-
-              {/* Step 3 */}
-              {step === 3 && (
-                <div style={panel(dir)}>
-                  <MHead title="Requirements checklist" sub="Check each document you have ready and upload a PDF copy for online verification." />
-                  {(ALL_REQUIREMENTS[studentType] || []).map(g => (
-                    <div key={g.group} style={{ marginBottom: '1.25rem' }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#5a7a9a', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 8 }}>{g.group}</div>
-                      {g.items.map(item => {
-                        const chk = checkedReqs.has(item.id);
-                        const attached = reqFiles[item.id];
-                        return (
-                          <div key={item.id} style={{ border: `1px solid ${chk ? '#90b8e8' : '#dde6f0'}`, borderRadius: 8, marginBottom: 6, background: chk ? '#e8f1fb' : '#fff', transition: 'background .1s', overflow: 'hidden' }}>
-                            {/* Checkbox row */}
-                            <div onClick={() => toggleReq(item.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', cursor: 'pointer' }}>
-                              <div style={{ width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${chk ? '#0a3a6e' : '#c5d4e8'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: chk ? '#0a3a6e' : '#fff', color: '#fff' }}>
-                                {chk && <i className="ti ti-check" style={{ fontSize: 11 }} />}
-                              </div>
-                              <span style={{ fontSize: 13, color: '#0a1628', flex: 1 }}>{item.label}</span>
-                              <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, background: chk ? '#c4dcf5' : '#eef3fb', color: chk ? '#0a3a6e' : '#5a7a9a', flexShrink: 0, border: `.5px solid ${chk ? '#90b8e8' : '#c8d8f0'}` }}>{item.tag}</span>
-                            </div>
-                            {/* File upload row */}
-                            <div style={{ borderTop: `1px dashed ${chk ? '#b0cfe8' : '#e5eaf2'}`, padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,.6)' }}>
-                              <i className="ti ti-file-type-pdf" style={{ fontSize: 15, color: attached ? '#dc2626' : '#9ca3af', flexShrink: 0 }} />
-                              {attached ? (
-                                <>
-                                  <span style={{ fontSize: 11, color: '#374151', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attached.fileObj.name}</span>
-                                  <button
-                                    onClick={e => { e.stopPropagation(); setReqFiles(p => { const n = { ...p }; delete n[item.id]; return n; }); }}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 12, flexShrink: 0, padding: '2px 6px' }}
-                                  >Remove</button>
-                                </>
-                              ) : (
-                                <>
-                                  <span style={{ fontSize: 11, color: '#9ca3af', flex: 1 }}>Upload PDF (optional)</span>
-                                  <label style={{ fontSize: 11, color: '#1a6ebd', cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>
-                                    Browse
-                                    <input
-                                      type="file"
-                                      accept=".pdf,application/pdf"
-                                      style={{ display: 'none' }}
-                                      onClick={e => e.stopPropagation()}
-                                      onChange={e => {
-                                        const f = e.target.files?.[0];
-                                        if (f) setReqFiles(p => ({ ...p, [item.id]: { fileObj: f, reqLabel: item.label } }));
-                                        e.target.value = '';
-                                      }}
-                                    />
-                                  </label>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                  <div style={{ ...hintBox, marginTop: 4 }}><i className="ti ti-info-circle" style={{ fontSize: 15, flexShrink: 0 }} /><span style={{ fontSize: 12 }}>PDF uploads are optional but recommended for faster verification. Max 10 MB per file.</span></div>
-                  <BtnRow><Btn onClick={() => goTo(2)}><i className="ti ti-arrow-left" /> Back</Btn><Btn primary onClick={() => goTo(4)}>Continue <i className="ti ti-arrow-right" /></Btn></BtnRow>
-                </div>
-              )}
-
-              {/* Step 4 */}
-              {step === 4 && (
-                <div style={panel(dir)}>
-                  <MHead title="Subject selection" sub="Select subjects for this term at NEMSU Cantilan Campus." />
-                  <div style={{ display: 'flex', gap: 8, marginBottom: '1rem' }}>
-                    <span style={unitPill}>Selected: <strong style={{ color: '#0a1628' }}>{totalUnits}</strong> units</span>
-                    <span style={unitPill}>Maximum: <strong style={{ color: '#0a1628' }}>24</strong> units</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: '1rem' }}>
-                    {SUBJECTS.map((s, i) => {
-                      const id = `s${i}`, sel = selectedSubjects.has(id);
-                      return (
-                        <div key={id} onClick={() => toggleSubject(id)} style={{ border: `1.5px solid ${sel ? '#1a6ebd' : '#dde6f0'}`, borderRadius: 9, padding: '11px 13px', cursor: 'pointer', background: sel ? '#e8f1fb' : '#fff', transition: 'all .15s' }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: '#0a3a6e', textTransform: 'uppercase', letterSpacing: '.05em' }}>{s.code}</div>
-                          <div style={{ fontSize: 13, color: '#0a1628', margin: '3px 0' }}>{s.name}</div>
-                          <div style={{ fontSize: 11, color: '#7a92ab' }}>{s.units} units</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <BtnRow><Btn onClick={() => goTo(3)}><i className="ti ti-arrow-left" /> Back</Btn><Btn primary onClick={() => goTo(5)}>Continue <i className="ti ti-arrow-right" /></Btn></BtnRow>
-                </div>
-              )}
-
-              {/* Step 5 */}
-              {step === 5 && (
-                <div style={panel(dir)}>
-                  <MHead title="Review & confirm" sub="Verify your enrollment details before submitting." />
-                  <RevBlock title="Student information">
-                    <RRow label="Student type"  value={TYPE_LABELS[studentType]} />
-                    <RRow label="Program"        value={effectiveProgram} />
-                    <RRow label="Campus"         value="NEMSU Cantilan Campus" />
-                    <RRow label="Academic year"  value={term ? `${term.year}, ${term.semester_display}` : '—'} />
-                  </RevBlock>
-                  <RevBlock title="Enrolled subjects">
-                    {selectedSubjects.size === 0
-                      ? <div style={{ padding: '8px 14px', fontSize: 13, color: '#7a92ab', fontStyle: 'italic' }}>No subjects selected.</div>
-                      : [...selectedSubjects].map(id => { const s = SUBJECTS[parseInt(id.replace('s', ''))]; return <RRow key={id} label={`${s.code} — ${s.name}`} value={`${s.units} units`} />; })
-                    }
-                  </RevBlock>
-                  <RevBlock title="">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '8px 14px', background: '#f0f6ff' }}>
-                      <span style={{ fontWeight: 700 }}>Total units</span>
-                      <span style={{ color: '#0a3a6e', fontWeight: 700 }}>{totalUnits} units</span>
-                    </div>
-                  </RevBlock>
-                  {submitError && <p style={{ color: '#dc2626', fontSize: 12, margin: '0 0 .75rem', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6 }}>{submitError}</p>}
-                  <BtnRow><Btn onClick={() => goTo(4)}><i className="ti ti-arrow-left" /> Back</Btn><Btn primary onClick={handleSubmit} disabled={submitting}>{submitting ? 'Submitting…' : <><i className="ti ti-check" /> Submit enrollment</>}</Btn></BtnRow>
-                </div>
-              )}
-
-              {/* Step 6 */}
-              {step === 6 && isPreaEnroll && (
-                <div style={{ textAlign: 'center', padding: '2.5rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', animation: 'slideInRight .22s cubic-bezier(.4,0,.2,1)' }}>
-                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
-                    <i className="ti ti-circle-check" style={{ fontSize: 32, color: '#059669' }} />
-                  </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0a1628', marginBottom: 8 }}>Pre-enrollment submitted!</h2>
-                  <p style={{ fontSize: 13, color: '#7a92ab', maxWidth: 420, lineHeight: 1.75, margin: '0 auto .75rem' }}>
-                    Your application has been received. Please <strong style={{ color: '#0a3a6e' }}>submit your requirements</strong> to the Registrar's Office.
-                  </p>
-                  <div style={{ margin: '1rem auto', padding: '14px 24px', background: '#f0f6ff', border: '1.5px solid #90b8e8', borderRadius: 10, display: 'inline-block' }}>
-                    <div style={{ fontSize: 10, color: '#7a92ab', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>Reference number</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#0a3a6e', letterSpacing: '.04em' }}>{referenceNumber}</div>
-                  </div>
-                  <p style={{ fontSize: 12, color: '#7a92ab', maxWidth: 420, lineHeight: 1.7, margin: '.5rem auto 1.5rem' }}>
-                    Once the Registrar approves your application, you will receive an email with a link to create your student account.
-                  </p>
-                  <button onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 22px', background: '#0a3a6e', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
-                    <i className="ti ti-check" /> Done
-                  </button>
-                  <button onClick={restart} style={{ marginTop: '1rem', fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                    ← Submit another application
-                  </button>
-                </div>
-              )}
-
-              {step === 6 && !isPreaEnroll && (
-                <div style={{ textAlign: 'center', padding: '2.5rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', animation: 'slideInRight .22s cubic-bezier(.4,0,.2,1)' }}>
-                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#e8f1fb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
-                    <i className="ti ti-user-check" style={{ fontSize: 30, color: '#0a3a6e' }} />
-                  </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0a1628', marginBottom: 8 }}>Almost there!</h2>
-                  <p style={{ fontSize: 13, color: '#7a92ab', maxWidth: 400, lineHeight: 1.75, margin: '0 auto 1.75rem' }}>
-                    To submit your enrollment request, you need to <strong style={{ color: '#0a3a6e' }}>log in to your student account</strong> in the portal. If you don't have an account yet, sign up first — it only takes a minute.
-                  </p>
-                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <Link to="/login" onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 22px', background: '#0a3a6e', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-                      <i className="ti ti-login" /> Log in to my account
-                    </Link>
-                    <Link to="/signup" onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 22px', background: '#fff', color: '#0a3a6e', border: '1.5px solid #90b8e8', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-                      <i className="ti ti-user-plus" /> Create an account
-                    </Link>
-                  </div>
-                  <p style={{ fontSize: 11, color: '#9ca3af', marginTop: '1.5rem', lineHeight: 1.6 }}>
-                    After logging in, go to <strong>Enrollment</strong> in your student dashboard to complete and submit your request.
-                  </p>
-                  <button onClick={restart} style={{ marginTop: '1rem', fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                    ← Start over
-                  </button>
-                </div>
-              )}
-
-            </div>
-          </main>
+        <div className="modal-body modal-body--center">
+          <h3>Are you a new or <em>returning</em> student?</h3>
+          <p className="lead">Select the option that applies to you to continue with enrollment.</p>
+          <div className="modal-choices">
+            <button className="modal-choice" onClick={onNewStudent}>
+              <div className="modal-choice-icon"><i className="ti ti-user-plus" /></div>
+              <div className="modal-choice-body">
+                <div className="t">New student</div>
+                <div className="d">Freshman, transferee, or shiftee enrolling for the first time</div>
+              </div>
+              <i className="ti ti-arrow-right" style={{ color: 'var(--muted)' }} />
+            </button>
+            <button className="modal-choice" onClick={onReturningStudent}>
+              <div className="modal-choice-icon"><i className="ti ti-login" /></div>
+              <div className="modal-choice-body">
+                <div className="t">Returning student</div>
+                <div className="d">Already have an account — log in to continue</div>
+              </div>
+              <i className="ti ti-arrow-right" style={{ color: 'var(--muted)' }} />
+            </button>
+          </div>
+        </div>
+        <div className="modal-foot">
+          Need help? Contact <a href="mailto:cantilan@nemsu.edu.ph">cantilan@nemsu.edu.ph</a>
         </div>
       </div>
     </div>
   );
 }
 
-/* ── Micro-components ─────────────────────────────────────────── */
-function MHead({ title, sub }) {
-  return (
-    <div style={{ marginBottom: '1.5rem' }}>
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0a1628', margin: 0 }}>{title}</h2>
-      <p style={{ fontSize: 13, color: '#7a92ab', marginTop: 3, marginBottom: 0 }}>{sub}</p>
-    </div>
+/* ══════════════════════════════════════════════════════════════
+   ENROLLMENT MODAL — 5-step pre-enrollment wizard (Section 17)
+══════════════════════════════════════════════════════════════ */
+function EnrollmentModal({ onClose, term, programs }) {
+  const [step, setStep]       = useState(1);
+  const [dir, setDir]         = useState('fwd');
+  const [type, setType]       = useState('freshman');
+  const [submitting, setSub]  = useState(false);
+  const [refNum, setRefNum]   = useState('');
+  const [checked, setChecked] = useState({});
+  const [selSubj, setSelSubj] = useState(
+    () => SUBJECTS.reduce((a, s) => ({ ...a, [s.code]: true }), {})
   );
-}
-function MInput({ label, type = 'text', placeholder, value, onChange }) {
+  const [form, setForm] = useState({
+    first: '', last: '', email: '', contact: '', dob: '', sex: 'Male',
+    program: PROGRAMS_STATIC[0].name, year: '1st Year',
+  });
+
+  const progList = programs?.length
+    ? programs.map(p => p.name)
+    : PROGRAMS_STATIC.map(p => p.name);
+
+  const update  = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const toggle  = id   => setChecked(p => ({ ...p, [id]: !p[id] }));
+  const toggleS = code => setSelSubj(p => ({ ...p, [code]: !p[code] }));
+  const totalUnits = SUBJECTS.filter(s => selSubj[s.code]).reduce((a, s) => a + s.units, 0);
+
+  const go = n => { setDir(n > step ? 'fwd' : 'back'); setStep(n); };
+  const back = () => step > 1 ? go(step - 1) : onClose();
+  const next = () => step < 5 ? go(step + 1) : handleSubmit();
+
+  const handleSubmit = async () => {
+    setSub(true);
+    const ref = `NEMSU-${new Date().getFullYear()}-${String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5)}`;
+    try {
+      await api.post('/enrollment/public/pre-enroll/', {
+        student_type: type, first_name: form.first, last_name: form.last,
+        email: form.email, contact: form.contact, dob: form.dob,
+        sex: form.sex, program: form.program, year_level: form.year,
+      });
+    } catch (_) {}
+    setRefNum(ref);
+    setSub(false);
+    setStep(6);
+  };
+
+  const reqs = ALL_REQUIREMENTS[type] || [];
+
   return (
-    <div>
-      <label style={fLabel}>{label}</label>
-      <input type={type} placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} style={fInput} />
+    <div className="modal-back" onClick={onClose}>
+      <div
+        className={step === 6 ? 'modal' : 'modal modal--wide'}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="modal-head">
+          <div className="modal-head-brand">
+            <img src="/logo.png" alt="NEMSU" />
+            <div>
+              <div className="name">NEMSUonePortal</div>
+              <div className="sub">{step === 6 ? 'Application received' : 'Pre-enrollment'}</div>
+            </div>
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            <i className="ti ti-x" />
+          </button>
+        </div>
+
+        {step === 6 ? (
+          <div className="modal-body modal-body--center">
+            <div className="success-icon"><i className="ti ti-check" /></div>
+            <h3>Application <em>received</em>.</h3>
+            <p className="lead">Your pre-enrollment has been submitted. Please bring the required documents to the Registrar's Office at NEMSU Cantilan Campus to complete your enrollment.</p>
+            <div style={{ display:'inline-block', margin:'1rem 0 1.5rem', padding:'1rem 2rem', background:'var(--warm)', border:'1px solid var(--line)' }}>
+              <div style={{ fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--gold)', fontWeight:600, marginBottom:4 }}>Reference number</div>
+              <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:22, color:'var(--ink)' }}>{refNum}</div>
+            </div>
+            <p className="lead" style={{ fontSize:12, marginBottom:'1.5rem' }}>
+              Once approved, you'll receive an email with a link to activate your student account.
+            </p>
+            <button className="flow-btn-primary" style={{ maxWidth:220, margin:'0 auto' }} onClick={onClose}>
+              Done
+            </button>
+          </div>
+        ) : (
+          <div className="wiz">
+            <aside className="wiz-side">
+              <div className="wiz-side-head">Steps · {step}/5</div>
+              <div className="wiz-steps">
+                {WIZARD_STEPS.map((label, i) => {
+                  const n = i + 1, active = n === step, done = n < step;
+                  return (
+                    <div key={n} className={`wiz-step${active ? ' active' : ''}${done ? ' done' : ''}`}>
+                      <div className="wiz-step-num">
+                        {done ? <i className="ti ti-check" style={{ fontSize: 11 }} /> : n}
+                      </div>
+                      <span>{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="wiz-side-foot">
+                Need help with pre-enrollment?
+                <a href="mailto:cantilan@nemsu.edu.ph">cantilan@nemsu.edu.ph</a>
+              </div>
+            </aside>
+
+            <main className="wiz-main">
+              <div className="wiz-progress">
+                <div style={{ width: `${(step / 5) * 100}%` }} />
+              </div>
+
+              <div style={panel(dir)}>
+                {/* Step 1 — Student type */}
+                {step === 1 && (
+                  <>
+                    <h4>Select student type</h4>
+                    <p className="wiz-sub">Choose the category that best describes your enrollment status. This determines the requirements you'll need to submit.</p>
+                    <div className="type-grid">
+                      {Object.keys(TYPE_LABELS).map(id => (
+                        <button
+                          key={id}
+                          className={`type-card${type === id ? ' selected' : ''}`}
+                          onClick={() => setType(id)}
+                        >
+                          <i className={`ti ${TYPE_ICONS[id]}`} />
+                          <div className="t">{TYPE_LABELS[id]}</div>
+                          <div className="d">{TYPE_DESCS[id]}</div>
+                        </button>
+                      ))}
+                    </div>
+                    <div style={hintBox}>
+                      <i className="ti ti-info-circle" style={{ fontSize:16, flexShrink:0, marginTop:1 }} />
+                      <span>{TYPE_HINTS[type]}</span>
+                    </div>
+                  </>
+                )}
+
+                {/* Step 2 — Personal info */}
+                {step === 2 && (
+                  <>
+                    <h4>Personal information</h4>
+                    <p className="wiz-sub">Enter your details as they appear on official documents.</p>
+                    <div className="flow-form" style={{ gap: '1rem' }}>
+                      <div style={fRow}>
+                        <div className="flow-field">
+                          <label style={fLabel}>First name</label>
+                          <input style={fInput} value={form.first} onChange={e => update('first', e.target.value)} placeholder="Juan" />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Last name</label>
+                          <input style={fInput} value={form.last} onChange={e => update('last', e.target.value)} placeholder="Dela Cruz" />
+                        </div>
+                      </div>
+                      <div className="flow-field">
+                        <label style={fLabel}>Email address</label>
+                        <input style={fInput} type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="juan.delacruz@nemsu.edu.ph" />
+                      </div>
+                      <div style={fRow}>
+                        <div className="flow-field">
+                          <label style={fLabel}>Contact number</label>
+                          <input style={fInput} value={form.contact} onChange={e => update('contact', e.target.value)} placeholder="09171234567" />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Date of birth</label>
+                          <input style={fInput} type="date" value={form.dob} onChange={e => update('dob', e.target.value)} />
+                        </div>
+                      </div>
+                      <div style={fRow}>
+                        <div className="flow-field">
+                          <label style={fLabel}>Sex</label>
+                          <select style={fInput} value={form.sex} onChange={e => update('sex', e.target.value)}>
+                            <option>Male</option>
+                            <option>Female</option>
+                          </select>
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Year level</label>
+                          <select style={fInput} value={form.year} onChange={e => update('year', e.target.value)}>
+                            {Object.keys(YEAR_LEVEL_MAP).map(y => <option key={y}>{y}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flow-field">
+                        <label style={fLabel}>Program / course</label>
+                        <select style={fInput} value={form.program} onChange={e => update('program', e.target.value)}>
+                          {progList.map(n => <option key={n}>{n}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Step 3 — Requirements checklist */}
+                {step === 3 && (
+                  <>
+                    <h4>Required documents</h4>
+                    <p className="wiz-sub">Check each document you have ready. Bring originals and photocopies to the Registrar's Office.</p>
+                    {reqs.map(group => (
+                      <div key={group.group} style={{ marginBottom: '1.25rem' }}>
+                        <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:8 }}>
+                          {group.group}
+                        </div>
+                        {group.items.map(item => (
+                          <label key={item.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom:'1px solid var(--line-soft)', cursor:'pointer', fontSize:13, color:'var(--ink)' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!checked[item.id]}
+                              onChange={() => toggle(item.id)}
+                              style={{ width:15, height:15, accentColor:'var(--ink)', flexShrink:0 }}
+                            />
+                            <span style={{ flex:1 }}>{item.label}</span>
+                            <span style={unitPill}>{item.tag}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Step 4 — Subject selection */}
+                {step === 4 && (
+                  <>
+                    <h4>Subject selection</h4>
+                    <p className="wiz-sub">Review your subject load for {form.year} — {form.program}. Deselect any subject if advised by your department.</p>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, padding:'8px 12px', background:'var(--cool)', border:'1px solid var(--line)', fontSize:13 }}>
+                      <span style={{ color:'var(--muted)' }}>Total units selected</span>
+                      <span style={{ fontWeight:600, color:'var(--ink)' }}>{totalUnits} units</span>
+                    </div>
+                    {SUBJECTS.map(s => (
+                      <label key={s.code} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid var(--line-soft)', cursor:'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!selSubj[s.code]}
+                          onChange={() => toggleS(s.code)}
+                          style={{ width:15, height:15, accentColor:'var(--ink)', flexShrink:0 }}
+                        />
+                        <span style={{ flex:1 }}>
+                          <span style={{ fontSize:11, fontWeight:600, color:'var(--gold)', letterSpacing:'.06em', display:'block', marginBottom:1 }}>{s.code}</span>
+                          <span style={{ fontSize:13, color:'var(--ink)' }}>{s.name}</span>
+                        </span>
+                        <span style={unitPill}>{s.units} units</span>
+                      </label>
+                    ))}
+                  </>
+                )}
+
+                {/* Step 5 — Review & confirm */}
+                {step === 5 && (
+                  <>
+                    <h4>Review &amp; confirm</h4>
+                    <p className="wiz-sub">Verify your enrollment details before submitting. Go back to edit any field.</p>
+                    <div style={{ border:'1px solid var(--line)', background:'var(--warm)', marginBottom:12 }}>
+                      {[
+                        ['Student type',  TYPE_LABELS[type]],
+                        ['Full name',     `${form.first} ${form.last}`.trim() || '—'],
+                        ['Email',         form.email  || '—'],
+                        ['Contact',       form.contact || '—'],
+                        ['Date of birth', form.dob    || '—'],
+                        ['Sex',           form.sex],
+                        ['Program',       form.program],
+                        ['Year level',    form.year],
+                        ['Campus',        'NEMSU Cantilan Campus'],
+                        ['Academic year', `${term?.year ?? '2025–2026'}, 1st Semester`],
+                      ].map((r, i, arr) => (
+                        <div key={r[0]} style={{ display:'flex', justifyContent:'space-between', padding:'10px 16px', fontSize:13, borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none' }}>
+                          <span style={{ color:'var(--muted)' }}>{r[0]}</span>
+                          <span style={{ color:'var(--ink)', fontWeight:500 }}>{r[1]}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={hintBox}>
+                      <i className="ti ti-info-circle" style={{ fontSize:16, flexShrink:0, marginTop:1 }} />
+                      <span style={{ fontSize:12 }}>After submitting, bring your documents to the Registrar's Office to complete your enrollment.</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="wiz-actions">
+                <button className="wiz-btn" onClick={back}>
+                  <i className="ti ti-arrow-left" /> {step === 1 ? 'Cancel' : 'Back'}
+                </button>
+                <button className="wiz-btn primary" onClick={next} disabled={submitting}>
+                  {step === 5
+                    ? (submitting ? 'Submitting…' : <><i className="ti ti-check" /> Submit application</>)
+                    : <>Continue <i className="ti ti-arrow-right" /></>}
+                </button>
+              </div>
+            </main>
+          </div>
+        )}
+      </div>
     </div>
-  );
-}
-function MSelect({ label, value, onChange, options }) {
-  return (
-    <div>
-      <label style={fLabel}>{label}</label>
-      <select value={value} onChange={e => onChange(e.target.value)} style={fInput}>
-        {options.map(o => <option key={o}>{o}</option>)}
-      </select>
-    </div>
-  );
-}
-function RevBlock({ title, children }) {
-  return (
-    <div style={{ border: '1px solid #dde6f0', borderRadius: 10, overflow: 'hidden', marginBottom: '1rem' }}>
-      {title && <div style={{ padding: '9px 14px', background: '#f4f8ff', borderBottom: '1px solid #dde6f0', fontSize: 11, fontWeight: 700, color: '#5a7a9a', textTransform: 'uppercase', letterSpacing: '.06em' }}>{title}</div>}
-      {children}
-    </div>
-  );
-}
-function RRow({ label, value }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '8px 14px', borderBottom: '.5px solid #dde6f0' }}>
-      <span style={{ color: '#7a92ab' }}>{label}</span>
-      <span style={{ color: '#0a1628', fontWeight: 500 }}>{value}</span>
-    </div>
-  );
-}
-function BtnRow({ children }) {
-  return <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid #eef3fb' }}>{children}</div>;
-}
-function Btn({ primary, children, onClick }) {
-  return (
-    <button onClick={onClick} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: primary ? '1px solid #1a6ebd' : '1px solid #dde6f0', background: primary ? '#1a6ebd' : '#fff', color: primary ? '#fff' : '#0a1628' }}>
-      {children}
-    </button>
   );
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SHARED STYLE TOKENS
+   SHARED STYLE TOKENS — enrollment modal micro-components
 ══════════════════════════════════════════════════════════════ */
-const panel = (dir) => ({ display: 'flex', flexDirection: 'column', flex: 1, animation: `${dir === 'back' ? 'slideInLeft' : 'slideInRight'} .22s cubic-bezier(.4,0,.2,1)` });
-const fRow      = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 };
-const fLabel    = { fontSize: 11, fontWeight: 700, color: '#5a7a9a', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.05em' };
-const fInput    = { width: '100%', padding: '9px 12px', border: '1px solid #d0dcea', borderRadius: 8, fontSize: 13, background: '#fff', color: '#0a1628', outline: 'none', boxSizing: 'border-box' };
-const hintBox   = { padding: '12px 14px', border: '1px solid #c8d8f0', borderRadius: 8, background: '#f0f6ff', fontSize: 12, color: '#2a4a6e', display: 'flex', gap: 8, alignItems: 'flex-start' };
-const unitPill  = { fontSize: 12, padding: '4px 12px', borderRadius: 99, background: '#eef3fb', border: '.5px solid #c8d8f0', color: '#5a7a9a' };
-const widgetTitle = { fontSize: 11, fontWeight: 700, color: '#0a1628', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #dde6f0' };
-const footerH4  = { fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.5)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 14, marginTop: 0 };
-const footerLink = { display: 'block', fontSize: 12, color: 'rgba(255,255,255,.35)', textDecoration: 'none', marginBottom: 8, transition: 'color .15s' };
+const YEAR_LEVEL_MAP = { '1st Year':1, '2nd Year':2, '3rd Year':3, '4th Year':4 };
+const panel      = dir => ({ display:'flex', flexDirection:'column', flex:1, animation:`${dir === 'back' ? 'lp-slideInLeft' : 'lp-slideInRight'} .22s cubic-bezier(.4,0,.2,1)` });
+const fRow       = { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 };
+const fLabel     = { fontSize:11, fontWeight:700, color:'#5a7a9a', display:'block', marginBottom:5, textTransform:'uppercase', letterSpacing:'.05em' };
+const fInput     = { width:'100%', padding:'9px 12px', border:'1px solid #d0dcea', borderRadius:8, fontSize:13, background:'#fff', color:'#0a1628', outline:'none', boxSizing:'border-box' };
+const hintBox    = { padding:'12px 14px', border:'1px solid #c8d8f0', borderRadius:8, background:'#f0f6ff', fontSize:12, color:'#2a4a6e', display:'flex', gap:8, alignItems:'flex-start' };
+const unitPill   = { fontSize:12, padding:'4px 12px', borderRadius:99, background:'#eef3fb', border:'.5px solid #c8d8f0', color:'#5a7a9a' };
