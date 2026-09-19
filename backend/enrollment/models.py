@@ -104,6 +104,25 @@ class Subject(models.Model):
         return f"{self.code} — {self.name}"
 
 
+class SiteContent(models.Model):
+    """Editable content for one landing-page section, stored as a JSON blob.
+    One row per section key (e.g. 'about', 'stats', 'in_focus'). The public
+    landing page reads these; the admin edits them."""
+    key = models.CharField(max_length=50, unique=True)
+    data = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='edited_site_content',
+    )
+
+    class Meta:
+        ordering = ['key']
+
+    def __str__(self):
+        return self.key
+
+
 class Curriculum(models.Model):
     """
     A versioned curriculum for a program (e.g. BSIT-2019, effective 2019). A program

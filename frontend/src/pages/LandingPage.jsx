@@ -788,6 +788,12 @@ export default function LandingPage() {
     api.get('/enrollment/public/landing/').then(r => setLandingData(r.data)).catch(() => {});
   }, []);
 
+  const [site, setSite] = useState(null);
+  useEffect(() => {
+    api.get('/enrollment/public/site-content/').then(r => setSite(r.data)).catch(() => {});
+  }, []);
+  const c = site || {};
+
   return (
     <>
       <style>{CSS}</style>
@@ -795,15 +801,15 @@ export default function LandingPage() {
       <Navbar scrolled={scrolled} onEnroll={openEnroll} activeNav={activeNav} onNavClick={setActiveNav} />
       <Hero onEnroll={openEnroll} term={landingData?.term} />
       <AudiencePortals onLogin={openLogin} onEnroll={openEnroll} />
-      <Spotlight />
+      <Spotlight content={c.in_focus} />
       <InfoStrip />
-      <About />
-      <Stats />
-      <VisionMission />
-      <Programs programs={landingData?.programs} />
-      <Life />
-      <Facilities />
-      <News />
+      <About content={c.about} />
+      <Stats content={c.stats} />
+      <VisionMission content={c.purpose} />
+      <Programs programs={landingData?.programs} content={c.programs_intro} />
+      <Life content={c.campus_life} />
+      <Facilities content={c.facilities} />
+      <News content={c.news} />
       <CtaBand onEnroll={openEnroll} onLogin={openLogin} />
       <Footer onEnroll={openEnroll} onLogin={openLogin} onSignup={openSignup} />
       {screen === 'picker' && (
@@ -950,17 +956,9 @@ function AudiencePortals({ onLogin, onEnroll }) {
   );
 }
 
-function Spotlight() {
-  const [post, setPost] = useState(loadActiveSpotlight);
-  useEffect(() => {
-    const onUpdate = () => setPost(loadActiveSpotlight());
-    window.addEventListener('spotlight-updated', onUpdate);
-    window.addEventListener('storage', onUpdate);
-    return () => {
-      window.removeEventListener('spotlight-updated', onUpdate);
-      window.removeEventListener('storage', onUpdate);
-    };
-  }, []);
+function Spotlight({ content }) {
+  const post = content || SPOTLIGHT_FALLBACK;
+  const dateLabel = post.date || post.createdAt || '';
 
   return (
     <section className="spot">
@@ -985,7 +983,7 @@ function Spotlight() {
               <div className="spot-meta">{post.category}</div>
               <h3>{post.title}</h3>
               <p>{post.body}</p>
-              <div className="spot-byline">{post.byline} · {post.createdAt}</div>
+              <div className="spot-byline">{post.byline}{dateLabel ? ` · ${dateLabel}` : ''}</div>
               <a href="#read" className="btn-link" style={{ alignSelf: 'flex-start' }}>
                 Read the full story <i className="ti ti-arrow-right" />
               </a>
@@ -1020,28 +1018,32 @@ function InfoStrip() {
   );
 }
 
-function About() {
+function About({ content }) {
+  const paragraphs = content?.paragraphs ?? [
+    "The NEMSU Cantilan Campus is one of the key campuses of North Eastern Mindanao State University, located in the municipality of Cantilan in the province of Surigao del Sur. It serves students from Cantilan and surrounding municipalities, providing accessible and quality higher education to the community.",
+    "The campus offers a wide range of undergraduate programs in technology, education, business, health sciences, and the arts — aligned with NEMSU's vision of producing globally competitive and morally upright graduates.",
+  ];
+  const pillars = content?.pillars ?? PILLARS;
   return (
     <section id="about" className="about">
       <div className="lp-wrap">
         <div className="about-grid">
           <Reveal>
             <div className="about-visual">
-              <Img src={PHOTO.about} alt="About NEMSU Cantilan" />
+              <Img src={content?.imageUrl || PHOTO.about} alt="About NEMSU Cantilan" />
               <div className="about-badge">
-                <div className="micro">Accredited</div>
-                <div className="v">AACCUP Level II</div>
+                <div className="micro">{content?.badge_label || 'Accredited'}</div>
+                <div className="v">{content?.badge_value || 'AACCUP Level II'}</div>
               </div>
             </div>
           </Reveal>
           <Reveal delay={0.1}>
             <div className="about-copy">
-              <div className="eyebrow">About the campus</div>
-              <h2 className="h-section">A regional institution rooted in <em>community</em>, oriented toward <em>excellence</em>.</h2>
-              <p>The NEMSU Cantilan Campus is one of the key campuses of North Eastern Mindanao State University, located in the municipality of Cantilan in the province of Surigao del Sur. It serves students from Cantilan and surrounding municipalities, providing accessible and quality higher education to the community.</p>
-              <p>The campus offers a wide range of undergraduate programs in technology, education, business, health sciences, and the arts — aligned with NEMSU's vision of producing globally competitive and morally upright graduates.</p>
+              <div className="eyebrow">{content?.eyebrow || 'About the campus'}</div>
+              <h2 className="h-section">{content?.heading || <>A regional institution rooted in <em>community</em>, oriented toward <em>excellence</em>.</>}</h2>
+              {paragraphs.map((para, i) => <p key={i}>{para}</p>)}
               <div className="pillars">
-                {PILLARS.map(p => (
+                {pillars.map(p => (
                   <div key={p.title} className="pillar">
                     <span className="num">— {p.num}</span>
                     <div className="title">{p.title}</div>
@@ -1056,21 +1058,22 @@ function About() {
     </section>
   );
 }
-function Stats() {
+function Stats({ content }) {
+  const items = content?.items ?? STATS;
   return (
     <section className="stats">
       <div className="stats-inner">
         <Reveal>
           <div className="stats-head">
-            <div className="eyebrow on-dark">By the numbers</div>
+            <div className="eyebrow on-dark">{content?.eyebrow || 'By the numbers'}</div>
             <h2 className="h-section on-dark" style={{ marginTop: '1.25rem' }}>
-              A campus that <em>scales</em> with the region it serves.
+              {content?.heading || <>A campus that <em>scales</em> with the region it serves.</>}
             </h2>
           </div>
         </Reveal>
         <div className="stats-grid">
-          {STATS.map(s => (
-            <StatCell key={s.lbl} {...s} />
+          {items.map((s, i) => (
+            <StatCell key={s.lbl || i} {...s} />
           ))}
         </div>
       </div>
@@ -1078,15 +1081,15 @@ function Stats() {
   );
 }
 
-function VisionMission() {
+function VisionMission({ content }) {
   return (
     <section className="vm">
       <div className="lp-wrap">
         <Reveal>
           <div className="vm-head">
-            <div className="eyebrow">Our purpose</div>
+            <div className="eyebrow">{content?.eyebrow || 'Our purpose'}</div>
             <h2 className="h-section" style={{ marginTop: '1.25rem' }}>
-              Guided by a clear <em>vision</em> and a steady <em>mission</em>.
+              {content?.heading || <>Guided by a clear <em>vision</em> and a steady <em>mission</em>.</>}
             </h2>
           </div>
         </Reveal>
@@ -1094,15 +1097,15 @@ function VisionMission() {
           <Reveal>
             <div className="vm-card">
               <span className="vm-num">— Vision</span>
-              <h3>A premier state university producing <em>globally competitive</em> graduates.</h3>
-              <p>To produce morally upright graduates who are agents of change for sustainable national development, equipped with the knowledge and values to serve the community and the country.</p>
+              <h3>{content?.vision_title || <>A premier state university producing <em>globally competitive</em> graduates.</>}</h3>
+              <p>{content?.vision_text || 'To produce morally upright graduates who are agents of change for sustainable national development, equipped with the knowledge and values to serve the community and the country.'}</p>
             </div>
           </Reveal>
           <Reveal delay={0.1}>
             <div className="vm-card">
               <span className="vm-num">— Mission</span>
-              <h3>Quality education, advanced research, and <em>community engagement</em>.</h3>
-              <p>To provide quality higher technological and professional education, advance research and development, and render extension and production services responsive to the needs of the community in northeastern Mindanao.</p>
+              <h3>{content?.mission_title || <>Quality education, advanced research, and <em>community engagement</em>.</>}</h3>
+              <p>{content?.mission_text || 'To provide quality higher technological and professional education, advance research and development, and render extension and production services responsive to the needs of the community in northeastern Mindanao.'}</p>
             </div>
           </Reveal>
         </div>
@@ -1111,7 +1114,7 @@ function VisionMission() {
   );
 }
 
-function Programs({ programs }) {
+function Programs({ programs, content }) {
   const [showAll, setShowAll] = useState(false);
   const PREVIEW_COUNT = 6;
 
@@ -1133,9 +1136,9 @@ function Programs({ programs }) {
         <Reveal>
           <div className="progs-head">
             <div>
-              <div className="eyebrow">Academic programs</div>
+              <div className="eyebrow">{content?.eyebrow || 'Academic programs'}</div>
               <h2 className="h-section" style={{ marginTop: '1rem' }}>
-                Undergraduate programs at <em>Cantilan Campus</em>.
+                {content?.heading || <>Undergraduate programs at <em>Cantilan Campus</em>.</>}
               </h2>
             </div>
             {hasMore && (
@@ -1163,23 +1166,30 @@ function Programs({ programs }) {
     </section>
   );
 }
-function Life() {
+const LIFE_CLS  = ['life-a', 'life-b', 'life-c', 'life-d', 'life-e', 'life-f'];
+const LIFE_KEYS = ['lifeA', 'lifeB', 'lifeC', 'lifeD', 'lifeE', 'lifeF'];
+function Life({ content }) {
+  const items = (content?.items ?? LIFE).map((l, i) => ({
+    ...l,
+    cls: l.cls || LIFE_CLS[i % 6],
+    src: l.imageUrl || PHOTO[l.photoKey] || PHOTO[LIFE_KEYS[i % 6]],
+  }));
   return (
     <section id="life" className="life">
       <div className="lp-wrap">
         <Reveal>
           <div className="life-head">
             <div>
-              <div className="eyebrow">Campus life</div>
-              <h2 className="h-section" style={{ marginTop: '1rem' }}>Life at <em>Cantilan</em>.</h2>
+              <div className="eyebrow">{content?.eyebrow || 'Campus life'}</div>
+              <h2 className="h-section" style={{ marginTop: '1rem' }}>{content?.heading || <>Life at <em>Cantilan</em>.</>}</h2>
             </div>
             <a href="#life-all" className="btn-link">Explore campus <i className="ti ti-arrow-right" /></a>
           </div>
         </Reveal>
         <div className="life-grid">
-          {LIFE.map(l => (
-            <a key={l.id} href="#" className={`life-item ${l.cls}`}>
-              <Img src={PHOTO[l.photoKey]} alt={l.title} />
+          {items.map((l, i) => (
+            <a key={l.id || i} href="#" className={`life-item ${l.cls}`}>
+              <Img src={l.src} alt={l.title} />
               <div className="meta">
                 <div className="micro">{l.tag}</div>
                 <div className="title">{l.title}</div>
@@ -1192,21 +1202,22 @@ function Life() {
   );
 }
 
-function Facilities() {
+function Facilities({ content }) {
+  const items = content?.items ?? FACILITIES;
   return (
     <section id="facilities" className="facs">
       <div className="lp-wrap">
         <Reveal>
           <div className="facs-head">
-            <div className="eyebrow on-dark">Campus facilities</div>
+            <div className="eyebrow on-dark">{content?.eyebrow || 'Campus facilities'}</div>
             <h2 className="h-section on-dark" style={{ marginTop: '1.25rem' }}>
-              Built for <em>student success</em>.
+              {content?.heading || <>Built for <em>student success</em>.</>}
             </h2>
             <p>The Cantilan Campus provides modern facilities to support academic, research, and extracurricular activities — accessible to every student across all programs.</p>
           </div>
         </Reveal>
         <div className="facs-grid">
-          {FACILITIES.map((f, i) => (
+          {items.map((f, i) => (
             <Reveal key={f.name} delay={i * 0.05}>
               <article className="fac">
                 <i className={`ti ${f.icon}`} />
@@ -1221,27 +1232,28 @@ function Facilities() {
   );
 }
 
-function News() {
+function News({ content }) {
+  const items = content?.items ?? NEWS;
   return (
     <section id="news" className="news">
       <div className="lp-wrap">
         <Reveal>
           <div className="news-head">
             <div>
-              <div className="eyebrow">News &amp; updates</div>
+              <div className="eyebrow">{content?.eyebrow || 'News & updates'}</div>
               <h2 className="h-section" style={{ marginTop: '1rem' }}>
-                What's happening on <em>campus</em>.
+                {content?.heading || <>What's happening on <em>campus</em>.</>}
               </h2>
             </div>
             <a href="#all-news" className="btn-link">All news <i className="ti ti-arrow-right" /></a>
           </div>
         </Reveal>
         <div className="news-grid">
-          {NEWS.map((n, i) => (
-            <Reveal key={n.id} delay={i * 0.06}>
+          {items.map((n, i) => (
+            <Reveal key={n.id || i} delay={i * 0.06}>
               <a href="#" className="news-card">
                 <div className="news-card-image">
-                  <Img src={PHOTO[n.photoKey]} alt={n.title} />
+                  <Img src={n.imageUrl || PHOTO[n.photoKey]} alt={n.title} />
                   <div className="news-card-tag">{n.tag}</div>
                 </div>
                 <div className="news-card-body">

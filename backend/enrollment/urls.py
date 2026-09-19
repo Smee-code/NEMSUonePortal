@@ -2,8 +2,15 @@ from django.urls import path
 
 from . import views
 from . import curriculum_views as cv
+from . import sitecontent_views as sc
 
 urlpatterns = [
+    # Landing-page content (CMS-lite)
+    path('public/site-content/', sc.PublicSiteContentView.as_view(), name='public-site-content'),
+    path('admin/site-content/', sc.AdminSiteContentListView.as_view(), name='admin-site-content'),
+    path('admin/site-content/upload-image/', sc.AdminSiteImageUploadView.as_view(), name='admin-site-content-upload'),
+    path('admin/site-content/<str:key>/', sc.AdminSiteContentDetailView.as_view(), name='admin-site-content-detail'),
+
     # Curriculum management (Department Encoder / Admin)
     path('encoder/programs/', cv.EncoderProgramListView.as_view(), name='encoder-programs'),
     path('curricula/', cv.CurriculumListCreateView.as_view(), name='curriculum-list-create'),
