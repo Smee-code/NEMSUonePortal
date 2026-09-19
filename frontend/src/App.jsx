@@ -62,9 +62,6 @@ import StudentDocuments    from './pages/student/StudentDocuments';
 import StudentProfile      from './pages/student/StudentProfile';
 import StudentAnnouncements from './pages/student/StudentAnnouncements';
 import StudentCurriculum   from './pages/student/StudentCurriculum';
-import StudentPayments     from './pages/student/StudentPayments';
-import StudentScholarships from './pages/student/StudentScholarships';
-import StudentClearance    from './pages/student/StudentClearance';
 import StudentSpotlight    from './pages/student/StudentSpotlight';
 
 export default function App() {
@@ -91,9 +88,6 @@ export default function App() {
             <Route path="schedule"      element={<StudentSchedule />} />
             <Route path="curriculum"    element={<StudentCurriculum />} />
             <Route path="documents"     element={<StudentDocuments />} />
-            <Route path="payments"      element={<StudentPayments />} />
-            <Route path="scholarships"  element={<StudentScholarships />} />
-            <Route path="clearance"     element={<StudentClearance />} />
             <Route path="announcements" element={<StudentAnnouncements />} />
             <Route path="spotlight"     element={<StudentSpotlight />} />
             <Route path="profile"       element={<StudentProfile />} />

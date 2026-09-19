@@ -17,9 +17,6 @@ const NAV = [
   { key: 'schedule',     path: '/student/schedule',     icon: 'ti-calendar-event',   label: 'My Schedule',       section: 'academic' },
   { key: 'curriculum',   path: '/student/curriculum',   icon: 'ti-route',            label: 'Curriculum',        section: 'academic' },
   { key: 'documents',    path: '/student/documents',    icon: 'ti-file-text',        label: 'Document Requests', section: 'services' },
-  { key: 'payments',     path: '/student/payments',     icon: 'ti-wallet',           label: 'Payments & Fees',   section: 'services' },
-  { key: 'scholarships', path: '/student/scholarships', icon: 'ti-award',            label: 'Scholarships',      section: 'services' },
-  { key: 'clearance',    path: '/student/clearance',    icon: 'ti-checkup-list',     label: 'Clearance',         section: 'services' },
   { key: 'announcements',path: '/student/announcements',icon: 'ti-bell',             label: 'Announcements',     section: 'campus' },
   { key: 'spotlight',    path: '/student/spotlight',    icon: 'ti-news',             label: 'Campus Spotlight',  section: 'campus' },
   { key: 'profile',      path: '/student/profile',      icon: 'ti-user',             label: 'My Profile',        section: 'campus' },
@@ -35,7 +32,6 @@ const GROUPS = [
 const CRUMB = {
   dashboard: 'Dashboard', grades: 'My Grades',
   schedule: 'My Schedule', curriculum: 'Curriculum', documents: 'Document Requests',
-  payments: 'Payments & Fees', scholarships: 'Scholarships', clearance: 'Clearance',
   announcements: 'Announcements', spotlight: 'Campus Spotlight', profile: 'My Profile',
 };
 
