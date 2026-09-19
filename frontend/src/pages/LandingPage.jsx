@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import Lightbox from '../components/Lightbox';
@@ -93,15 +94,26 @@ const CSS = `
     .burger{display:flex;margin-left:auto;flex-shrink:0;width:42px;height:42px;border-radius:2px;border:1px solid var(--line);background:#fff;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);}
     .burger i{font-size:20px}
   }
-  .nav-mobile-back{position:fixed;inset:0;top:0;background:rgba(10,22,40,.35);z-index:99;animation:navfade .15s ease;}
+  .nav-mobile-back{position:fixed;inset:0;background:rgba(10,22,40,.5);z-index:1800;animation:navfade .18s ease;}
   @keyframes navfade{from{opacity:0}to{opacity:1}}
-  .nav-mobile{position:absolute;top:100%;left:0;right:0;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 12px 28px -12px rgba(10,22,40,.25);z-index:101;display:flex;flex-direction:column;padding:.5rem 1.25rem 1.25rem;animation:navdrop .18s ease;}
-  @keyframes navdrop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
-  .nav-mobile-link{padding:14px 4px;font-size:15px;font-weight:500;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line-soft);}
-  .nav-mobile-link:last-of-type{border-bottom:none;}
-  .nav-mobile-link.active{color:var(--gold);}
-  .nav-mobile-sep{height:1px;background:var(--line);margin:.5rem 0;}
-  .nav-mobile-cta{margin-top:1rem;width:100%;justify-content:center;}
+  .nav-mobile{position:fixed;top:0;right:0;height:100dvh;width:min(330px,86vw);background:#fff;z-index:1801;display:flex;flex-direction:column;box-shadow:-18px 0 44px -18px rgba(10,22,40,.45);animation:navslide .24s cubic-bezier(.22,1,.36,1);}
+  @keyframes navslide{from{transform:translateX(100%)}to{transform:none}}
+  .nav-mobile-head{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.25rem;border-bottom:1px solid var(--line);flex-shrink:0;}
+  .nav-mobile-title{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+  .nav-mobile-close{width:38px;height:38px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);font-size:18px;border-radius:2px;}
+  .nav-mobile-close:hover{border-color:var(--ink);}
+  .nav-mobile-body{flex:1;overflow-y:auto;padding:.5rem 0;}
+  .nav-mobile-link{display:flex;align-items:center;gap:14px;padding:14px 1.25rem;font-size:15px;font-weight:500;color:var(--ink);text-decoration:none;border-left:3px solid transparent;transition:background .15s,color .15s;}
+  .nav-mobile-ic{font-size:19px;color:var(--faint);width:22px;text-align:center;flex-shrink:0;}
+  .nav-mobile-chev{margin-left:auto;font-size:15px;color:var(--faint);}
+  .nav-mobile-link:hover{background:var(--warm);}
+  .nav-mobile-link.active{color:var(--gold);border-left-color:var(--gold);background:rgba(184,144,67,.10);}
+  .nav-mobile-link.active .nav-mobile-ic{color:var(--gold);}
+  .nav-mobile-foot{padding:1rem 1.25rem 1.5rem;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:.5rem;flex-shrink:0;}
+  .nav-mobile-secondary{display:flex;align-items:center;gap:10px;padding:11px 12px;font-size:14px;font-weight:500;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:#fff;}
+  .nav-mobile-secondary i{font-size:17px;color:var(--muted);}
+  .nav-mobile-secondary:hover{border-color:var(--ink);}
+  .nav-mobile-cta{margin-top:.5rem;width:100%;justify-content:center;}
 
   /* ── Hero ── */
   .hero{position:relative;min-height:88vh;background:var(--ink-3);color:#fff;overflow:hidden;display:flex;flex-direction:column;}
@@ -603,11 +615,11 @@ const STATS = [
 ];
 
 const NAV_LINKS = [
-  { label:'Home',        href:'#home'     },
-  { label:'About',       href:'#about'    },
-  { label:'Programs',    href:'#programs' },
-  { label:'Campus life', href:'#life'     },
-  { label:'News',        href:'#news'     },
+  { label:'Home',        href:'#home',     icon:'ti-home'      },
+  { label:'About',       href:'#about',    icon:'ti-building'  },
+  { label:'Programs',    href:'#programs', icon:'ti-book-2'    },
+  { label:'Campus life', href:'#life',     icon:'ti-photo'     },
+  { label:'News',        href:'#news',     icon:'ti-news'      },
 ];
 
 const LIFE = [
@@ -958,24 +970,40 @@ function Navbar({ scrolled, onEnroll, activeNav, onNavClick }) {
         </button>
       </div>
 
-      {menuOpen && (
+      {menuOpen && createPortal(
         <>
           <div className="nav-mobile-back" onClick={close} />
-          <div className="nav-mobile">
-            {NAV_LINKS.map(l => (
-              <a key={l.label} href={l.href} className={`nav-mobile-link${activeNav === l.href ? ' active' : ''}`}
-                onClick={() => handleNav(l.href)}>
-                {l.label}
-              </a>
-            ))}
-            <div className="nav-mobile-sep" />
-            <Link to="/login" className="nav-mobile-link" onClick={close}>Log in</Link>
-            <Link to="/signup" className="nav-mobile-link" onClick={close}>Sign up</Link>
-            <button className="btn btn-primary nav-mobile-cta" onClick={() => { close(); onEnroll(); }}>
-              Apply now <i className="ti ti-arrow-right" />
-            </button>
-          </div>
-        </>
+          <aside className="nav-mobile" role="dialog" aria-label="Menu" aria-modal="true">
+            <div className="nav-mobile-head">
+              <span className="nav-mobile-title">Menu</span>
+              <button className="nav-mobile-close" onClick={close} aria-label="Close menu">
+                <i className="ti ti-x" />
+              </button>
+            </div>
+            <nav className="nav-mobile-body">
+              {NAV_LINKS.map(l => (
+                <a key={l.label} href={l.href} className={`nav-mobile-link${activeNav === l.href ? ' active' : ''}`}
+                  onClick={() => handleNav(l.href)}>
+                  <i className={`ti ${l.icon} nav-mobile-ic`} />
+                  <span>{l.label}</span>
+                  <i className="ti ti-chevron-right nav-mobile-chev" />
+                </a>
+              ))}
+            </nav>
+            <div className="nav-mobile-foot">
+              <Link to="/login" className="nav-mobile-secondary" onClick={close}>
+                <i className="ti ti-login-2" /> Log in
+              </Link>
+              <Link to="/signup" className="nav-mobile-secondary" onClick={close}>
+                <i className="ti ti-user-plus" /> Sign up
+              </Link>
+              <button className="btn btn-primary nav-mobile-cta" onClick={() => { close(); onEnroll(); }}>
+                Apply now <i className="ti ti-arrow-right" />
+              </button>
+            </div>
+          </aside>
+        </>,
+        document.body
       )}
     </nav>
   );
