@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../../api/axios';
+import { useToast } from '../../components/Toast';
 
 /* Schema describing each editable section and its fields. */
 const SECTIONS = [
@@ -197,14 +198,13 @@ function Field({ def, value, onChange }) {
 }
 
 export default function AdminSiteContent() {
+  const toast = useToast();
   const [content, setContent] = useState(null);
   const [open, setOpen] = useState('in_focus');
   const [saving, setSaving] = useState(null);
-  const [flash, setFlash] = useState('');
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/enrollment/admin/site-content/').then(r => setContent(r.data)).catch(() => setError('Failed to load content.'));
+    api.get('/enrollment/admin/site-content/').then(r => setContent(r.data)).catch(() => toast('Failed to load content.', { type: 'error' }));
   }, []);
 
   function setField(key, field, val) {
@@ -212,12 +212,12 @@ export default function AdminSiteContent() {
   }
 
   async function save(key) {
-    setSaving(key); setError(''); setFlash('');
+    setSaving(key);
     try {
       await api.patch(`/enrollment/admin/site-content/${key}/`, { data: content[key] });
-      setFlash(`${SECTIONS.find(s => s.key === key)?.label} saved.`);
+      toast(`${SECTIONS.find(s => s.key === key)?.label} saved.`, { type: 'success' });
     } catch {
-      setError('Failed to save. Please try again.');
+      toast('Failed to save. Please try again.', { type: 'error' });
     } finally { setSaving(null); }
   }
 
@@ -231,9 +231,6 @@ export default function AdminSiteContent() {
           <div className="sub">Edit the content of each section on the public landing page. Changes go live for all visitors once you save that section.</div>
         </div>
       </div>
-
-      {flash && <div className="sc-flash sc-ok">{flash}<button onClick={() => setFlash('')}><i className="ti ti-x" /></button></div>}
-      {error && <div className="sc-flash sc-bad">{error}<button onClick={() => setError('')}><i className="ti ti-x" /></button></div>}
 
       {!content ? (
         <div className="sc-loading">Loading…</div>

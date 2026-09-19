@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../../api/axios';
+import { useToast } from '../../components/Toast';
 
 function initials(name) {
   const p = (name || '').replace(',', '').trim().split(/\s+/);
@@ -16,6 +17,7 @@ function formatTime(t) {
 }
 
 export default function FacultyRoster() {
+  const toast = useToast();
   const [currentTerm, setCurrentTerm] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -23,9 +25,7 @@ export default function FacultyRoster() {
   const [search, setSearch] = useState('');
   const [loadingInit, setLoadingInit] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
-  const [pageError, setPageError] = useState('');
 
-  const [flash, setFlash] = useState('');
   const [importing, setImporting] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ student_id: '', name: '' });
@@ -39,7 +39,7 @@ export default function FacultyRoster() {
         setAssignments(r.data);
         return r.data;
       })
-      .catch(() => { setPageError('Failed to load teaching assignments.'); return []; });
+      .catch(() => { toast('Failed to load teaching assignments.', { type: 'error' }); return []; });
 
   useEffect(() => {
     Promise.allSettled([
@@ -58,10 +58,9 @@ export default function FacultyRoster() {
   const loadRoster = (id) => {
     if (!id) { setStudents([]); return; }
     setLoadingStudents(true);
-    setPageError('');
     return api.get(`/grades/faculty/students/?assignment=${id}`)
       .then(r => setStudents(r.data))
-      .catch(() => setPageError('Failed to load student roster.'))
+      .catch(() => toast('Failed to load student roster.', { type: 'error' }))
       .finally(() => setLoadingStudents(false));
   };
 
@@ -75,7 +74,7 @@ export default function FacultyRoster() {
     const file = e.target.files?.[0];
     if (file) e.target.value = '';   // allow re-selecting the same file
     if (!file || !selectedId) return;
-    setImporting(true); setFlash(''); setPageError('');
+    setImporting(true);
     try {
       const form = new FormData();
       form.append('file', file);
@@ -83,10 +82,10 @@ export default function FacultyRoster() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const d = res.data;
-      setFlash(`${d.message} (${d.new_placeholders} new, ${d.matched_accounts} matched, ${d.already} already in${d.elsewhere ? `, ${d.elsewhere} in another section` : ''})`);
+      toast(`${d.message} (${d.new_placeholders} new, ${d.matched_accounts} matched, ${d.already} already in${d.elsewhere ? `, ${d.elsewhere} in another section` : ''})`, { type: 'success' });
       await Promise.all([loadRoster(selectedId), refreshCounts()]);
     } catch (err) {
-      setPageError(err.response?.data?.error || 'Import failed. Upload a valid .xlsx or .csv class list.');
+      toast(err.response?.data?.error || 'Import failed. Upload a valid .xlsx or .csv class list.', { type: 'error' });
     } finally {
       setImporting(false);
     }
@@ -101,11 +100,11 @@ export default function FacultyRoster() {
         student_id: addForm.student_id.trim(),
         name: addForm.name.trim(),
       });
-      setFlash(res.data.message);
+      toast(res.data.message, { type: 'success' });
       setShowAdd(false); setAddForm({ student_id: '', name: '' });
       await Promise.all([loadRoster(selectedId), refreshCounts()]);
     } catch (err) {
-      setAddErr(err.response?.data?.error || 'Failed to add student.');
+      toast(err.response?.data?.error || 'Failed to add student.', { type: 'error' });
     } finally {
       setAddBusy(false);
     }
@@ -201,14 +200,6 @@ export default function FacultyRoster() {
                     <div className="ro-chip-lbl">Slots</div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {pageError && <div className="ro-alert-err">{pageError}</div>}
-            {flash && (
-              <div className="ro-alert-ok" style={{ background: 'var(--green-tint,#e6f1ec)', color: 'var(--green,#0a7c52)', padding: '10px 14px', fontSize: 13, marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <span>{flash}</span>
-                <button onClick={() => setFlash('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}><i className="ti ti-x" /></button>
               </div>
             )}
 

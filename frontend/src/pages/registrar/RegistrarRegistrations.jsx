@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../../api/axios';
+import { useToast } from '../../components/Toast';
 
 const TABS = [
   { key: 'pending',  label: 'Pending'  },
@@ -16,13 +17,12 @@ function fmtDate(s) {
 }
 
 export default function RegistrarRegistrations() {
+  const toast = useToast();
   const [tab,     setTab]     = useState('pending');
   const [rows,    setRows]    = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [search,      setSearch]      = useState('');
-  const [flash,   setFlash]   = useState('');
 
   const [reject,   setReject]   = useState(null);   // row being rejected
   const [remarks,  setRemarks]  = useState('');
@@ -30,12 +30,12 @@ export default function RegistrarRegistrations() {
   const [reviewErr, setReviewErr] = useState('');
 
   const fetchRows = useCallback(() => {
-    setLoading(true); setError('');
+    setLoading(true);
     const params = new URLSearchParams({ status: tab });
     if (search) params.append('search', search);
     api.get(`/auth/registrar/registrations/?${params.toString()}`)
       .then(res => setRows(res.data.results ?? res.data))
-      .catch(() => setError('Failed to load registration requests.'))
+      .catch(() => toast('Failed to load registration requests.', { type: 'error' }))
       .finally(() => setLoading(false));
   }, [tab, search]);
 
@@ -44,13 +44,13 @@ export default function RegistrarRegistrations() {
   function handleSearch(e) { e.preventDefault(); setSearch(searchInput.trim()); }
 
   async function approve(row) {
-    setBusyId(row.id); setError('');
+    setBusyId(row.id);
     try {
       await api.post(`/auth/registrar/registrations/${row.id}/review/`, { action: 'approve' });
-      setFlash(`${row.full_name} approved. They can now log in.`);
+      toast(`${row.full_name} approved. They can now log in.`, { type: 'success' });
       fetchRows();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to approve.');
+      toast(err.response?.data?.error || 'Failed to approve.', { type: 'error' });
     } finally { setBusyId(null); }
   }
 
@@ -60,11 +60,11 @@ export default function RegistrarRegistrations() {
     setBusyId(reject.id); setReviewErr('');
     try {
       await api.post(`/auth/registrar/registrations/${reject.id}/review/`, { action: 'reject', remarks: remarks.trim() });
-      setFlash(`${reject.full_name}'s registration was rejected.`);
+      toast(`${reject.full_name}'s registration was rejected.`, { type: 'success' });
       setReject(null); setRemarks('');
       fetchRows();
     } catch (err) {
-      setReviewErr(err.response?.data?.remarks?.[0] || err.response?.data?.error || 'Failed to reject.');
+      toast(err.response?.data?.remarks?.[0] || err.response?.data?.error || 'Failed to reject.', { type: 'error' });
     } finally { setBusyId(null); }
   }
 
@@ -80,15 +80,12 @@ export default function RegistrarRegistrations() {
         </div>
       </div>
 
-      {flash && <div className="rr-flash rr-flash-ok">{flash}</div>}
-      {error && <div className="rr-flash rr-flash-err">{error}</div>}
-
       <div className="rr-tabs">
         {TABS.map(t => (
           <button
             key={t.key}
             className={`rr-tab${tab === t.key ? ' active' : ''}`}
-            onClick={() => { setTab(t.key); setFlash(''); }}
+            onClick={() => { setTab(t.key); }}
           >{t.label}</button>
         ))}
         <form className="rr-search" onSubmit={handleSearch}>

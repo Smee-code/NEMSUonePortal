@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../../api/axios';
+import { useToast } from '../../components/Toast';
 
 const TABS = [
   { key: 'pending',  label: 'Pending'  },
@@ -18,11 +19,10 @@ function fmtSize(bytes) {
 }
 
 export default function EncoderApplications() {
+  const toast = useToast();
   const [tab,     setTab]     = useState('pending');
   const [rows,    setRows]    = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
-  const [flash,   setFlash]   = useState('');
   const [expanded, setExpanded] = useState(null);
 
   const [reject,    setReject]    = useState(null);
@@ -31,23 +31,23 @@ export default function EncoderApplications() {
   const [reviewErr, setReviewErr] = useState('');
 
   const fetchRows = useCallback(() => {
-    setLoading(true); setError('');
+    setLoading(true);
     api.get(`/enrollment/pending/?status=${tab}`)
       .then(res => setRows(res.data.results ?? res.data))
-      .catch(() => setError('Failed to load applications.'))
+      .catch(() => toast('Failed to load applications.', { type: 'error' }))
       .finally(() => setLoading(false));
   }, [tab]);
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
   async function approve(row) {
-    setBusyId(row.id); setError('');
+    setBusyId(row.id);
     try {
       await api.patch(`/enrollment/pending/${row.id}/review/`, { status: 'approved' });
-      setFlash(`${row.full_name} approved. Notified they qualify for the entrance exam.`);
+      toast(`${row.full_name} approved. Notified they qualify for the entrance exam.`, { type: 'success' });
       fetchRows();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to approve.');
+      toast(err.response?.data?.error || 'Failed to approve.', { type: 'error' });
     } finally { setBusyId(null); }
   }
 
@@ -57,7 +57,7 @@ export default function EncoderApplications() {
     setBusyId(reject.id); setReviewErr('');
     try {
       await api.patch(`/enrollment/pending/${reject.id}/review/`, { status: 'rejected', remarks: remarks.trim() });
-      setFlash(`${reject.full_name}'s application was rejected.`);
+      toast(`${reject.full_name}'s application was rejected.`, { type: 'success' });
       setReject(null); setRemarks('');
       fetchRows();
     } catch (err) {
@@ -75,12 +75,9 @@ export default function EncoderApplications() {
         <div className="sub">Review incoming applicants for your department's programs. Approving notifies them that they qualify for the entrance exam. No account is created yet.</div>
       </div>
 
-      {flash && <div className="ea-flash ea-flash-ok">{flash}</div>}
-      {error && <div className="ea-flash ea-flash-err">{error}</div>}
-
       <div className="ea-tabs">
         {TABS.map(t => (
-          <button key={t.key} className={`ea-tab${tab === t.key ? ' active' : ''}`} onClick={() => { setTab(t.key); setFlash(''); setExpanded(null); }}>
+          <button key={t.key} className={`ea-tab${tab === t.key ? ' active' : ''}`} onClick={() => { setTab(t.key); setExpanded(null); }}>
             {t.label}
           </button>
         ))}

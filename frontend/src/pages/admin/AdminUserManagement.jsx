@@ -70,7 +70,6 @@ export default function AdminUserManagement() {
   const [offset,     setOffset]     = useState(0);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
 
   const [filterRole,     setFilterRole]     = useState('');
   const [filterActive,   setFilterActive]   = useState('');
@@ -127,7 +126,6 @@ export default function AdminUserManagement() {
       }
       await api.post('/auth/admin/users/', payload);
       const msg = `${ROLE_LABEL[createForm.role]} account for ${payload.full_name} created.`;
-      setSuccessMsg(msg);
       toast(msg, { type: 'success' });
       setShowCreate(false);
       fetchUsers(0);
@@ -185,7 +183,7 @@ export default function AdminUserManagement() {
 
   async function handleSave(u) {
     const form = editForm[u.id];
-    setSaving(u.id); setError(''); setSuccessMsg('');
+    setSaving(u.id); setError('');
     try {
       const payload = {};
       if (form.role !== u.role)           payload.role      = form.role;
@@ -208,7 +206,6 @@ export default function AdminUserManagement() {
       if (Object.keys(payload).length === 0) { setSaving(null); return; }
       await api.patch(`/auth/admin/users/${u.id}/`, payload);
       const msg = `Account for ${u.full_name} updated.`;
-      setSuccessMsg(msg);
       toast(msg, { type: 'success' });
       setExpandedId(null);
       fetchUsers(offset);
@@ -304,8 +301,7 @@ export default function AdminUserManagement() {
         )}
       </div>
 
-      {error      && <div className="um-flash um-flash-err">{error}</div>}
-      {successMsg && <div className="um-flash um-flash-ok">{successMsg}</div>}
+      {error && <div className="um-flash um-flash-err">{error}</div>}
 
       {loading ? (
         <div className="um-loading">Loading users…</div>
