@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import Lightbox from '../components/Lightbox';
 
 /* ══════════════════════════════════════════════════════════════
    CSS — ported from landing-redesign.html
@@ -290,6 +291,8 @@ const CSS = `
   .life-item .meta{position:absolute;left:1.25rem;right:1.25rem;bottom:1.25rem;z-index:3;}
   .life-item .micro{color:var(--gold-soft);margin-bottom:6px;font-size:10px;}
   .life-item .title{font-family:'Instrument Serif',serif;font-weight:400;font-size:22px;line-height:1.15;color:#fff;letter-spacing:-.01em;}
+  .life-count{position:absolute;top:.9rem;right:.9rem;z-index:3;display:inline-flex;align-items:center;gap:5px;background:rgba(10,22,40,.62);color:#fff;font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;backdrop-filter:blur(4px);}
+  .life-item:hover img{transform:scale(1.04);transition:transform .5s ease}
   .life-a{grid-column:span 7;grid-row:span 3}
   .life-b{grid-column:span 5;grid-row:span 2}
   .life-c{grid-column:span 5;grid-row:span 2}
@@ -1216,12 +1219,22 @@ function Programs({ programs, content }) {
 }
 const LIFE_CLS  = ['life-a', 'life-b', 'life-c', 'life-d', 'life-e', 'life-f'];
 const LIFE_KEYS = ['lifeA', 'lifeB', 'lifeC', 'lifeD', 'lifeE', 'lifeF'];
+function lifeImages(l) {
+  if (Array.isArray(l.images) && l.images.length) return l.images.filter(Boolean);
+  if (l.imageUrl) return [l.imageUrl];
+  return [];
+}
 function Life({ content }) {
-  const items = (content?.items ?? LIFE).map((l, i) => ({
-    ...l,
-    cls: l.cls || LIFE_CLS[i % 6],
-    src: l.imageUrl || PHOTO[l.photoKey] || PHOTO[LIFE_KEYS[i % 6]],
-  }));
+  const [box, setBox] = useState(null); // { images, title }
+  const items = (content?.items ?? LIFE).map((l, i) => {
+    const imgs = lifeImages(l);
+    return {
+      ...l,
+      cls: l.cls || LIFE_CLS[i % 6],
+      images: imgs,
+      src: imgs[0] || PHOTO[l.photoKey] || PHOTO[LIFE_KEYS[i % 6]],
+    };
+  });
   return (
     <section id="life" className="life">
       <div className="lp-wrap">
@@ -1236,16 +1249,19 @@ function Life({ content }) {
         </Reveal>
         <div className="life-grid">
           {items.map((l, i) => (
-            <Link key={l.id || i} to="/campus-life" className={`life-item ${l.cls}`}>
+            <button key={l.id || i} type="button" className={`life-item ${l.cls}`}
+              onClick={() => l.images.length ? setBox({ images: l.images, title: l.title }) : null}>
               <Img src={l.src} alt={l.title} />
+              {l.images.length > 1 && <span className="life-count"><i className="ti ti-photo" /> {l.images.length}</span>}
               <div className="meta">
                 <div className="micro">{l.tag}</div>
                 <div className="title">{l.title}</div>
               </div>
-            </Link>
+            </button>
           ))}
         </div>
       </div>
+      {box && <Lightbox images={box.images} title={box.title} onClose={() => setBox(null)} />}
     </section>
   );
 }

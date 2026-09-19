@@ -44,7 +44,7 @@ const SECTIONS = [
     { name: 'eyebrow', type: 'text', label: 'Eyebrow' },
     { name: 'heading', type: 'text', label: 'Heading' },
     { name: 'items', type: 'objlist', label: 'Items',
-      item: [{ name: 'tag', label: 'Tag' }, { name: 'title', label: 'Title' }, { name: 'imageUrl', label: 'Image', type: 'image' }] },
+      item: [{ name: 'tag', label: 'Tag' }, { name: 'title', label: 'Title' }, { name: 'images', label: 'Images', type: 'images' }] },
   ] },
   { key: 'facilities', label: 'Campus Facilities', fields: [
     { name: 'eyebrow', type: 'text', label: 'Eyebrow' },
@@ -97,12 +97,61 @@ function ImageField({ value, onChange }) {
   );
 }
 
+function MultiImageField({ value, onChange }) {
+  const ref = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const arr = Array.isArray(value) ? value : (value ? [value] : []);
+  async function pick(e) {
+    const files = Array.from(e.target.files || []); if (e.target) e.target.value = '';
+    if (!files.length) return;
+    setBusy(true); setErr('');
+    try {
+      const urls = [];
+      for (const f of files) urls.push(await uploadImage(f));
+      onChange([...arr, ...urls]);
+    } catch (er) { setErr(er.response?.data?.error || 'Upload failed.'); }
+    finally { setBusy(false); }
+  }
+  const removeAt = i => onChange(arr.filter((_, j) => j !== i));
+  const makeCover = i => { const n = [...arr]; const [m] = n.splice(i, 1); onChange([m, ...n]); };
+  return (
+    <div className="sc-mimg">
+      {arr.length > 0 ? (
+        <div className="sc-mimg-grid">
+          {arr.map((url, i) => (
+            <div key={i} className="sc-mimg-cell">
+              <img src={url} alt="" className="sc-mimg-thumb" />
+              {i === 0 && <span className="sc-mimg-cover">Cover</span>}
+              <div className="sc-mimg-cellactions">
+                {i !== 0 && <button type="button" className="sc-mimg-btn" title="Make cover" onClick={() => makeCover(i)}><i className="ti ti-star" /></button>}
+                <button type="button" className="sc-mimg-btn sc-mimg-del" title="Remove" onClick={() => removeAt(i)}><i className="ti ti-x" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : <div className="sc-img-none">No images yet</div>}
+      <div className="sc-img-actions">
+        <input ref={ref} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={pick} />
+        <button type="button" className="btn-sec" onClick={() => ref.current?.click()} disabled={busy}>
+          <i className="ti ti-upload" /> {busy ? 'Uploading…' : 'Add images'}
+        </button>
+        <span className="sc-mimg-hint">First image is the tile cover · you can add several at once</span>
+      </div>
+      {err && <div className="sc-err">{err}</div>}
+    </div>
+  );
+}
+
 function Field({ def, value, onChange }) {
   if (def.type === 'textarea') {
     return <textarea className="sc-input" rows={3} value={value || ''} onChange={e => onChange(e.target.value)} />;
   }
   if (def.type === 'image') {
     return <ImageField value={value} onChange={onChange} />;
+  }
+  if (def.type === 'images') {
+    return <MultiImageField value={value} onChange={onChange} />;
   }
   if (def.type === 'stringlist') {
     const arr = Array.isArray(value) ? value : [];
@@ -129,7 +178,9 @@ function Field({ def, value, onChange }) {
             {def.item.map(sub => (
               <div key={sub.name} className="sc-subfield">
                 <label className="sc-sublabel">{sub.label}</label>
-                {sub.type === 'image'
+                {sub.type === 'images'
+                  ? <MultiImageField value={o[sub.name]} onChange={v => upd(i, sub.name, v)} />
+                  : sub.type === 'image'
                   ? <ImageField value={o[sub.name]} onChange={v => upd(i, sub.name, v)} />
                   : sub.type === 'textarea'
                     ? <textarea className="sc-input" rows={2} value={o[sub.name] || ''} onChange={e => upd(i, sub.name, e.target.value)} />
@@ -138,7 +189,7 @@ function Field({ def, value, onChange }) {
             ))}
           </div>
         ))}
-        <button type="button" className="btn-sec sc-add" onClick={() => onChange([...arr, Object.fromEntries(def.item.map(s => [s.name, '']))])}><i className="ti ti-plus" /> Add item</button>
+        <button type="button" className="btn-sec sc-add" onClick={() => onChange([...arr, Object.fromEntries(def.item.map(s => [s.name, s.type === 'images' ? [] : '']))])}><i className="ti ti-plus" /> Add item</button>
       </div>
     );
   }
@@ -248,6 +299,16 @@ const CSS = `
   .sc-img{display:flex;flex-direction:column;gap:8px}
   .sc-img-prev{max-width:220px;max-height:120px;object-fit:cover;border:1px solid var(--adm-line)}
   .sc-img-none{width:220px;height:70px;display:flex;align-items:center;justify-content:center;background:var(--adm-cool,#f4f6fa);color:var(--adm-faint);font-size:12px;border:1px dashed var(--adm-line)}
-  .sc-img-actions{display:flex;gap:8px;align-items:center}
+  .sc-img-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .sc-err{color:var(--adm-red,#a8331e);font-size:12px}
+  .sc-mimg{display:flex;flex-direction:column;gap:10px}
+  .sc-mimg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+  .sc-mimg-cell{position:relative;border:1px solid var(--adm-line);overflow:hidden;aspect-ratio:4/3;background:var(--adm-cool,#f4f6fa)}
+  .sc-mimg-thumb{width:100%;height:100%;object-fit:cover;display:block}
+  .sc-mimg-cover{position:absolute;left:5px;top:5px;background:var(--adm-gold,#b89043);color:#fff;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px}
+  .sc-mimg-cellactions{position:absolute;right:4px;top:4px;display:flex;gap:4px}
+  .sc-mimg-btn{width:24px;height:24px;border:none;background:rgba(15,20,30,.62);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0}
+  .sc-mimg-btn:hover{background:rgba(15,20,30,.85)}
+  .sc-mimg-del:hover{background:var(--adm-red,#a8331e)}
+  .sc-mimg-hint{font-size:11px;color:var(--adm-faint)}
 `;

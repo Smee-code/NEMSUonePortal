@@ -54,12 +54,12 @@ SITE_CONTENT_DEFAULTS = {
         "eyebrow": "Campus life",
         "heading": "Life at Cantilan.",
         "items": [
-            {"tag": "Campus", "title": "A campus that grows with its community", "imageUrl": ""},
-            {"tag": "Academics", "title": "Hands-on learning, beyond the classroom", "imageUrl": ""},
-            {"tag": "Student life", "title": "From orgs to sports — find your community", "imageUrl": ""},
-            {"tag": "Research", "title": "Applied science for the Caraga region", "imageUrl": ""},
-            {"tag": "Faculty", "title": "Mentors invested in your growth", "imageUrl": ""},
-            {"tag": "Events", "title": "Tradition meets contemporary culture", "imageUrl": ""},
+            {"tag": "Campus", "title": "A campus that grows with its community", "images": []},
+            {"tag": "Academics", "title": "Hands-on learning, beyond the classroom", "images": []},
+            {"tag": "Student life", "title": "From orgs to sports — find your community", "images": []},
+            {"tag": "Research", "title": "Applied science for the Caraga region", "images": []},
+            {"tag": "Faculty", "title": "Mentors invested in your growth", "images": []},
+            {"tag": "Events", "title": "Tradition meets contemporary culture", "images": []},
         ],
     },
     "facilities": {
