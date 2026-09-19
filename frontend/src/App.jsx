@@ -3,6 +3,7 @@ import RequireRole from './components/RequireRole';
 import { AuthProvider } from './context/AuthContext';
 
 import LandingPage from './pages/LandingPage';
+import NewsPage from './pages/NewsPage';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import Unauthorized from './pages/Unauthorized';
@@ -146,6 +147,7 @@ export default function App() {
 
           {/* ── Landing & fallback ────────────────────────────────── */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/news" element={<NewsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

@@ -393,6 +393,43 @@ const CSS = `
   @keyframes lp-slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
   .modal{background:#fff;max-width:520px;width:100%;border:1px solid var(--line);animation:lp-slideUp .25s cubic-bezier(.4,0,.2,1);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 3rem);}
   .modal--wide{max-width:880px}
+  /* Detail / read-more modal */
+  .lp-dtl{background:#fff;max-width:620px;width:100%;border:1px solid var(--line);animation:lp-slideUp .25s cubic-bezier(.4,0,.2,1);position:relative;max-height:calc(100vh - 3rem);overflow-y:auto;}
+  .lp-dtl-x{position:absolute;top:12px;right:12px;z-index:2;width:36px;height:36px;border:none;background:rgba(255,255,255,.9);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .lp-dtl-x:hover{background:#fff}
+  .lp-dtl-img{aspect-ratio:16/9;overflow:hidden;background:var(--cool);}
+  .lp-dtl-img img{width:100%;height:100%;object-fit:cover;display:block;}
+  .lp-dtl-body{padding:1.75rem 2rem 2rem;}
+  .lp-dtl-meta{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:.75rem;}
+  .lp-dtl-body h3{font-size:26px;line-height:1.15;color:var(--ink);letter-spacing:-.01em;margin-bottom:.5rem;font-weight:500;}
+  .lp-dtl-sub{font-size:12px;color:var(--muted);margin-bottom:1rem;}
+  .lp-dtl-body p{font-size:15px;line-height:1.75;color:var(--muted);}
+  /* All programs modal */
+  .lp-progmodal{background:#fff;max-width:760px;width:100%;border:1px solid var(--line);animation:lp-slideUp .25s cubic-bezier(.4,0,.2,1);max-height:calc(100vh - 3rem);display:flex;flex-direction:column;}
+  .lp-progmodal-head{display:flex;justify-content:space-between;align-items:flex-start;padding:1.5rem 1.75rem;border-bottom:1px solid var(--line);}
+  .lp-progmodal-head h3{font-size:22px;color:var(--ink);font-weight:500;margin-top:4px;}
+  .lp-progmodal-head .lp-dtl-x{position:static;background:none;}
+  .lp-progmodal-body{padding:1.5rem 1.75rem;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:1.5rem 2rem;}
+  .lp-progdept-name{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:700;padding-bottom:.5rem;margin-bottom:.75rem;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;}
+  .lp-progdept-name span{color:var(--faint);}
+  .lp-progdept ul{list-style:none;display:flex;flex-direction:column;gap:8px;}
+  .lp-progdept li{display:flex;align-items:flex-start;gap:9px;font-size:14px;color:var(--ink);line-height:1.4;}
+  .lp-progdot{width:5px;height:5px;background:var(--gold);border-radius:50%;margin-top:7px;flex-shrink:0;}
+  /* Campus life gallery modal */
+  .lp-gallery{background:#fff;max-width:960px;width:100%;border:1px solid var(--line);animation:lp-slideUp .25s cubic-bezier(.4,0,.2,1);max-height:calc(100vh - 3rem);display:flex;flex-direction:column;}
+  .lp-gallery-head{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.75rem;border-bottom:1px solid var(--line);}
+  .lp-gallery-head h3{font-size:22px;color:var(--ink);font-weight:500;}
+  .lp-gallery-head .lp-dtl-x{position:static;background:none;}
+  .lp-gallery-grid{padding:1.5rem 1.75rem;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;}
+  .lp-gallery-item{position:relative;aspect-ratio:4/3;overflow:hidden;background:var(--cool);}
+  .lp-gallery-item img{width:100%;height:100%;object-fit:cover;display:block;}
+  .lp-gallery-meta{position:absolute;inset:auto 0 0 0;padding:.9rem 1rem;background:linear-gradient(transparent,rgba(10,22,40,.85));color:#fff;}
+  .lp-gallery-tag{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-soft);font-weight:600;}
+  .lp-gallery-title{font-size:14px;font-weight:500;margin-top:2px;line-height:1.3;}
+  /* Cards that became <button> — keep original look, fix button defaults */
+  .news-card{font-family:inherit;text-align:left;width:100%;padding:0;}
+  .life-item{font-family:inherit;text-align:left;width:100%;padding:0;cursor:pointer;}
+  @media(max-width:640px){.lp-progmodal-body{grid-template-columns:1fr}}
   .modal--med{max-width:640px}
   .modal-head{padding:1.75rem 2.5rem 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
   .modal-head-brand{display:flex;align-items:center;gap:12px}
@@ -959,6 +996,7 @@ function AudiencePortals({ onLogin, onEnroll }) {
 function Spotlight({ content }) {
   const post = content || SPOTLIGHT_FALLBACK;
   const dateLabel = post.date || post.createdAt || '';
+  const [openStory, setOpenStory] = useState(false);
 
   return (
     <section className="spot">
@@ -969,7 +1007,6 @@ function Spotlight({ content }) {
               <div className="eyebrow">In focus</div>
               <h2 className="h-section" style={{ marginTop: '1rem' }}>From the <em>Cantilan</em> Campus.</h2>
             </div>
-            <a href="#stories" className="btn-link">All stories <i className="ti ti-arrow-right" /></a>
           </div>
         </Reveal>
         <div className="spot-grid">
@@ -984,13 +1021,19 @@ function Spotlight({ content }) {
               <h3>{post.title}</h3>
               <p>{post.body}</p>
               <div className="spot-byline">{post.byline}{dateLabel ? ` · ${dateLabel}` : ''}</div>
-              <a href="#read" className="btn-link" style={{ alignSelf: 'flex-start' }}>
+              <button type="button" className="btn-link" style={{ alignSelf: 'flex-start' }} onClick={() => setOpenStory(true)}>
                 Read the full story <i className="ti ti-arrow-right" />
-              </a>
+              </button>
             </div>
           </Reveal>
         </div>
       </div>
+      {openStory && (
+        <DetailModal
+          onClose={() => setOpenStory(false)}
+          item={{ image: post.imageUrl, meta: post.category, title: post.title, body: post.body, sub: `${post.byline}${dateLabel ? ` · ${dateLabel}` : ''}` }}
+        />
+      )}
     </section>
   );
 }
@@ -1115,19 +1158,19 @@ function VisionMission({ content }) {
 }
 
 function Programs({ programs, content }) {
-  const [showAll, setShowAll] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const PREVIEW_COUNT = 6;
 
   const list = programs?.length
     ? programs.map((p, i) => ({
         num:  String(i + 1).padStart(2, '0'),
         name: p.name,
-        dept: p.department ?? p.dept ?? '',
+        dept: p.department_name ?? p.department ?? p.dept ?? '',
         desc: p.description ?? p.desc ?? '',
       }))
     : PROGRAMS_STATIC;
 
-  const visible = showAll ? list : list.slice(0, PREVIEW_COUNT);
+  const visible = list.slice(0, PREVIEW_COUNT);
   const hasMore = list.length > PREVIEW_COUNT;
 
   return (
@@ -1141,12 +1184,9 @@ function Programs({ programs, content }) {
                 {content?.heading || <>Undergraduate programs at <em>Cantilan Campus</em>.</>}
               </h2>
             </div>
-            {hasMore && (
-              <button type="button" className="btn-link" onClick={() => setShowAll(s => !s)}>
-                {showAll ? 'Show fewer' : `All programs (${list.length})`}
-                <i className={`ti ti-arrow-${showAll ? 'up' : 'right'}`} />
-              </button>
-            )}
+            <button type="button" className="btn-link" onClick={() => setShowModal(true)}>
+              All programs{hasMore ? ` (${list.length})` : ''} <i className="ti ti-arrow-right" />
+            </button>
           </div>
         </Reveal>
         <div className="progs-grid">
@@ -1156,19 +1196,21 @@ function Programs({ programs, content }) {
                 <div className="prog-num">— {p.num}</div>
                 <i className="ti ti-arrow-up-right arrow" />
                 <h4>{p.name}</h4>
-                <div className="dept">Dept. of {p.dept}</div>
+                <div className="dept">{p.dept}</div>
                 <p>{p.desc}</p>
               </article>
             </Reveal>
           ))}
         </div>
       </div>
+      {showModal && <AllProgramsModal list={list} onClose={() => setShowModal(false)} />}
     </section>
   );
 }
 const LIFE_CLS  = ['life-a', 'life-b', 'life-c', 'life-d', 'life-e', 'life-f'];
 const LIFE_KEYS = ['lifeA', 'lifeB', 'lifeC', 'lifeD', 'lifeE', 'lifeF'];
 function Life({ content }) {
+  const [showGallery, setShowGallery] = useState(false);
   const items = (content?.items ?? LIFE).map((l, i) => ({
     ...l,
     cls: l.cls || LIFE_CLS[i % 6],
@@ -1183,21 +1225,22 @@ function Life({ content }) {
               <div className="eyebrow">{content?.eyebrow || 'Campus life'}</div>
               <h2 className="h-section" style={{ marginTop: '1rem' }}>{content?.heading || <>Life at <em>Cantilan</em>.</>}</h2>
             </div>
-            <a href="#life-all" className="btn-link">Explore campus <i className="ti ti-arrow-right" /></a>
+            <button type="button" className="btn-link" onClick={() => setShowGallery(true)}>Explore campus <i className="ti ti-arrow-right" /></button>
           </div>
         </Reveal>
         <div className="life-grid">
           {items.map((l, i) => (
-            <a key={l.id || i} href="#" className={`life-item ${l.cls}`}>
+            <button key={l.id || i} type="button" className={`life-item ${l.cls}`} onClick={() => setShowGallery(true)}>
               <Img src={l.src} alt={l.title} />
               <div className="meta">
                 <div className="micro">{l.tag}</div>
                 <div className="title">{l.title}</div>
               </div>
-            </a>
+            </button>
           ))}
         </div>
       </div>
+      {showGallery && <LifeGalleryModal items={items} onClose={() => setShowGallery(false)} />}
     </section>
   );
 }
@@ -1232,8 +1275,18 @@ function Facilities({ content }) {
   );
 }
 
+function newsToItem(n) {
+  return {
+    image: n.imageUrl || PHOTO[n.photoKey],
+    meta: `${n.tag}${n.my ? ` · ${n.my.split(' ')[0]} ${n.day}, ${n.my.split(' ')[1]}` : ''}`,
+    title: n.title,
+    body: n.body,
+  };
+}
+
 function News({ content }) {
   const items = content?.items ?? NEWS;
+  const [active, setActive] = useState(null);
   return (
     <section id="news" className="news">
       <div className="lp-wrap">
@@ -1245,28 +1298,29 @@ function News({ content }) {
                 {content?.heading || <>What's happening on <em>campus</em>.</>}
               </h2>
             </div>
-            <a href="#all-news" className="btn-link">All news <i className="ti ti-arrow-right" /></a>
+            <Link to="/news" className="btn-link">All news <i className="ti ti-arrow-right" /></Link>
           </div>
         </Reveal>
         <div className="news-grid">
           {items.map((n, i) => (
             <Reveal key={n.id || i} delay={i * 0.06}>
-              <a href="#" className="news-card">
+              <button type="button" className="news-card" onClick={() => setActive(n)}>
                 <div className="news-card-image">
                   <Img src={n.imageUrl || PHOTO[n.photoKey]} alt={n.title} />
                   <div className="news-card-tag">{n.tag}</div>
                 </div>
                 <div className="news-card-body">
-                  <div className="news-card-date">{n.my.split(' ')[0]} {n.day}, {n.my.split(' ')[1]}</div>
+                  <div className="news-card-date">{n.my?.split(' ')[0]} {n.day}, {n.my?.split(' ')[1]}</div>
                   <h3>{n.title}</h3>
                   <p>{n.body}</p>
                   <span className="read">Read more <i className="ti ti-arrow-right" /></span>
                 </div>
-              </a>
+              </button>
             </Reveal>
           ))}
         </div>
       </div>
+      {active && <DetailModal onClose={() => setActive(null)} item={newsToItem(active)} />}
     </section>
   );
 }
@@ -1351,6 +1405,94 @@ function Footer({ onEnroll, onLogin, onSignup }) {
         </div>
       </div>
     </footer>
+  );
+}
+
+function DetailModal({ item, onClose }) {
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  if (!item) return null;
+  return (
+    <div className="modal-back" onClick={onClose}>
+      <div className="lp-dtl" onClick={e => e.stopPropagation()}>
+        <button className="lp-dtl-x" onClick={onClose} aria-label="Close"><i className="ti ti-x" /></button>
+        {item.image && <div className="lp-dtl-img"><img src={item.image} alt={item.title || ''} /></div>}
+        <div className="lp-dtl-body">
+          {item.meta && <div className="lp-dtl-meta">{item.meta}</div>}
+          {item.title && <h3>{item.title}</h3>}
+          {item.sub && <div className="lp-dtl-sub">{item.sub}</div>}
+          {item.body && <p>{item.body}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AllProgramsModal({ list, onClose }) {
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const groups = {};
+  list.forEach(p => { const d = p.dept || 'Other'; (groups[d] = groups[d] || []).push(p); });
+  const deptNames = Object.keys(groups).sort();
+  return (
+    <div className="modal-back" onClick={onClose}>
+      <div className="lp-progmodal" onClick={e => e.stopPropagation()}>
+        <div className="lp-progmodal-head">
+          <div>
+            <div className="eyebrow">Academic programs</div>
+            <h3>All programs by department</h3>
+          </div>
+          <button className="lp-dtl-x" onClick={onClose} aria-label="Close"><i className="ti ti-x" /></button>
+        </div>
+        <div className="lp-progmodal-body">
+          {deptNames.map(dept => (
+            <div key={dept} className="lp-progdept">
+              <div className="lp-progdept-name">{dept}<span>{groups[dept].length}</span></div>
+              <ul>
+                {groups[dept].map((p, i) => (
+                  <li key={i}><span className="lp-progdot" />{p.name}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LifeGalleryModal({ items, onClose }) {
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="modal-back" onClick={onClose}>
+      <div className="lp-gallery" onClick={e => e.stopPropagation()}>
+        <div className="lp-gallery-head">
+          <h3>Life at Cantilan</h3>
+          <button className="lp-dtl-x" onClick={onClose} aria-label="Close"><i className="ti ti-x" /></button>
+        </div>
+        <div className="lp-gallery-grid">
+          {items.map((l, i) => (
+            <div key={l.id || i} className="lp-gallery-item">
+              <img src={l.src} alt={l.title || ''} />
+              <div className="lp-gallery-meta">
+                <div className="lp-gallery-tag">{l.tag}</div>
+                <div className="lp-gallery-title">{l.title}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
