@@ -614,7 +614,7 @@ const PORTALS = [
   { kind:'For students',    name:'Student Portal',    action:'login'  },
   { kind:'For faculty',     name:'Faculty Portal',    action:'login'  },
   { kind:'For registrar',   name:'Registrar Console', action:'login'  },
-  { kind:'Future students', name:'Apply & Enroll',    action:'enroll' },
+  { kind:'Incoming freshmen', name:'Apply Now',       action:'enroll' },
 ];
 
 const PILLARS = [
