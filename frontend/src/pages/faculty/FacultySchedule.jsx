@@ -386,7 +386,7 @@ export default function FacultyTeachingLoad() {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '1.75rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: '1.75rem' }}>
           {load.map(ta => {
             const taId = ta.teaching_assignment_id;
             const sortedSlots = [...(ta.slots || [])].sort((a, b) =>
@@ -397,79 +397,57 @@ export default function FacultyTeachingLoad() {
               <div key={taId} className="tl-card">
                 {/* Card header */}
                 <div className="tl-card-head">
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, letterSpacing: '.1em', color: 'var(--gold)', textTransform: 'uppercase', fontWeight: 600 }}>
-                        {ta.subject_code}
-                      </span>
-                      {ta.section && (
-                        <span className="tag" style={{ background: 'var(--gold-tint)', color: 'var(--gold)', border: 'none', fontSize: 10, fontWeight: 700 }}>
-                          {ta.section}
-                        </span>
-                      )}
-                      <span className="tag" style={{ background: 'var(--cool)', color: 'var(--ink-2)', border: 'none', fontSize: 10 }}>
-                        {ta.subject_units} units
-                      </span>
-                      {ta.term && (
-                        <span className="tag" style={{ background: '#dbeafe', color: '#1e40af', border: 'none', fontSize: 10 }}>
-                          {ta.term}
-                        </span>
-                      )}
+                  <div className="tl-head-info">
+                    <div className="tl-head-title">
+                      <span className="tl-code">{ta.subject_code}</span>
+                      {ta.section && <span className="tl-sec">{ta.section}</span>}
+                      <span className="tl-name">{ta.subject_name}</span>
                     </div>
-                    <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 500, fontSize: 17, color: 'var(--ink)', letterSpacing: '-.005em' }}>
-                      {ta.subject_name}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
-                      {ta.student_count} student{ta.student_count !== 1 ? 's' : ''} enrolled
+                    <div className="tl-meta">
+                      <span>{ta.subject_units} unit{Number(ta.subject_units) !== 1 ? 's' : ''}</span>
+                      <span className="tl-dot">·</span>
+                      <span>{ta.student_count} student{ta.student_count !== 1 ? 's' : ''}</span>
+                      {ta.term && <><span className="tl-dot">·</span><span className="tl-term">{ta.term}</span></>}
                     </div>
                   </div>
                   <button
                     className="tl-btn-remove"
                     disabled={deletingAssignment === taId}
                     onClick={() => handleDeleteAssignment(taId)}
+                    title="Remove assignment"
                   >
-                    {deletingAssignment === taId ? 'Removing…' : <><i className="ti ti-trash" /> Remove</>}
+                    {deletingAssignment === taId ? '…' : <><i className="ti ti-trash" /> Remove</>}
                   </button>
                 </div>
 
                 {/* Schedule slots */}
                 <div className="tl-slots-section">
-                  {sortedSlots.length > 0 ? (
-                    <div className="tl-slots-row">
-                      {sortedSlots.map(slot => (
-                        <div key={slot.id} className="tl-slot-chip">
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                              {DAY_LABELS[slot.day_of_week]}
-                            </span>
-                            <button
-                              className="tl-slot-x"
-                              disabled={deletingSlot === slot.id}
-                              onClick={() => handleDeleteSlot(slot.id)}
-                              title="Remove slot"
-                            >
-                              {deletingSlot === slot.id ? '…' : '×'}
-                            </button>
-                          </div>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--green)' }}>
-                            {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-                          </span>
-                          <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{slot.room}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 12, color: 'var(--faint)', fontStyle: 'italic', marginBottom: '.5rem' }}>
-                      No schedule slots set yet.
-                    </div>
-                  )}
+                  <div className="tl-slots-row">
+                    {sortedSlots.map(slot => (
+                      <div key={slot.id} className="tl-slot-chip">
+                        <span className="tl-slot-day">{DAY_LABELS[slot.day_of_week]}</span>
+                        <span className="tl-slot-time">{formatTime(slot.start_time)}–{formatTime(slot.end_time)}</span>
+                        {slot.room && <span className="tl-slot-room">{slot.room}</span>}
+                        <button
+                          className="tl-slot-x"
+                          disabled={deletingSlot === slot.id}
+                          onClick={() => handleDeleteSlot(slot.id)}
+                          title="Remove slot"
+                        >
+                          {deletingSlot === slot.id ? '…' : <i className="ti ti-x" />}
+                        </button>
+                      </div>
+                    ))}
+                    {sortedSlots.length === 0 && <span className="tl-noslots">No schedule slots yet.</span>}
+                    {!slotOpen[taId] && (
+                      <button className="tl-btn-add-slot" onClick={() => toggleSlotForm(taId)}>
+                        <i className="ti ti-plus" /> Add slot
+                      </button>
+                    )}
+                  </div>
 
-                  {/* Add slot toggle / form */}
-                  {!slotOpen[taId] ? (
-                    <button className="tl-btn-add-slot" onClick={() => toggleSlotForm(taId)}>
-                      <i className="ti ti-plus" /> Add Schedule Slot
-                    </button>
-                  ) : (
+                  {/* Add slot form */}
+                  {slotOpen[taId] && (
                     <div className="tl-slot-form">
                       <div className="tl-slot-form-top">
                         <div>
@@ -732,46 +710,59 @@ const CSS = `
     font-size: 13px; margin-bottom: 1rem; border-left: 3px solid #dc2626;
   }
 
-  /* Assignment card */
+  /* Assignment card (compact) */
   .tl-card {
     background: #fff;
     border: 1px solid var(--line);
-    padding: 1.25rem 1.5rem;
+    padding: .9rem 1.1rem;
   }
+  .tl-card + .tl-card { border-top: none; }
   .tl-card-head {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 1rem;
-    margin-bottom: 1rem;
   }
+  .tl-head-info { min-width: 0; flex: 1; }
+  .tl-head-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .tl-code { font-size: 11px; letter-spacing: .07em; color: var(--gold); text-transform: uppercase; font-weight: 700; flex-shrink: 0; }
+  .tl-sec { font-size: 10px; font-weight: 700; background: var(--gold-tint); color: var(--gold); padding: 1px 6px; }
+  .tl-name { font-size: 15px; font-weight: 600; color: var(--ink); letter-spacing: -.005em; }
+  .tl-meta { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .tl-dot { color: var(--faint); }
+  .tl-term { color: var(--ink-2); font-weight: 500; }
   .tl-btn-remove {
-    display: flex; align-items: center; gap: 5px;
-    background: none; border: 1px solid #fca5a5; color: var(--red);
-    padding: .3rem .8rem; font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: none; border: 1px solid var(--line); color: var(--muted);
+    padding: .3rem .7rem; font-size: 12px; font-weight: 600;
     cursor: pointer; white-space: nowrap; flex-shrink: 0;
-    transition: background .15s;
+    transition: background .15s, border-color .15s, color .15s;
   }
-  .tl-btn-remove:hover:not(:disabled) { background: #fee2e2; }
+  .tl-btn-remove:hover:not(:disabled) { background: #fee2e2; border-color: #fca5a5; color: var(--red); }
   .tl-btn-remove:disabled { opacity: .6; cursor: default; }
 
-  /* Slots */
-  .tl-slots-section { border-top: 1px solid var(--line-soft); padding-top: .875rem; }
-  .tl-slots-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .75rem; }
+  /* Slots (compact inline pills) */
+  .tl-slots-section { border-top: 1px solid var(--line-soft); padding-top: .7rem; margin-top: .75rem; }
+  .tl-slots-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
   .tl-slot-chip {
+    display: inline-flex; align-items: center; gap: 8px;
     background: #f0fdf4; border: 1px solid #bbf7d0;
-    padding: .5rem .75rem; display: flex; flex-direction: column;
-    gap: 1px; min-width: 150px;
+    padding: 4px 6px 4px 10px; font-size: 12px; line-height: 1.2;
   }
+  .tl-slot-day { font-weight: 700; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; font-size: 11px; }
+  .tl-slot-time { font-weight: 600; color: var(--green); font-variant-numeric: tabular-nums; }
+  .tl-slot-room { color: var(--muted); }
   .tl-slot-x {
-    background: none; border: none; color: var(--red); font-size: 15px;
-    cursor: pointer; line-height: 1; padding: 0 0 0 .4rem; font-weight: 700;
+    background: none; border: none; color: var(--faint); font-size: 14px;
+    cursor: pointer; line-height: 1; padding: 0 0 0 2px; display: inline-flex;
   }
+  .tl-slot-x:hover:not(:disabled) { color: var(--red); }
   .tl-slot-x:disabled { opacity: .5; cursor: default; }
+  .tl-noslots { font-size: 12px; color: var(--faint); font-style: italic; }
   .tl-btn-add-slot {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: none; border: 1px dashed var(--faint); color: var(--muted);
-    padding: .35rem .9rem; font-size: 12px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+    background: none; border: 1px dashed var(--line); color: var(--muted);
+    padding: 4px 10px; font-size: 12px; cursor: pointer;
     transition: border-color .15s, color .15s;
   }
   .tl-btn-add-slot:hover { border-color: var(--ink); color: var(--ink); }
