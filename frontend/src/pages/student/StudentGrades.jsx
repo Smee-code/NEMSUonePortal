@@ -26,6 +26,18 @@ function wGpa(records) {
   return totalU > 0 ? (weighted / totalU).toFixed(2) : null;
 }
 
+/* A "back subject" leaves a student off the regular block sequence: a posted
+   grade that is failing (numeric > 3.0 in the 5-point scale), Incomplete, or
+   Dropped and therefore still has to be retaken/completed. */
+function isBackSubject(r) {
+  if (!r.is_submitted) return false;
+  const raw = (r.grade ?? '').toString().trim().toUpperCase();
+  if (!raw) return false;
+  if (['INC', 'DRP', 'DRP.', 'DROP', 'DROPPED', 'UD', 'FDA', 'F', 'FAILED'].includes(raw)) return true;
+  const n = parseFloat(raw);
+  return !isNaN(n) && n > 3.0;
+}
+
 export default function StudentGrades() {
   const { currentTerm } = useShell();
   const [grades, setGrades]   = useState([]);
@@ -74,6 +86,12 @@ export default function StudentGrades() {
     .filter(g => parseFloat(g.grade) <= 3.0)
     .reduce((s, r) => s + parseFloat(r.subject_units || 0), 0);
 
+  /* ── Academic standing ─────────────────────────────────────── */
+  // Irregular = carrying at least one back subject (failed / INC / dropped).
+  const backSubjects = grades.filter(isBackSubject);
+  const isIrregular  = backSubjects.length > 0;
+  const standing     = grades.length === 0 ? null : (isIrregular ? 'Irregular' : 'Regular');
+
   const termLabel = currentTerm
     ? `${currentTerm.semester_display} ${currentTerm.year}`
     : (termList[0]?.display ?? 'No grades yet');
@@ -118,11 +136,21 @@ export default function StudentGrades() {
         </div>
         <div className="stat">
           <div className="num">
-            <span className="tag status-active" style={{ fontSize: 11 }}>
-              {grades.length > 0 ? 'Regular' : '-'}
-            </span>
+            {standing ? (
+              <span
+                className={`tag ${isIrregular ? 'status-locked' : 'status-active'}`}
+                style={{ fontSize: 11 }}
+                title={isIrregular
+                  ? `${backSubjects.length} back subject${backSubjects.length !== 1 ? 's' : ''} (failed, incomplete, or dropped) still to be resolved`
+                  : 'No failed, incomplete, or dropped subjects on record'}
+              >
+                {standing}
+              </span>
+            ) : '-'}
           </div>
-          <div className="lbl">Standing</div>
+          <div className="lbl">
+            Standing{isIrregular ? ` · ${backSubjects.length} back subject${backSubjects.length !== 1 ? 's' : ''}` : ''}
+          </div>
         </div>
       </div>
 
