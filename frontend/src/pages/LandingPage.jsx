@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import Lightbox from '../components/Lightbox';
+import AuthModal from '../components/AuthModal';
 
 /* ══════════════════════════════════════════════════════════════
    CSS — ported from landing-redesign.html
@@ -110,7 +111,7 @@ const CSS = `
   .nav-mobile-link.active{color:var(--gold);border-left-color:var(--gold);background:rgba(184,144,67,.10);}
   .nav-mobile-link.active .nav-mobile-ic{color:var(--gold);}
   .nav-mobile-foot{padding:1rem 1.25rem 1.5rem;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:.5rem;flex-shrink:0;}
-  .nav-mobile-secondary{display:flex;align-items:center;gap:10px;padding:11px 12px;font-size:14px;font-weight:500;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:#fff;}
+  .nav-mobile-secondary{display:flex;align-items:center;gap:10px;padding:11px 12px;font:500 14px 'Inter',sans-serif;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:#fff;width:100%;text-align:left;cursor:pointer;}
   .nav-mobile-secondary i{font-size:17px;color:var(--muted);}
   .nav-mobile-secondary:hover{border-color:var(--ink);}
   .nav-mobile-cta{margin-top:.5rem;width:100%;justify-content:center;}
@@ -813,18 +814,18 @@ function loadActiveSpotlight() {
    ROOT
 ══════════════════════════════════════════════════════════════ */
 export default function LandingPage() {
-  const navigate = useNavigate();
   const [screen,      setScreen]      = useState(null);   // 'picker' | null
   const [enrollOpen,  setEnrollOpen]  = useState(false);
   const [scrolled,    setScrolled]    = useState(false);
   const [landingData, setLandingData] = useState(null);
   const [activeNav,   setActiveNav]   = useState('#home');
+  const [authMode,    setAuthMode]    = useState(null);   // 'login' | 'signup' | null
 
   function openEnroll()          { setScreen('admission'); document.body.style.overflow = 'hidden'; }
-  function openLogin()           { navigate('/login');  }
-  function openSignup()          { navigate('/signup'); }
+  function openLogin()           { setAuthMode('login');  }
+  function openSignup()          { setAuthMode('signup'); }
   function startApplication()    { setScreen(null); setEnrollOpen(true); }
-  function goLogin()             { setScreen(null); document.body.style.overflow = ''; navigate('/login'); }
+  function goLogin()             { setScreen(null); document.body.style.overflow = ''; setAuthMode('login'); }
   function closeEnroll()         { setEnrollOpen(false); document.body.style.overflow = ''; }
   function closeModal()          { setScreen(null); document.body.style.overflow = ''; }
 
@@ -875,7 +876,7 @@ export default function LandingPage() {
     <>
       <style>{CSS}</style>
       <Topbar onLogin={openLogin} onSignup={openSignup} />
-      <Navbar scrolled={scrolled} onEnroll={openEnroll} activeNav={activeNav} onNavClick={setActiveNav} />
+      <Navbar scrolled={scrolled} onEnroll={openEnroll} onLogin={openLogin} onSignup={openSignup} activeNav={activeNav} onNavClick={setActiveNav} />
       <Hero onEnroll={openEnroll} term={landingData?.term} />
       <AudiencePortals onLogin={openLogin} onEnroll={openEnroll} />
       <Spotlight content={c.in_focus} />
@@ -903,6 +904,9 @@ export default function LandingPage() {
           programs={landingData?.programs ?? []}
         />
       )}
+      {authMode && (
+        <AuthModal mode={authMode} onClose={() => setAuthMode(null)} />
+      )}
     </>
   );
 }
@@ -910,7 +914,7 @@ export default function LandingPage() {
 /* ══════════════════════════════════════════════════════════════
    SECTION STUBS — replaced one at a time
 ══════════════════════════════════════════════════════════════ */
-function Topbar() {
+function Topbar({ onLogin, onSignup }) {
   return (
     <div className="topbar">
       <div className="topbar-inner">
@@ -923,15 +927,15 @@ function Topbar() {
           <span className="topbar-portal-pill">
             <i className="ti ti-lock" style={{ fontSize: 10 }} /> Portal access
           </span>
-          <Link to="/login">Log in</Link>
+          <a role="button" tabIndex={0} onClick={onLogin} style={{ cursor: 'pointer' }}>Log in</a>
           <span className="divider">·</span>
-          <Link to="/signup">Sign up</Link>
+          <a role="button" tabIndex={0} onClick={onSignup} style={{ cursor: 'pointer' }}>Sign up</a>
         </div>
       </div>
     </div>
   );
 }
-function Navbar({ scrolled, onEnroll, activeNav, onNavClick }) {
+function Navbar({ scrolled, onEnroll, onLogin, onSignup, activeNav, onNavClick }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const close = () => setMenuOpen(false);
   const handleNav = (href) => { onNavClick(href); close(); };
@@ -991,12 +995,12 @@ function Navbar({ scrolled, onEnroll, activeNav, onNavClick }) {
               ))}
             </nav>
             <div className="nav-mobile-foot">
-              <Link to="/login" className="nav-mobile-secondary" onClick={close}>
+              <button type="button" className="nav-mobile-secondary" onClick={() => { close(); onLogin(); }}>
                 <i className="ti ti-login-2" /> Log in
-              </Link>
-              <Link to="/signup" className="nav-mobile-secondary" onClick={close}>
+              </button>
+              <button type="button" className="nav-mobile-secondary" onClick={() => { close(); onSignup(); }}>
                 <i className="ti ti-user-plus" /> Sign up
-              </Link>
+              </button>
               <button className="btn btn-primary nav-mobile-cta" onClick={() => { close(); onEnroll(); }}>
                 Apply now <i className="ti ti-arrow-right" />
               </button>
