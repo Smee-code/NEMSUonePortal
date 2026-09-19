@@ -193,7 +193,7 @@ export default function FacultyRoster() {
                     <div className="ro-chip-lbl">Enrolled</div>
                   </div>
                   <div className="ro-stat-chip">
-                    <div className="ro-chip-val">{selected.subject_units || '—'}</div>
+                    <div className="ro-chip-val">{selected.subject_units || '-'}</div>
                     <div className="ro-chip-lbl">Units</div>
                   </div>
                   <div className="ro-stat-chip">
@@ -267,7 +267,7 @@ export default function FacultyRoster() {
                               {initials(st.student_name)}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)' }}>{st.student_name || '—'}</div>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)' }}>{st.student_name || '-'}</div>
                               {st.show_curriculum && st.curriculum_code && (
                                 <span className="tag" style={{ fontSize: 10, background: 'var(--gold-tint,#f5edd9)', color: 'var(--gold,#b89043)', marginTop: 2, display: 'inline-block' }}>
                                   {st.curriculum_code}
@@ -278,7 +278,7 @@ export default function FacultyRoster() {
                         </td>
                         <td>
                           <span style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--ink-2)', letterSpacing: '.03em' }}>
-                            {st.student_id_no || '—'}
+                            {st.student_id_no || '-'}
                           </span>
                         </td>
                         <td>

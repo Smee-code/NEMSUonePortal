@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import PublicPageShell from '../components/PublicPageShell';
+import { PageLoader } from '../components/Spinner';
 
 export default function StoryPage() {
   const [post, setPost] = useState(null);
@@ -18,7 +19,7 @@ export default function StoryPage() {
     <PublicPageShell eyebrow="In focus" title="Featured story">
       <style>{CSS}</style>
       {post === null ? (
-        <div className="pp-empty">Loading…</div>
+        <PageLoader label="Loading story…" />
       ) : !post.title ? (
         <div className="pp-empty">No featured story right now.</div>
       ) : (

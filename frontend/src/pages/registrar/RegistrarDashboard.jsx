@@ -92,7 +92,7 @@ export default function RegistrarDashboard() {
   const docRate     = totalDocs > 0 ? Math.round(((d.processing ?? 0) + (d.ready ?? 0) + (d.released ?? 0)) / totalDocs * 100) : 0;
 
   const termLabel = currentTerm ? `${currentTerm.semester_display} · ${currentTerm.year}` : (tl || 'No active term');
-  const now       = stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH') : '—';
+  const now       = stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH') : '-';
 
   /* ── Chart data ─────────────────────────────────────────────────────────── */
   const docPipeline = [
@@ -143,8 +143,8 @@ export default function RegistrarDashboard() {
           <div className="kpis">
             {[
               { label: 'Document Requests',   value: totalDocs,                 icon: 'ti-file-text',      sub: `${d.ready ?? 0} ready for release`      },
-              { label: 'Ready for Release',   value: d.ready ?? '—',            icon: 'ti-package',        sub: 'awaiting student pickup'               },
-              { label: 'Grade Assignments',   value: g.total_assignments ?? '—',icon: 'ti-chart-bar',      sub: `${g.submitted_assignments ?? 0} submitted` },
+              { label: 'Ready for Release',   value: d.ready ?? '-',            icon: 'ti-package',        sub: 'awaiting student pickup'               },
+              { label: 'Grade Assignments',   value: g.total_assignments ?? '-',icon: 'ti-chart-bar',      sub: `${g.submitted_assignments ?? 0} submitted` },
             ].map(kpi => (
               <div className="kpi" key={kpi.label}>
                 <div className="kpi-head">
@@ -212,9 +212,9 @@ export default function RegistrarDashboard() {
                 <div className="grade-inset-head">Submission Progress</div>
                 <div className="grade-stats">
                   {[
-                    { num: g.total_assignments    ?? '—', lbl: 'Total assignments' },
-                    { num: g.submitted_assignments ?? '—', lbl: 'Submitted'         },
-                    { num: g.pending_assignments   ?? '—', lbl: 'Pending'           },
+                    { num: g.total_assignments    ?? '-', lbl: 'Total assignments' },
+                    { num: g.submitted_assignments ?? '-', lbl: 'Submitted'         },
+                    { num: g.pending_assignments   ?? '-', lbl: 'Pending'           },
                   ].map(s => (
                     <div className="grade-stat" key={s.lbl}>
                       <div className="num">{s.num}</div>

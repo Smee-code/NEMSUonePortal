@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../api/axios';
+import { useConfirm } from './ConfirmDialog';
 
 const YEARS = [1, 2, 3, 4];
 const YEAR_LABEL = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year' };
@@ -10,6 +11,7 @@ const SEMS = [
 ];
 
 export default function CurriculumManager() {
+  const confirm = useConfirm();
   const [programs, setPrograms]   = useState([]);
   const [programId, setProgramId] = useState('');
   const [curricula, setCurricula] = useState([]);
@@ -95,7 +97,7 @@ export default function CurriculumManager() {
   }
 
   async function removeCourse(subjectId, code) {
-    if (!window.confirm(`Remove ${code} from this curriculum? (The course itself stays in the catalog.)`)) return;
+    if (!await confirm({ title: `Remove ${code}?`, message: 'This removes the course from this curriculum. The course itself stays in the catalog.', confirmText: 'Remove' })) return;
     try {
       await api.delete(`/enrollment/curricula/${selId}/subjects/${subjectId}/`);
       setFlash(`${code} removed.`);
@@ -105,7 +107,7 @@ export default function CurriculumManager() {
 
   async function deleteCurriculum() {
     if (!detail) return;
-    if (!window.confirm(`Delete ${detail.code}? This cannot be undone.`)) return;
+    if (!await confirm({ title: `Delete ${detail.code}?`, message: 'This permanently deletes the curriculum and cannot be undone.', confirmText: 'Delete' })) return;
     try {
       await api.delete(`/enrollment/curricula/${detail.id}/`);
       setFlash(`${detail.code} deleted.`);
@@ -131,8 +133,8 @@ export default function CurriculumManager() {
         <div className="cu-field">
           <label>Program</label>
           <select value={programId} onChange={e => setProgramId(e.target.value)}>
-            <option value="">— Select a program —</option>
-            {programs.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+            <option value="">Select a program</option>
+            {programs.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
           </select>
         </div>
         {programId && (
@@ -221,7 +223,7 @@ export default function CurriculumManager() {
             <form onSubmit={createCurriculum}>
               <label className="cu-lbl">Year of effectivity</label>
               <input className="cu-inp" type="number" min="1980" max="2100" placeholder="e.g. 2024" value={newCur.year_effective} onChange={e => setNewCur(f => ({ ...f, year_effective: e.target.value }))} required autoFocus />
-              <label className="cu-lbl">Code <span className="cu-opt">(optional — defaults to PROGRAM-YEAR)</span></label>
+              <label className="cu-lbl">Code <span className="cu-opt">(optional, defaults to PROGRAM-YEAR)</span></label>
               <input className="cu-inp" placeholder="e.g. BSIT-2024" value={newCur.code} onChange={e => setNewCur(f => ({ ...f, code: e.target.value }))} />
               <label className="cu-lbl">Start from <span className="cu-opt">(optional)</span></label>
               <select className="cu-inp" value={newCur.duplicate_from} onChange={e => setNewCur(f => ({ ...f, duplicate_from: e.target.value }))}>

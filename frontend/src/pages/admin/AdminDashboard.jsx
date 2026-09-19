@@ -438,7 +438,7 @@ function RecentActivity({ logs }) {
               </div>
               <div>
                 <div className="db-act-text">
-                  <strong>{r.user_name}</strong> {info.what} <strong>{r.resource || '—'}</strong>
+                  <strong>{r.user_name}</strong> {info.what} <strong>{r.resource || '-'}</strong>
                 </div>
                 <div className="db-act-sub">{r.role}</div>
               </div>
@@ -519,7 +519,7 @@ export default function AdminDashboard() {
   const g  = stats?.grade_submission;
   const termLabel = currentTerm
     ? `${currentTerm.semester_display} ${currentTerm.year}`
-    : (stats?.active_term_label ?? '—');
+    : (stats?.active_term_label ?? '-');
 
 
   return (
@@ -533,13 +533,13 @@ export default function AdminDashboard() {
             <div className="db-w-eyebrow">Overview · {termLabel}</div>
             <h1 className="db-w-title">Good morning, <em>{firstName(user?.full_name)}</em>.</h1>
             <p className="db-w-sub">
-              {d?.ready ?? '—'} document requests are ready for release at the registrar's office.
+              {d?.ready ?? '-'} document requests are ready for release at the registrar's office.
             </p>
           </div>
           <div className="db-w-side">
             <div className="db-live"><span className="db-live-dot" /> Live data</div>
             <div className="db-stamp">
-              Updated {stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH', { hour12: true }) : '—'}
+              Updated {stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH', { hour12: true }) : '-'}
             </div>
           </div>
         </div>
@@ -609,7 +609,7 @@ export default function AdminDashboard() {
 
             {/* Foot note */}
             <div className="db-foot">
-              <span>Data as of {stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH', { hour12: true }) : '—'}</span>
+              <span>Data as of {stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH', { hour12: true }) : '-'}</span>
               <span className="db-foot-live">
                 <span className="db-foot-live-dot" />
                 Connected to <strong style={{ color: 'var(--adm-muted)' }}>nemsuoneportal.api</strong> · refreshed every 60s

@@ -167,7 +167,7 @@ function GradeReport({ data }) {
   return (
     <div>
       <div className="rp-report-head">
-        <div className="rp-report-title">Grade submission — {data.term}</div>
+        <div className="rp-report-title">Grade submission: {data.term}</div>
       </div>
 
       <div className="stat-row" style={{ marginBottom: '1.25rem' }}>
@@ -261,7 +261,7 @@ function DocumentReport({ data }) {
                 <td>
                   {data.avg_turnaround_days?.[row.document_type] != null
                     ? `${data.avg_turnaround_days[row.document_type]} days`
-                    : '—'}
+                    : '-'}
                 </td>
               </tr>
             ))}
@@ -301,7 +301,7 @@ function UserReport({ data }) {
       <div className="stat-row" style={{ flexWrap: 'wrap', marginBottom: '1.25rem' }}>
         {rows.map(r => (
           <div key={r.label} className="stat">
-            <div className="num" style={{ color: r.color }}>{r.value ?? '—'}</div>
+            <div className="num" style={{ color: r.color }}>{r.value ?? '-'}</div>
             <div className="lbl">{r.label}</div>
           </div>
         ))}

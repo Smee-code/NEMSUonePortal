@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const DAY_LABELS = {
@@ -47,6 +48,7 @@ function formatTime(t) {
 }
 
 export default function FacultyTeachingLoad() {
+  const confirm = useConfirm();
   const [terms, setTerms] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -213,7 +215,7 @@ export default function FacultyTeachingLoad() {
   // ── Delete assignment ────────────────────────────────────────────────────────
 
   const handleDeleteAssignment = async (taId) => {
-    if (!window.confirm('Remove this teaching assignment? All schedule slots will also be removed.')) return;
+    if (!await confirm({ title: 'Remove teaching assignment?', message: 'All schedule slots for this assignment will also be removed.', confirmText: 'Remove' })) return;
     setDeletingAssignment(taId);
     setPageError('');
     try {
@@ -284,6 +286,7 @@ export default function FacultyTeachingLoad() {
   };
 
   const handleDeleteSlot = async (slotId) => {
+    if (!await confirm({ title: 'Remove schedule slot?', message: 'This time slot will be removed from the schedule.', confirmText: 'Remove' })) return;
     setDeletingSlot(slotId);
     try {
       await api.delete(`/schedules/faculty/slots/${slotId}/`);
@@ -335,7 +338,7 @@ export default function FacultyTeachingLoad() {
           value={selectedTerm}
           onChange={e => setSelectedTerm(e.target.value)}
         >
-          <option value="">— All Terms —</option>
+          <option value="">All Terms</option>
           {terms.map(t => (
             <option key={t.id} value={t.id}>{t.semester_display} {t.year}</option>
           ))}
@@ -583,7 +586,7 @@ export default function FacultyTeachingLoad() {
                     value={declareForm.term_semester}
                     onChange={e => handleDeclareTermChange(e.target.value)}
                   >
-                    <option value="">— Select Term —</option>
+                    <option value="">Select Term</option>
                     {TERM_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 ),
@@ -597,8 +600,8 @@ export default function FacultyTeachingLoad() {
                     onChange={e => handleDeclareDepartmentChange(e.target.value)}
                     disabled={!declareForm.term_semester}
                   >
-                    <option value="">— Select Department —</option>
-                    {departments.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+                    <option value="">Select Department</option>
+                    {departments.map(d => <option key={d.id} value={d.id}>{d.code} - {d.name}</option>)}
                   </select>
                 ),
               },
@@ -611,8 +614,8 @@ export default function FacultyTeachingLoad() {
                     onChange={e => handleDeclareProgramChange(e.target.value)}
                     disabled={!declareForm.term_semester || !declareForm.department_id}
                   >
-                    <option value="">— Select Program —</option>
-                    {declarePrograms.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                    <option value="">Select Program</option>
+                    {declarePrograms.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                   </select>
                 ),
               },
@@ -625,7 +628,7 @@ export default function FacultyTeachingLoad() {
                     onChange={e => handleDeclareYearLevelChange(e.target.value)}
                     disabled={!declareForm.term_semester || !declareForm.program_id}
                   >
-                    <option value="">— Select Year Level —</option>
+                    <option value="">Select Year Level</option>
                     {YEAR_LEVEL_OPTIONS.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
                   </select>
                 ),
@@ -645,10 +648,10 @@ export default function FacultyTeachingLoad() {
                 onChange={e => setDeclareForm(f => ({ ...f, subject_id: e.target.value }))}
                 disabled={!declareForm.term_semester || !declareForm.program_id || !declareForm.year_level || subjectsLoading}
               >
-                <option value="">{subjectsLoading ? 'Loading subjects…' : '— Select Subject —'}</option>
+                <option value="">{subjectsLoading ? 'Loading subjects…' : 'Select Subject'}</option>
                 {declareSubjects.map(s => (
                   <option key={s.id} value={s.id}>
-                    {s.year_level_display ? `${s.year_level_display} / ` : ''}{s.semester_display ? `${s.semester_display} - ` : ''}{s.code} — {s.name} ({s.units} units)
+                    {s.year_level_display ? `${s.year_level_display} / ` : ''}{s.semester_display ? `${s.semester_display} - ` : ''}{s.code} - {s.name} ({s.units} units)
                   </option>
                 ))}
               </select>
@@ -667,10 +670,10 @@ export default function FacultyTeachingLoad() {
                 onChange={e => setDeclareForm(f => ({ ...f, block_id: e.target.value }))}
                 disabled={!declareForm.program_id || !declareForm.year_level || blocksLoading}
               >
-                <option value="">{blocksLoading ? 'Loading blocks…' : '— No block assigned —'}</option>
+                <option value="">{blocksLoading ? 'Loading blocks…' : 'No block assigned'}</option>
                 {declareBlocks.map(b => (
                   <option key={b.id} value={b.id}>
-                    {b.name} — {b.enrolled_count}/{b.capacity} students{b.is_full ? ' (Full)' : ''}
+                    {b.name} - {b.enrolled_count}/{b.capacity} students{b.is_full ? ' (Full)' : ''}
                   </option>
                 ))}
               </select>

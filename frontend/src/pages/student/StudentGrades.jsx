@@ -100,11 +100,11 @@ export default function StudentGrades() {
       {/* ── Stat row ───────────────────────────────────────── */}
       <div className="stat-row" style={{ marginBottom: '1.75rem' }}>
         <div className="stat">
-          <div className="num">{cumulativeGwa ?? '—'}</div>
+          <div className="num">{cumulativeGwa ?? '-'}</div>
           <div className="lbl">Cumulative GWA</div>
         </div>
         <div className="stat">
-          <div className="num" style={{ color: currentGwa ? 'var(--green)' : undefined }}>{currentGwa ?? '—'}</div>
+          <div className="num" style={{ color: currentGwa ? 'var(--green)' : undefined }}>{currentGwa ?? '-'}</div>
           <div className="lbl">This term · GWA</div>
         </div>
         <div className="stat">
@@ -118,7 +118,7 @@ export default function StudentGrades() {
         <div className="stat">
           <div className="num">
             <span className="tag status-active" style={{ fontSize: 11 }}>
-              {grades.length > 0 ? 'Regular' : '—'}
+              {grades.length > 0 ? 'Regular' : '-'}
             </span>
           </div>
           <div className="lbl">Standing</div>
@@ -162,10 +162,10 @@ export default function StudentGrades() {
                           {r.subject_code}{r.section ? <span style={{ color: 'var(--muted)', fontWeight: 500 }}> [{r.section}]</span> : ''}
                         </td>
                         <td><strong style={{ fontWeight: 500, color: 'var(--ink)' }}>{r.subject_name}</strong></td>
-                        <td style={{ color: 'var(--muted)' }}>{r.faculty_name || '—'}</td>
+                        <td style={{ color: 'var(--muted)' }}>{r.faculty_name || '-'}</td>
                         <td className="num">{formatUnits(r.subject_units)}</td>
-                        <td className="num" style={{ fontWeight: 500, color: gradeColor(r.midterm_grade) }}>{r.midterm_grade ?? '—'}</td>
-                        <td className="num" style={{ fontWeight: 500, color: gradeColor(r.final_grade) }}>{r.final_grade ?? '—'}</td>
+                        <td className="num" style={{ fontWeight: 500, color: gradeColor(r.midterm_grade) }}>{r.midterm_grade ?? '-'}</td>
+                        <td className="num" style={{ fontWeight: 500, color: gradeColor(r.final_grade) }}>{r.final_grade ?? '-'}</td>
                         <td>
                           {r.is_submitted ? (
                             <span className={`tag ${parseFloat(r.grade) <= 3.0 ? 'status-active' : 'status-locked'}`} style={{ fontSize: 10 }}>
@@ -248,10 +248,10 @@ function TermHistorySection({ term, gpa, totalUnits }) {
                   {r.subject_code}{r.section ? <span style={{ color: 'var(--muted)' }}> [{r.section}]</span> : ''}
                 </td>
                 <td>{r.subject_name}</td>
-                <td style={{ color: 'var(--muted)' }}>{r.faculty_name || '—'}</td>
+                <td style={{ color: 'var(--muted)' }}>{r.faculty_name || '-'}</td>
                 <td className="num">{formatUnits(r.subject_units)}</td>
-                <td className="num" style={{ fontWeight: 500, color: gradeColor(r.midterm_grade) }}>{r.midterm_grade ?? '—'}</td>
-                <td className="num" style={{ fontWeight: 500, color: gradeColor(r.final_grade) }}>{r.final_grade ?? '—'}</td>
+                <td className="num" style={{ fontWeight: 500, color: gradeColor(r.midterm_grade) }}>{r.midterm_grade ?? '-'}</td>
+                <td className="num" style={{ fontWeight: 500, color: gradeColor(r.final_grade) }}>{r.final_grade ?? '-'}</td>
                 <td>
                   {r.is_submitted ? (
                     <span className={`tag ${parseFloat(r.grade) <= 3.0 ? 'status-active' : 'status-locked'}`} style={{ fontSize: 10 }}>

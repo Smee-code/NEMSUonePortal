@@ -12,7 +12,7 @@ function initials(name) {
 }
 
 function fmtTime(timeStr) {
-  if (!timeStr) return '—';
+  if (!timeStr) return '-';
   const [h, m] = timeStr.split(':').map(Number);
   const ampm = h < 12 ? 'AM' : 'PM';
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
@@ -36,7 +36,7 @@ function Kpi({ label, value, icon, sub }) {
         <div className="kpi-icon"><i className={`ti ${icon}`} /></div>
       </div>
       <div>
-        <div className="kpi-value">{value ?? '—'}</div>
+        <div className="kpi-value">{value ?? '-'}</div>
         {sub && <div className="kpi-sub"><span>{sub}</span></div>}
       </div>
     </div>
@@ -55,7 +55,7 @@ function TodaysClasses({ slots, navigate, dayLabel }) {
       <div style={{ padding: '0 1.5rem 1.25rem', display: 'flex', flexDirection: 'column' }}>
         {slots.length === 0 ? (
           <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-            No classes scheduled today — enjoy the day.
+            No classes scheduled today. Enjoy the day.
           </div>
         ) : slots.map((s, i) => {
           const start = fmtTime(s.start_time);
@@ -175,7 +175,7 @@ function SubjectsThisTerm({ subjects, gradeFor, termLabel, blockCode }) {
               </div>
               <div>
                 <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>Grade</div>
-                <div style={{ fontWeight: 500, fontSize: 22, color: gradeColor(grade) }}>{grade ?? '—'}</div>
+                <div style={{ fontWeight: 500, fontSize: 22, color: gradeColor(grade) }}>{grade ?? '-'}</div>
               </div>
               <div>
                 <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>Units</div>
@@ -388,7 +388,7 @@ export default function StudentDashboard() {
 
   const enrollStatusLabel = enrollStatus
     ? enrollStatus.charAt(0).toUpperCase() + enrollStatus.slice(1)
-    : '—';
+    : '-';
 
   if (loading) {
     return (
@@ -411,7 +411,7 @@ export default function StudentDashboard() {
             <strong style={{ color: 'var(--ink)' }}>{todaySlots.length} class{todaySlots.length !== 1 ? 'es' : ''} today</strong>,{' '}
             <strong style={{ color: 'var(--ink)' }}>{pendingDocs.length} document request{pendingDocs.length !== 1 ? 's' : ''}</strong>{' '}
             in progress, and your current GWA is{' '}
-            <strong style={{ color: 'var(--ink)' }}>{gwa ?? '—'}</strong>.
+            <strong style={{ color: 'var(--ink)' }}>{gwa ?? '-'}</strong>.
           </p>
         </div>
         <div className="welcome-side">
@@ -422,9 +422,9 @@ export default function StudentDashboard() {
 
       {/* ── KPI strip ────────────────────────────────────── */}
       <div className="kpis">
-        <Kpi label="Subjects"        value={subjects.length || '—'} icon="ti-book-2"          sub="enrolled this term" />
-        <Kpi label="Units enrolled"  value={enrolledUnits || '—'}   icon="ti-stack-2"          sub={`of the required load`} />
-        <Kpi label="GWA"             value={gwa ?? '—'}             icon="ti-school"           sub={gradedRecords.length > 0 ? `${gradedRecords.length} graded subjects` : 'No grades yet'} />
+        <Kpi label="Subjects"        value={subjects.length || '-'} icon="ti-book-2"          sub="enrolled this term" />
+        <Kpi label="Units enrolled"  value={enrolledUnits || '-'}   icon="ti-stack-2"          sub={`of the required load`} />
+        <Kpi label="GWA"             value={gwa ?? '-'}             icon="ti-school"           sub={gradedRecords.length > 0 ? `${gradedRecords.length} graded subjects` : 'No grades yet'} />
         <Kpi label="Doc. requests"   value={documents.length}       icon="ti-file-text"        sub={pendingDocs.length > 0 ? `${pendingDocs.length} in progress` : 'None pending'} />
         <Kpi label="Enrollment"      value={enrollStatusLabel}       icon="ti-clipboard-check"  sub={termLabel} />
       </div>

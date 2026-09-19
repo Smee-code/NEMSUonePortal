@@ -581,7 +581,7 @@ const FACILITIES = [
 ];
 
 const NEWS = [
-  { id:'news-1', day:'28', my:'May 2025', tag:'Enrollment',     photoKey:'news1', title:'Online Enrollment Now Open for A.Y. 2025–2026',         body:'All students of NEMSU Cantilan Campus — incoming freshmen, transferees, shiftees, and regular students — may now enroll online.' },
+  { id:'news-1', day:'28', my:'May 2025', tag:'Enrollment',     photoKey:'news1', title:'Online Enrollment Now Open for A.Y. 2025–2026',         body:'All students of NEMSU Cantilan Campus (incoming freshmen, transferees, shiftees, and regular students) may now enroll online.' },
   { id:'news-2', day:'20', my:'May 2025', tag:'Scholarship',    photoKey:'news2', title:'Scholarship Applications Open for 1st Semester',         body:'CHED, DOST, LGU, and institutional scholarship applications are now being accepted at the OSAS office. Deadline is June 15, 2025.' },
   { id:'news-3', day:'10', my:'May 2025', tag:'Accreditation',  photoKey:'news3', title:'NEMSU Cantilan Achieves AACCUP Level II Accreditation',  body:"Several programs in the Cantilan Campus have achieved Level II accreditation, reflecting the campus's commitment to quality." },
 ];
@@ -604,7 +604,7 @@ const NAV_LINKS = [
 const LIFE = [
   { id:'life-a', cls:'life-a', tag:'Campus',       title:'A campus that grows with its community',    photoKey:'lifeA' },
   { id:'life-b', cls:'life-b', tag:'Academics',    title:'Hands-on learning, beyond the classroom',   photoKey:'lifeB' },
-  { id:'life-c', cls:'life-c', tag:'Student life', title:'From orgs to sports — find your community', photoKey:'lifeC' },
+  { id:'life-c', cls:'life-c', tag:'Student life', title:'From orgs to sports: find your community', photoKey:'lifeC' },
   { id:'life-d', cls:'life-d', tag:'Research',     title:'Applied science for the Caraga region',     photoKey:'lifeD' },
   { id:'life-e', cls:'life-e', tag:'Faculty',      title:'Mentors invested in your growth',           photoKey:'lifeE' },
   { id:'life-f', cls:'life-f', tag:'Events',       title:'Tradition meets contemporary culture',      photoKey:'lifeF' },
@@ -1076,7 +1076,7 @@ function InfoStrip() {
 function About({ content }) {
   const paragraphs = content?.paragraphs ?? [
     "The NEMSU Cantilan Campus is one of the key campuses of North Eastern Mindanao State University, located in the municipality of Cantilan in the province of Surigao del Sur. It serves students from Cantilan and surrounding municipalities, providing accessible and quality higher education to the community.",
-    "The campus offers a wide range of undergraduate programs in technology, education, business, health sciences, and the arts — aligned with NEMSU's vision of producing globally competitive and morally upright graduates.",
+    "The campus offers a wide range of undergraduate programs in technology, education, business, health sciences, and the arts, aligned with NEMSU's vision of producing globally competitive and morally upright graduates.",
   ];
   const pillars = content?.pillars ?? PILLARS;
   return (
@@ -1100,7 +1100,7 @@ function About({ content }) {
               <div className="pillars">
                 {pillars.map(p => (
                   <div key={p.title} className="pillar">
-                    <span className="num">— {p.num}</span>
+                    <span className="num">- {p.num}</span>
                     <div className="title">{p.title}</div>
                     <div className="desc">{p.desc}</div>
                   </div>
@@ -1151,14 +1151,14 @@ function VisionMission({ content }) {
         <div className="vm-grid">
           <Reveal>
             <div className="vm-card">
-              <span className="vm-num">— Vision</span>
+              <span className="vm-num">- Vision</span>
               <h3>{content?.vision_title || <>A premier state university producing <em>globally competitive</em> graduates.</>}</h3>
               <p>{content?.vision_text || 'To produce morally upright graduates who are agents of change for sustainable national development, equipped with the knowledge and values to serve the community and the country.'}</p>
             </div>
           </Reveal>
           <Reveal delay={0.1}>
             <div className="vm-card">
-              <span className="vm-num">— Mission</span>
+              <span className="vm-num">- Mission</span>
               <h3>{content?.mission_title || <>Quality education, advanced research, and <em>community engagement</em>.</>}</h3>
               <p>{content?.mission_text || 'To provide quality higher technological and professional education, advance research and development, and render extension and production services responsive to the needs of the community in northeastern Mindanao.'}</p>
             </div>
@@ -1204,7 +1204,7 @@ function Programs({ programs, content }) {
           {visible.map((p, i) => (
             <Reveal key={p.name} delay={i * 0.04}>
               <article className="prog">
-                <div className="prog-num">— {p.num}</div>
+                <div className="prog-num">- {p.num}</div>
                 <i className="ti ti-arrow-up-right arrow" />
                 <h4>{p.name}</h4>
                 <div className="dept">{p.dept}</div>
@@ -1277,7 +1277,7 @@ function Facilities({ content }) {
             <h2 className="h-section on-dark" style={{ marginTop: '1.25rem' }}>
               {content?.heading || <>Built for <em>student success</em>.</>}
             </h2>
-            <p>The Cantilan Campus provides modern facilities to support academic, research, and extracurricular activities — accessible to every student across all programs.</p>
+            <p>The Cantilan Campus provides modern facilities to support academic, research, and extracurricular activities, accessible to every student across all programs.</p>
           </div>
         </Reveal>
         <div className="facs-grid">
@@ -1380,7 +1380,7 @@ function Footer({ onEnroll, onLogin, onSignup }) {
               </div>
             </div>
             <p className="footer-tagline">
-              The official student portal of North Eastern Mindanao State University — Cantilan Campus.
+              The official student portal of North Eastern Mindanao State University, Cantilan Campus.
               Centralized academic services for students, faculty, and staff.
             </p>
             <div className="footer-contact">
@@ -1419,9 +1419,9 @@ function Footer({ onEnroll, onLogin, onSignup }) {
         <div className="footer-bottom">
           <span>© 2026 NEMSUonePortal · NEMSU Cantilan Campus. All rights reserved.</span>
           <div>
-            <a href="#priv">Privacy</a>
-            <a href="#terms">Terms</a>
-            <a href="#data">Data privacy</a>
+            <Link to="/privacy">Privacy Policy</Link>
+            <Link to="/terms">Terms &amp; Conditions</Link>
+            <Link to="/cookies">Cookie Policy</Link>
           </div>
         </div>
       </div>
@@ -1456,7 +1456,7 @@ function AdmissionIntroModal({ onClose, onStart, onLogin }) {
   const steps = [
     { icon: 'ti-folder', t: 'Gather & upload your documents', d: 'Prepare your admission requirements (Form 138, PSA birth certificate, good moral, etc.) and upload them in the application.' },
     { icon: 'ti-checklist', t: 'We validate your documents', d: "The campus reviews your submission to confirm you're eligible for admission." },
-    { icon: 'ti-mail-check', t: 'Get your entrance-exam invite', d: "You'll receive an email letting you know if you qualified for the next step — the college entrance examination." },
+    { icon: 'ti-mail-check', t: 'Get your entrance-exam invite', d: "You'll receive an email letting you know if you qualified for the next step: the college entrance examination." },
   ];
   return (
     <div className="modal-back" onClick={onClose}>
@@ -1608,7 +1608,7 @@ function EnrollmentModal({ onClose, term, programs }) {
               <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:22, color:'var(--ink)' }}>{refNum}</div>
             </div>
             <p className="lead" style={{ fontSize:12, marginBottom:'1.5rem' }}>
-              You'll receive an email at <strong>{form.email || 'your email address'}</strong> letting you know if you qualified for the next step — the college entrance examination. Keep this reference number for your records.
+              You'll receive an email at <strong>{form.email || 'your email address'}</strong> letting you know if you qualified for the next step: the college entrance examination. Keep this reference number for your records.
             </p>
             <button className="flow-btn-primary" style={{ maxWidth:220, margin:'0 auto' }} onClick={onClose}>
               Done
@@ -1751,10 +1751,10 @@ function EnrollmentModal({ onClose, term, programs }) {
                     <div style={{ border:'1px solid var(--line)', background:'var(--warm)', marginBottom:12 }}>
                       {[
                         ['Applying as',   'Incoming freshman'],
-                        ['Full name',     `${form.first} ${form.last}`.trim() || '—'],
-                        ['Email',         form.email  || '—'],
-                        ['Contact',       form.contact || '—'],
-                        ['Date of birth', form.dob    || '—'],
+                        ['Full name',     `${form.first} ${form.last}`.trim() || '-'],
+                        ['Email',         form.email  || '-'],
+                        ['Contact',       form.contact || '-'],
+                        ['Date of birth', form.dob    || '-'],
                         ['Sex',           form.sex],
                         ['Program',       form.program],
                         ['Year level',    form.year],

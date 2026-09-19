@@ -345,7 +345,7 @@ export default function RegistrarFaculty() {
                               <td style={{ fontSize: '.85rem' }}>{a.subject_name}</td>
                               <td style={{ textAlign: 'center', fontSize: '.85rem' }}>{a.subject_units}</td>
                               <td style={{ fontSize: '.82rem', whiteSpace: 'nowrap', color: 'var(--reg-muted)' }}>
-                                {a.year_level_display || '—'}
+                                {a.year_level_display || '-'}
                               </td>
                               <td>
                                 <span className={`tag ${a.subject_type === 'major' ? 'pending' : 'outline'}`}>
@@ -372,7 +372,7 @@ export default function RegistrarFaculty() {
                                     {a.grades_encoded} encoded
                                   </span>
                                 ) : (
-                                  <span style={{ color: 'var(--reg-faint)' }}>—</span>
+                                  <span style={{ color: 'var(--reg-faint)' }}>-</span>
                                 )}
                               </td>
                               <td style={{ fontSize: '.82rem', whiteSpace: 'nowrap', color: 'var(--reg-ink-2)' }}>
@@ -384,7 +384,7 @@ export default function RegistrarFaculty() {
                                     </div>
                                     <div style={{ color: 'var(--reg-faint)' }}>{a.schedule.room}</div>
                                   </>
-                                ) : '—'}
+                                ) : '-'}
                               </td>
                             </tr>
                           ))}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import PublicPageShell from '../components/PublicPageShell';
 import Lightbox from '../components/Lightbox';
+import { PageLoader } from '../components/Spinner';
 
 function itemImages(l) {
   if (Array.isArray(l.images) && l.images.length) return l.images.filter(Boolean);
@@ -24,11 +25,11 @@ export default function CampusLifePage() {
     <PublicPageShell
       eyebrow="Campus life"
       title={<>Life at <em>Cantilan</em></>}
-      subtitle="A campus that grows with its community — academics, student life, research, and more."
+      subtitle="A campus that grows with its community: academics, student life, research, and more."
     >
       <style>{CSS}</style>
       {items === null ? (
-        <div className="pp-empty">Loading…</div>
+        <PageLoader label="Loading campus life…" />
       ) : items.length === 0 ? (
         <div className="pp-empty">No campus life items yet.</div>
       ) : (

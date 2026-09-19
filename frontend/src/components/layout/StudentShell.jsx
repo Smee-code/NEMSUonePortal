@@ -554,7 +554,7 @@ function DrawerHost({ drawer, onClose, user, logout }) {
                 {(data.rows || []).map(([k, v]) => (
                   <div className="info-row" key={k}>
                     <span className="lbl">{k}</span>
-                    <span className="val">{v ?? '—'}</span>
+                    <span className="val">{v ?? '-'}</span>
                   </div>
                 ))}
               </div>

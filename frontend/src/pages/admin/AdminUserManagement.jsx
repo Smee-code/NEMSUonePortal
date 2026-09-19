@@ -372,7 +372,7 @@ export default function AdminUserManagement() {
                             : <span className="tag status-inactive">Inactive</span>
                       }
                     </td>
-                    <td className="muted">{u.student_id || '—'}</td>
+                    <td className="muted">{u.student_id || '-'}</td>
                     <td className="muted">
                       {new Date(u.date_joined).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>
@@ -394,7 +394,7 @@ export default function AdminUserManagement() {
                           <p className="um-self-note">You cannot modify your own account through this interface.</p>
                         ) : (
                           <div className="um-edit-panel">
-                            <p className="um-edit-title">Edit — {u.full_name}</p>
+                            <p className="um-edit-title">Editing {u.full_name}</p>
                             <div className="um-edit-fields">
                               <div className="um-edit-field">
                                 <label className="um-edit-label">Role</label>
@@ -416,9 +416,9 @@ export default function AdminUserManagement() {
                                     value={form.department ?? (u.department_code || '')}
                                     onChange={e => setField(u.id, 'department', e.target.value)}
                                   >
-                                    <option value="">— Select —</option>
+                                    <option value="">Select</option>
                                     {departments.map(d => (
-                                      <option key={d.id} value={d.code}>{d.code} — {d.name}</option>
+                                      <option key={d.id} value={d.code}>{d.code} - {d.name}</option>
                                     ))}
                                   </select>
                                 </div>
@@ -437,7 +437,7 @@ export default function AdminUserManagement() {
                                       <select className="um-edit-select"
                                         value={form.program ?? (u.program_id || '')}
                                         onChange={e => setField(u.id, 'program', e.target.value)}>
-                                        <option value="">— None —</option>
+                                        <option value="">None</option>
                                         {programs.map(p => <option key={p.id} value={p.id}>{p.code}</option>)}
                                       </select>
                                     </div>
@@ -485,7 +485,7 @@ export default function AdminUserManagement() {
                               )}
                               <div>
                                 <span className="um-detail-label">Contact</span>
-                                <span className="um-detail-val">{u.contact_number || '—'}</span>
+                                <span className="um-detail-val">{u.contact_number || '-'}</span>
                               </div>
                             </div>
                           </div>
@@ -602,9 +602,9 @@ export default function AdminUserManagement() {
                       value={createForm.department}
                       onChange={e => setCreateField('department', e.target.value)}
                     >
-                      <option value="">— Select —</option>
+                      <option value="">Select</option>
                       {departments.map(d => (
-                        <option key={d.id} value={d.code}>{d.code} — {d.name}</option>
+                        <option key={d.id} value={d.code}>{d.code} - {d.name}</option>
                       ))}
                     </select>
                   </div>
@@ -622,8 +622,8 @@ export default function AdminUserManagement() {
                   {!createForm.is_gec_faculty && (
                     <select className="um-modal-input" value={createForm.program}
                       onChange={e => setCreateField('program', e.target.value)}>
-                      <option value="">— Core program (optional) —</option>
-                      {programs.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                      <option value="">Core program (optional)</option>
+                      {programs.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                     </select>
                   )}
                 </div>

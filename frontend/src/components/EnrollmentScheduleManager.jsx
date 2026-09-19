@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
+import { useConfirm } from './ConfirmDialog';
 
 const STUDENT_TYPES = [
   { value: 'freshman',   label: 'Freshmen'        },
@@ -11,6 +12,7 @@ const STUDENT_TYPES = [
 const EMPTY_FORM = { student_type: 'freshman', start_date: '', end_date: '', display_order: 0 };
 
 export default function EnrollmentScheduleManager() {
+  const confirm = useConfirm();
   const [terms,        setTerms]        = useState([]);
   const [selectedTerm, setSelectedTerm] = useState('');
   const [schedules,    setSchedules]    = useState([]);
@@ -115,7 +117,7 @@ export default function EnrollmentScheduleManager() {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Delete this schedule entry? It will no longer appear on the landing page.')) return;
+    if (!await confirm({ title: 'Delete schedule entry?', message: 'It will no longer appear on the landing page.', confirmText: 'Delete' })) return;
     setError('');
     setSuccess('');
     try {
@@ -163,7 +165,7 @@ export default function EnrollmentScheduleManager() {
             {terms.length === 0 && <option value="">No terms available</option>}
             {terms.map(t => (
               <option key={t.id} value={String(t.id)}>
-                {t.semester_display} — {t.year}
+                {t.semester_display}, {t.year}
                 {t.enrollment_open ? '  ✓ Open' : ''}
               </option>
             ))}
@@ -308,7 +310,7 @@ export default function EnrollmentScheduleManager() {
 }
 
 function fmtDate(iso) {
-  return iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  return iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
 }
 
 function InfoChip({ icon, label, value }) {

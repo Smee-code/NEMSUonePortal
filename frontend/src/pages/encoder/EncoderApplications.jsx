@@ -8,7 +8,7 @@ const TABS = [
 ];
 
 function fmtDate(s) {
-  return s ? new Date(s).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+  return s ? new Date(s).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
 }
 function fmtSize(bytes) {
   if (!bytes) return '';
@@ -44,7 +44,7 @@ export default function EncoderApplications() {
     setBusyId(row.id); setError('');
     try {
       await api.patch(`/enrollment/pending/${row.id}/review/`, { status: 'approved' });
-      setFlash(`${row.full_name} approved — notified they qualify for the entrance exam.`);
+      setFlash(`${row.full_name} approved. Notified they qualify for the entrance exam.`);
       fetchRows();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to approve.');
@@ -72,7 +72,7 @@ export default function EncoderApplications() {
       <div className="page-head">
         <div className="eyebrow">Admissions · Department review</div>
         <h2>Freshman <em>applications</em></h2>
-        <div className="sub">Review incoming applicants for your department's programs. Approving notifies them that they qualify for the entrance exam — no account is created yet.</div>
+        <div className="sub">Review incoming applicants for your department's programs. Approving notifies them that they qualify for the entrance exam. No account is created yet.</div>
       </div>
 
       {flash && <div className="ea-flash ea-flash-ok">{flash}</div>}
@@ -116,7 +116,7 @@ export default function EncoderApplications() {
                         </span>
                       </button>
                     </td>
-                    <td className="ea-muted">{r.program_code || '—'}</td>
+                    <td className="ea-muted">{r.program_code || '-'}</td>
                     <td className="ea-mono">{r.reference_number}</td>
                     <td className="ea-muted">{fmtDate(r.created_at)}</td>
                     <td className="ea-right">
@@ -130,7 +130,7 @@ export default function EncoderApplications() {
                           </button>
                         </>
                       ) : (
-                        <span className="ea-muted">{r.reviewed_by_name || '—'}<div className="ea-sm">{fmtDate(r.reviewed_at)}</div></span>
+                        <span className="ea-muted">{r.reviewed_by_name || '-'}<div className="ea-sm">{fmtDate(r.reviewed_at)}</div></span>
                       )}
                     </td>
                   </tr>,
@@ -145,10 +145,10 @@ export default function EncoderApplications() {
                             <Detail label="Type" value={r.student_type_display} />
                             <Detail label="Program" value={r.program_name} />
                             <Detail label="Department" value={r.department_name} />
-                            <Detail label="Contact" value={r.contact_number || '—'} />
-                            <Detail label="Sex" value={r.sex || '—'} />
+                            <Detail label="Contact" value={r.contact_number || '-'} />
+                            <Detail label="Sex" value={r.sex || '-'} />
                             <Detail label="Date of birth" value={fmtDate(r.date_of_birth)} />
-                            <Detail label="Term" value={r.term_display || '—'} />
+                            <Detail label="Term" value={r.term_display || '-'} />
                           </div>
                           <div className="ea-docs">
                             <div className="ea-docs-title">Submitted documents ({(r.documents || []).length})</div>
@@ -188,7 +188,7 @@ export default function EncoderApplications() {
             <p className="ea-modal-sub">Rejecting <strong>{reject.full_name}</strong> ({reject.reference_number}). They'll be emailed the reason below.</p>
             <form onSubmit={submitReject}>
               <label className="ea-label">Reason for rejection</label>
-              <textarea className="ea-textarea" rows={3} autoFocus placeholder="e.g. Incomplete requirements — missing Form 138." value={remarks} onChange={e => setRemarks(e.target.value)} />
+              <textarea className="ea-textarea" rows={3} autoFocus placeholder="e.g. Incomplete requirements, missing Form 138." value={remarks} onChange={e => setRemarks(e.target.value)} />
               {reviewErr && <div className="ea-flash ea-flash-err" style={{ marginTop: 8 }}>{reviewErr}</div>}
               <div className="ea-modal-foot">
                 <button type="button" className="ea-btn ea-btn-ghost" onClick={() => setReject(null)} disabled={busyId != null}>Cancel</button>
@@ -208,7 +208,7 @@ function Detail({ label, value }) {
   return (
     <div>
       <div className="ea-dlabel">{label}</div>
-      <div className="ea-dval">{value || '—'}</div>
+      <div className="ea-dval">{value || '-'}</div>
     </div>
   );
 }

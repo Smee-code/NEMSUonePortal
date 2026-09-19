@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
+import { PageLoader } from '../components/Spinner';
 
 function fmtDate(n) {
   if (!n?.my) return '';
@@ -49,7 +50,7 @@ export default function NewsPage() {
         </div>
 
         {items === null ? (
-          <div className="np-empty">Loading…</div>
+          <PageLoader label="Loading news…" />
         ) : items.length === 0 ? (
           <div className="np-empty">No news posted yet.</div>
         ) : (

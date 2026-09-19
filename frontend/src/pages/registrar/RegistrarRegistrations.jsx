@@ -12,7 +12,7 @@ function initials(name) {
   return p.length === 1 ? (p[0][0] || '?').toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 function fmtDate(s) {
-  return s ? new Date(s).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+  return s ? new Date(s).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
 }
 
 export default function RegistrarRegistrations() {
@@ -139,7 +139,7 @@ export default function RegistrarRegistrations() {
                       </button>
                     </td>
                   ) : (
-                    <td className="rr-muted">{r.reviewed_by_name || '—'}<div className="rr-muted rr-sm">{fmtDate(r.registration_reviewed_at)}</div></td>
+                    <td className="rr-muted">{r.reviewed_by_name || '-'}<div className="rr-muted rr-sm">{fmtDate(r.registration_reviewed_at)}</div></td>
                   )}
                 </tr>
               ))}

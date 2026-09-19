@@ -26,7 +26,7 @@ export default function Lightbox({ images = [], title, startIndex = 0, onClose }
       <button className="lb-x" onClick={onClose} aria-label="Close"><i className="ti ti-x" /></button>
 
       <div className="lb-stage" onClick={e => e.stopPropagation()}>
-        <img className="lb-img" src={images[i]} alt={title ? `${title} — ${i + 1}` : `Image ${i + 1}`} />
+        <img className="lb-img" src={images[i]} alt={title ? `${title} (image ${i + 1})` : `Image ${i + 1}`} />
 
         {n > 1 && (
           <>

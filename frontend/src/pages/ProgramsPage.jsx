@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import PublicPageShell from '../components/PublicPageShell';
+import { PageLoader } from '../components/Spinner';
 
 export default function ProgramsPage() {
   const [programs, setPrograms] = useState(null);
@@ -27,7 +28,7 @@ export default function ProgramsPage() {
     >
       <style>{CSS}</style>
       {programs === null ? (
-        <div className="pp-empty">Loading…</div>
+        <PageLoader label="Loading programs…" />
       ) : deptNames.length === 0 ? (
         <div className="pp-empty">No programs available.</div>
       ) : (

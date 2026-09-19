@@ -73,7 +73,7 @@ export default function StudentCurriculum() {
                               <tr key={s.id}>
                                 <td style={{ fontWeight: 600, color: 'var(--gold)' }}>{s.code}</td>
                                 <td>{s.name}</td>
-                                <td style={{ color: 'var(--muted)' }}>{s.prerequisite_code || '—'}</td>
+                                <td style={{ color: 'var(--muted)' }}>{s.prerequisite_code || '-'}</td>
                                 <td className="num">{s.units}</td>
                               </tr>
                             ))}
