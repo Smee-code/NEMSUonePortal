@@ -349,19 +349,20 @@ export default function FacultyTeachingLoad() {
         </span>
       </div>
 
-      {/* ── Stats strip ── */}
+      {/* ── Stats ── */}
       {!loading && load.length > 0 && (
-        <div className="stat-row" style={{ marginBottom: '1.5rem' }}>
+        <div className="tl-stats">
           {[
-            { label: 'Subjects',      val: load.length,     icon: 'ti-book-2'      },
-            { label: 'Students',      val: totalStudents,   icon: 'ti-users'       },
-            { label: 'Total units',   val: totalUnits,      icon: 'ti-chart-bar'   },
-            { label: 'Schedule slots',val: totalSlots,      icon: 'ti-calendar'    },
+            { label: 'Subjects',       val: load.length,   icon: 'ti-book-2',    accent: 'gold'  },
+            { label: 'Students',       val: totalStudents, icon: 'ti-users',     accent: 'blue'  },
+            { label: 'Total units',    val: totalUnits,    icon: 'ti-chart-bar', accent: 'green' },
+            { label: 'Schedule slots', val: totalSlots,    icon: 'ti-calendar',  accent: 'amber' },
           ].map(s => (
-            <div key={s.label} className="stat-cell">
-              <div className="stat-val">{s.val}</div>
-              <div className="stat-lbl">
-                <i className={`ti ${s.icon}`} style={{ fontSize: 11, marginRight: 4 }} />{s.label}
+            <div key={s.label} className="tl-stat">
+              <div className={`tl-stat-ic ${s.accent}`}><i className={`ti ${s.icon}`} /></div>
+              <div className="tl-stat-body">
+                <div className="tl-stat-val">{s.val}</div>
+                <div className="tl-stat-lbl">{s.label}</div>
               </div>
             </div>
           ))}
@@ -705,6 +706,18 @@ const CSS = `
   .tl-select:focus { border-color: var(--ink); }
   .tl-count { font-size: 12px; color: var(--muted); align-self: center; }
   .tl-loading { color: var(--muted); font-size: 13px; padding: 2rem 0; }
+
+  /* Stat cards */
+  .tl-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+  .tl-stat { background: #fff; border: 1px solid var(--line); padding: .9rem 1rem; display: flex; align-items: center; gap: 12px; }
+  .tl-stat-ic { width: 40px; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .tl-stat-ic.gold  { background: var(--gold-tint);  color: var(--gold);  }
+  .tl-stat-ic.blue  { background: #e8eef8;           color: #1e3a5f;      }
+  .tl-stat-ic.green { background: var(--green-tint); color: var(--green); }
+  .tl-stat-ic.amber { background: #f7eed8;           color: var(--amber); }
+  .tl-stat-body { min-width: 0; }
+  .tl-stat-val { font-size: 26px; font-weight: 600; color: var(--ink); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .tl-stat-lbl { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 5px; }
   .tl-alert-err {
     background: #fee2e2; color: #991b1b; padding: .75rem 1rem;
     font-size: 13px; margin-bottom: 1rem; border-left: 3px solid #dc2626;
