@@ -245,7 +245,7 @@ const CSS = `
   .btn-ghost:hover{color:var(--ink);}
 
   /* Table */
-  .table-wrap{background:#fff;border:1px solid var(--line);overflow:hidden;}
+  .table-wrap{background:#fff;border:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .table-wrap .table{width:100%;border-collapse:collapse;}
   .table-wrap .table thead th{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:left;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--warm);}
   .table-wrap .table tbody td{padding:14px 18px;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line-soft);vertical-align:middle;}

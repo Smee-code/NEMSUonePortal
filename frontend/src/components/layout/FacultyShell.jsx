@@ -221,7 +221,7 @@ const CSS = `
   .stat-row .stat .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;
     color:var(--muted);font-weight:600;margin-top:8px}
   /* Table */
-  .table-wrap{border:1px solid var(--line);overflow:hidden}
+  .table-wrap{border:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch}
   .table{width:100%;border-collapse:collapse;background:#fff}
   .table thead th{font-size:10px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--muted);font-weight:600;text-align:left;padding:14px 18px;

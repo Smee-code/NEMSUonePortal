@@ -186,7 +186,7 @@ function GradeReport({ data }) {
       </div>
 
       <ReportSection title="Assignment breakdown" onDownload={csvDownload}>
-        <table className="table">
+        <div className="table-scroll"><table className="table">
           <thead>
             <tr>{['Faculty', 'Subject', 'Enrolled', 'Submitted', 'Pending', 'Status'].map(h => <th key={h}>{h}</th>)}</tr>
           </thead>
@@ -214,7 +214,7 @@ function GradeReport({ data }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </ReportSection>
     </div>
   );
@@ -249,7 +249,7 @@ function DocumentReport({ data }) {
       </div>
 
       <ReportSection title="By document type" onDownload={csvDownload}>
-        <table className="table">
+        <div className="table-scroll"><table className="table">
           <thead>
             <tr>{['Document type', 'Total requests', 'Avg. turnaround (days)'].map(h => <th key={h}>{h}</th>)}</tr>
           </thead>
@@ -266,7 +266,7 @@ function DocumentReport({ data }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </ReportSection>
     </div>
   );

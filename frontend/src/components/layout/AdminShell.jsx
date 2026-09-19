@@ -167,7 +167,7 @@ const CSS = `
   .btn-ghost{padding:5px 8px;background:transparent;color:var(--adm-muted);border:none;cursor:pointer;font-family:inherit;font-size:12px;display:inline-flex;align-items:center;gap:4px}
   .btn-ghost:hover{color:var(--adm-ink)}
   /* Table */
-  .table-wrap{background:#fff;border:1px solid var(--adm-line);overflow:hidden}
+  .table-wrap{background:#fff;border:1px solid var(--adm-line);overflow-x:auto;-webkit-overflow-scrolling:touch}
   .table{width:100%;border-collapse:collapse}
   .table thead th{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--adm-muted);font-weight:600;text-align:left;padding:14px 18px;border-bottom:1px solid var(--adm-line);background:var(--adm-warm)}
   .table tbody td{padding:14px 18px;font-size:13px;color:var(--adm-ink);border-bottom:1px solid var(--adm-line-soft);vertical-align:middle}

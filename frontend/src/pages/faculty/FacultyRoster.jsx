@@ -337,6 +337,8 @@ const CSS = `
   .ro-result-count { font-size: 12px; color: var(--muted); align-self: center; margin-left: auto; }
 
   .ro-layout { display: grid; grid-template-columns: 220px 1fr; gap: 1.5rem; align-items: start; }
+  .ro-layout > * { min-width: 0; }
+  .ro-main { overflow-x: auto; }
   @media (max-width: 700px) { .ro-layout { grid-template-columns: 1fr; } }
 
   /* Subject sidebar */

@@ -1,7 +1,38 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Global responsive safeguards: media never forces horizontal overflow. */
+/* ── Global responsive safeguards (all browsers) ─────────────────────────── */
+/* Media never forces horizontal overflow. */
 img, svg, video, canvas { max-width: 100%; }
+
+/* Keep text at the author's size; stop mobile browsers inflating it. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* Never let the page scroll sideways; individual wide blocks (tables) opt
+   into their own horizontal scroll instead. `clip` contains the overflow
+   without becoming a scroll container, so sticky headers keep working. */
+html, body { max-width: 100%; overflow-x: clip; }
+
+/* Long unbroken strings (emails, IDs, URLs) wrap instead of stretching the
+   layout past the viewport. */
+body { overflow-wrap: break-word; }
+
+/* Form controls never exceed their container (stops wide dropdowns/inputs
+   from pushing the page sideways). */
+input, select, textarea { max-width: 100%; }
+
+/* Wide data tables scroll inside their own box instead of the whole page.
+   Wrap a <table> in <div class="table-scroll"> to opt in. */
+.table-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Prevent iOS Safari (and other mobile browsers) from zooming in when a form
+   field is focused — that only happens when the control's text is < 16px. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
 
 :root {
   --color-primary:      #1e3a5f;

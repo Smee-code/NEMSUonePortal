@@ -583,7 +583,7 @@ const CSS = `
   .toolbar-spacer{flex:1}
 
   /* Table */
-  .table-wrap{background:#fff;border:1px solid var(--reg-line);overflow:hidden}
+  .table-wrap{background:#fff;border:1px solid var(--reg-line);overflow-x:auto;-webkit-overflow-scrolling:touch}
   .table{width:100%;border-collapse:collapse}
   .table thead th{
     font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--reg-muted);
