@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import RequireRole from './components/RequireRole';
 import { AuthProvider } from './context/AuthContext';
 import { ConfirmProvider } from './components/ConfirmDialog';
+import { ToastProvider } from './components/Toast';
 import SiteChrome from './components/SiteChrome';
 
 import LandingPage from './pages/LandingPage';
@@ -68,6 +69,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ToastProvider>
         <ConfirmProvider>
         <SiteChrome />
         <Routes>
@@ -162,6 +164,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
         </ConfirmProvider>
+        </ToastProvider>
       </BrowserRouter>
     </AuthProvider>
   );
