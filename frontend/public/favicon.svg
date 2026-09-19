@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Beveled brand tile (echoes the cut-corner buttons) -->
+  <polygon points="6,0 26,0 32,6 32,26 26,32 6,32 0,26 0,6" fill="#0B1B2E"/>
+  <!-- Monogram N in campus gold -->
+  <g fill="#C79A3B">
+    <rect x="8" y="7" width="4.6" height="18"/>
+    <rect x="19.4" y="7" width="4.6" height="18"/>
+    <polygon points="8,7 12.6,7 24,25 19.4,25"/>
+  </g>
+</svg>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import PasswordInput from '../../components/PasswordInput';
 
 const STEP_VERIFY   = 'verify';   // validating token
 const STEP_WELCOME  = 'welcome';  // show applicant name, ask for email
@@ -180,8 +181,7 @@ export default function ActivateAccount() {
               <p style={pStyle}>Choose a strong password for your new student account.</p>
             </div>
             <Field label="Password">
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
@@ -190,8 +190,7 @@ export default function ActivateAccount() {
               />
             </Field>
             <Field label="Confirm password">
-              <input
-                type="password"
+              <PasswordInput
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}
                 required

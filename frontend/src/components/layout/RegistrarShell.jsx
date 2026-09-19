@@ -542,7 +542,7 @@ const CSS = `
 
   /* Buttons */
   .btn-pri{
-    padding:9px 16px;background:var(--reg-ink);color:#fff;border:1px solid var(--reg-ink);
+    padding:9px 16px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);background:var(--reg-ink);color:#fff;border:1px solid var(--reg-ink);
     font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
     cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;
     transition:background .15s;
@@ -551,7 +551,7 @@ const CSS = `
   .btn-pri:disabled{opacity:.55;cursor:not-allowed}
   .btn-pri i{font-size:14px}
   .btn-sec{
-    padding:9px 14px;background:#fff;color:var(--reg-ink);border:1px solid var(--reg-line);
+    padding:9px 14px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);background:#fff;color:var(--reg-ink);border:1px solid var(--reg-line);
     font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
     cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;
     transition:border-color .15s;

@@ -39,7 +39,7 @@ const CSS = `
   .micro{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:600}
 
   /* ── Buttons ── */
-  .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:2px;font-size:13px;font-weight:500;letter-spacing:.02em;cursor:pointer;border:1px solid transparent;transition:background .2s,border-color .2s,color .2s,transform .15s;text-decoration:none;font-family:inherit;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:0;clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);font-size:13px;font-weight:500;letter-spacing:.02em;cursor:pointer;border:1px solid transparent;transition:background .2s,border-color .2s,color .2s,transform .15s;text-decoration:none;font-family:inherit;}
   .btn i{font-size:15px}
   .btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
   .btn-primary:hover{background:#000;border-color:#000}

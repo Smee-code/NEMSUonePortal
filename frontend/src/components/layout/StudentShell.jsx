@@ -235,10 +235,10 @@ const CSS = `
   .toolbar select,.toolbar input[type="date"]{padding:9px 12px;background:#fff;border:1px solid var(--line);outline:none;font:13px/1.4 'Inter',sans-serif;color:var(--ink);font-family:inherit;}
 
   /* Buttons */
-  .btn-pri{padding:9px 16px;background:var(--ink);color:#fff;border:1px solid var(--ink);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:background .15s;}
+  .btn-pri{padding:9px 16px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);background:var(--ink);color:#fff;border:1px solid var(--ink);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:background .15s;}
   .btn-pri:hover{background:#000;}
   .btn-pri i{font-size:14px;}
-  .btn-sec{padding:9px 14px;background:#fff;color:var(--ink);border:1px solid var(--line);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:border-color .15s;}
+  .btn-sec{padding:9px 14px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);background:#fff;color:var(--ink);border:1px solid var(--line);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:border-color .15s;}
   .btn-sec:hover{border-color:var(--ink);}
   .btn-sec i{font-size:14px;}
   .btn-ghost{padding:5px 8px;background:transparent;color:var(--muted);border:none;cursor:pointer;font-family:inherit;font-size:12px;display:inline-flex;align-items:center;gap:4px;}

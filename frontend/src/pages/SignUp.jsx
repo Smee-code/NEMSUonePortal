@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
+import PasswordInput from '../components/PasswordInput';
 
 const EMPTY = {
   last_name: '', first_name: '', middle_name: '',
@@ -109,10 +110,10 @@ export default function SignUp() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
               <Field label="Password">
-                <input style={inp} type="password" value={form.password} onChange={e => set('password', e.target.value)} required placeholder="Min. 8 characters" />
+                <PasswordInput style={inp} value={form.password} onChange={e => set('password', e.target.value)} required placeholder="Min. 8 characters" />
               </Field>
               <Field label="Confirm password">
-                <input style={inp} type="password" value={form.confirm} onChange={e => set('confirm', e.target.value)} required placeholder="Re-enter" />
+                <PasswordInput style={inp} value={form.confirm} onChange={e => set('confirm', e.target.value)} required placeholder="Re-enter" />
               </Field>
             </div>
 

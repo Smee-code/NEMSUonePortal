@@ -1,12 +1,18 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import RequireRole from './components/RequireRole';
 import { AuthProvider } from './context/AuthContext';
+import { ConfirmProvider } from './components/ConfirmDialog';
+import SiteChrome from './components/SiteChrome';
 
 import LandingPage from './pages/LandingPage';
 import NewsPage from './pages/NewsPage';
 import ProgramsPage from './pages/ProgramsPage';
 import CampusLifePage from './pages/CampusLifePage';
 import StoryPage from './pages/StoryPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsConditions from './pages/TermsConditions';
+import CookiePolicy from './pages/CookiePolicy';
+import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import Unauthorized from './pages/Unauthorized';
@@ -65,6 +71,8 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ConfirmProvider>
+        <SiteChrome />
         <Routes>
           {/* ── Public routes ─────────────────────────────────────── */}
           <Route path="/login" element={<Login />} />
@@ -154,8 +162,12 @@ export default function App() {
           <Route path="/programs" element={<ProgramsPage />} />
           <Route path="/campus-life" element={<CampusLifePage />} />
           <Route path="/in-focus" element={<StoryPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsConditions />} />
+          <Route path="/cookies" element={<CookiePolicy />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
+        </ConfirmProvider>
       </BrowserRouter>
     </AuthProvider>
   );

@@ -157,11 +157,11 @@ const CSS = `
   .toolbar .label{font-size:11px;color:var(--adm-muted);font-weight:500;letter-spacing:.04em;margin-right:4px}
   .toolbar-spacer{flex:1}
   /* Page buttons */
-  .btn-pri{padding:9px 16px;background:var(--adm-ink);color:#fff;border:1px solid var(--adm-ink);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:background .15s}
+  .btn-pri{padding:9px 16px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);background:var(--adm-ink);color:#fff;border:1px solid var(--adm-ink);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:background .15s}
   .btn-pri:hover{background:#000}
   .btn-pri:disabled{opacity:.5;cursor:not-allowed}
   .btn-pri i{font-size:14px}
-  .btn-sec{padding:9px 14px;background:#fff;color:var(--adm-ink);border:1px solid var(--adm-line);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:border-color .15s}
+  .btn-sec{padding:9px 14px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);background:#fff;color:var(--adm-ink);border:1px solid var(--adm-line);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:border-color .15s}
   .btn-sec:hover{border-color:var(--adm-ink)}
   .btn-sec i{font-size:14px}
   .btn-ghost{padding:5px 8px;background:transparent;color:var(--adm-muted);border:none;cursor:pointer;font-family:inherit;font-size:12px;display:inline-flex;align-items:center;gap:4px}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
+import PasswordInput from '../../components/PasswordInput';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -71,10 +72,9 @@ export default function ResetPassword() {
               <label htmlFor="new_password">
                 New Password <small style={{ color: '#6b7280' }}>(min. 12 characters)</small>
               </label>
-              <input
+              <PasswordInput
                 id="new_password"
                 name="new_password"
-                type="password"
                 value={form.new_password}
                 onChange={handleChange}
                 required
@@ -84,10 +84,9 @@ export default function ResetPassword() {
 
             <div className="form-group">
               <label htmlFor="confirm">Confirm New Password</label>
-              <input
+              <PasswordInput
                 id="confirm"
                 name="confirm"
-                type="password"
                 value={form.confirm}
                 onChange={handleChange}
                 required
