@@ -96,8 +96,8 @@ const CSS = `
   /* ── Hero ── */
   .hero{position:relative;min-height:88vh;background:var(--ink-3);color:#fff;overflow:hidden;display:flex;flex-direction:column;}
   .hero-photo{position:absolute;inset:0;z-index:0;}
-  .hero-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
-  .hero-photo::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(10,22,40,.4) 0%,rgba(10,22,40,.2) 35%,rgba(10,22,40,.72) 100%),linear-gradient(90deg,rgba(10,22,40,.82) 0%,rgba(10,22,40,.62) 35%,rgba(10,22,40,.4) 65%,rgba(10,22,40,.12) 100%);}
+  .hero-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;filter:blur(3px);transform:scale(1.06);}
+  .hero-photo::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(10,22,40,.5) 0%,rgba(10,22,40,.32) 35%,rgba(10,22,40,.78) 100%),linear-gradient(90deg,rgba(10,22,40,.9) 0%,rgba(10,22,40,.74) 40%,rgba(10,22,40,.55) 70%,rgba(10,22,40,.32) 100%);}
   .hero-content{position:relative;z-index:3;flex:1;max-width:1280px;margin:0 auto;width:100%;padding:5rem 2rem 3rem;display:flex;flex-direction:column;justify-content:flex-end;}
   .hero-eyebrow{display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:2rem;}
   .hero-eyebrow::before{content:"";width:36px;height:1px;background:var(--gold-soft)}
