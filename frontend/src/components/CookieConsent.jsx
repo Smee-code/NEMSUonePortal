@@ -2,6 +2,21 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const KEY = 'nemsu.cookieConsent.v1';
+const COOKIE = 'nemsu_cookie_consent';
+
+/* Remember the dismissal in BOTH a first-party cookie and localStorage, and
+   treat it as accepted if either is present. A cookie persists reliably even
+   when localStorage is cleared, partitioned, or blocked (private windows,
+   strict-privacy modes), so the notice stays dismissed across visits. */
+function hasConsent() {
+  try {
+    if (document.cookie.split('; ').some(c => c === `${COOKIE}=accepted`)) return true;
+  } catch { /* ignore */ }
+  try {
+    if (localStorage.getItem(KEY) === 'accepted') return true;
+  } catch { /* ignore */ }
+  return false;
+}
 
 /* Clear, honest cookie notice. The portal uses only one essential auth
    cookie, so this informs rather than asks to track. Dismissal is
@@ -10,12 +25,14 @@ export default function CookieConsent() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    let acked = false;
-    try { acked = localStorage.getItem(KEY) === 'accepted'; } catch { /* ignore */ }
-    if (!acked) setShow(true);
+    if (!hasConsent()) setShow(true);
   }, []);
 
   function accept() {
+    try {
+      // ~1 year, sent on every path; Lax is fine for a same-site preference flag.
+      document.cookie = `${COOKIE}=accepted; max-age=31536000; path=/; SameSite=Lax`;
+    } catch { /* ignore */ }
     try { localStorage.setItem(KEY, 'accepted'); } catch { /* ignore */ }
     setShow(false);
   }
