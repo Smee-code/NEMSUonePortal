@@ -409,7 +409,7 @@ class AdminStatsView(APIView):
 
     def get(self, request):
         from documents.models import DocumentRequest
-        from enrollment.models import AcademicTerm, Block, EnrollmentRequest, Program
+        from enrollment.models import AcademicTerm
         from grades.models import GradeRecord, TeachingAssignment
 
         user_counts = {
@@ -420,11 +420,6 @@ class AdminStatsView(APIView):
         user_counts['locked']     = User.objects.filter(locked_until__gt=timezone.now()).count()
         user_counts['unverified'] = User.objects.filter(is_verified=False).count()
         user_counts['inactive']   = User.objects.filter(is_active=False).count()
-
-        enrollment_counts = {
-            r: EnrollmentRequest.objects.filter(status=r).count()
-            for r in ['pending', 'approved', 'rejected']
-        }
 
         doc_counts = {
             r: DocumentRequest.objects.filter(status=r).count()
@@ -466,78 +461,10 @@ class AdminStatsView(APIView):
                 'submitted_grade_records': 0,
             }
 
-        # ── Enrollment by program ──
-        if active_term:
-            rows = (
-                EnrollmentRequest.objects
-                .filter(academic_term=active_term, status='approved', program__isnull=False)
-                .values('program__code', 'program__name')
-                .annotate(enrolled=Count('id'))
-                .order_by('-enrolled')
-            )
-            enrollment_by_program = [
-                {
-                    'program_code': r['program__code'],
-                    'program_name': r['program__name'],
-                    'enrolled':     r['enrolled'],
-                }
-                for r in rows
-            ]
-        else:
-            enrollment_by_program = []
-
-        # ── Block fill rate ──
-        if active_term:
-            from collections import defaultdict
-            blocks_qs = list(
-                Block.objects.filter(academic_term=active_term)
-                .select_related('program')
-                .annotate(
-                    approved_count=Count(
-                        'enrollment_requests',
-                        filter=Q(enrollment_requests__status='approved')
-                    )
-                )
-            )
-            total_blocks = len(blocks_qs)
-            if total_blocks > 0:
-                full_blocks = sum(
-                    1 for b in blocks_qs if b.approved_count >= b.BLOCK_CAPACITY
-                )
-                avg_fill_pct = round(
-                    sum(b.approved_count / b.BLOCK_CAPACITY * 100 for b in blocks_qs) / total_blocks,
-                    1,
-                )
-            else:
-                full_blocks = 0
-                avg_fill_pct = 0.0
-
-            prog_map = defaultdict(lambda: {'enrolled': 0, 'capacity': 0})
-            for b in blocks_qs:
-                code = b.program.code if b.program else 'N/A'
-                prog_map[code]['enrolled'] += b.approved_count
-                prog_map[code]['capacity'] += Block.BLOCK_CAPACITY
-            by_program = [
-                {'program_code': code, 'enrolled': v['enrolled'], 'capacity': v['capacity']}
-                for code, v in sorted(prog_map.items(), key=lambda x: -x[1]['enrolled'])
-            ]
-
-            block_fill = {
-                'total_blocks': total_blocks,
-                'full_blocks':  full_blocks,
-                'avg_fill_pct': avg_fill_pct,
-                'by_program':   by_program,
-            }
-        else:
-            block_fill = {'total_blocks': 0, 'full_blocks': 0, 'avg_fill_pct': 0.0, 'by_program': []}
-
         return Response({
             'users':                 user_counts,
-            'enrollments':           enrollment_counts,
             'documents':             doc_counts,
             'grade_submission':      grade_submission,
-            'enrollment_by_program': enrollment_by_program,
-            'block_fill':            block_fill,
             'active_term_label':     term_label,
             'generated_at':          timezone.now().isoformat(),
         })
