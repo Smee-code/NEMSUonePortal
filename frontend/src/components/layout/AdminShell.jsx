@@ -23,7 +23,7 @@ const CSS = `
   .adm-sb{flex:0 0 260px;background:#0a1628;color:#e8ecf2;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
   .adm-sb-brand{display:flex;align-items:center;gap:12px;padding:1.5rem 1.5rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08)}
   .adm-sb-brand img{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.04);padding:2px;object-fit:contain}
-  .adm-sb-brand-name{font-size:20px;color:#fff;letter-spacing:-.01em;line-height:1.2}
+  .adm-sb-brand-name{font-size:20px;color:#fff;letter-spacing:-.01em;line-height:1.2;white-space:nowrap}
   .adm-sb-brand-sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#d9b96b;margin-top:3px;font-weight:600}
   .adm-sb-section{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(232,236,242,.40);font-weight:600;padding:1.5rem 1.5rem .75rem}
   .adm-sb-nav{flex:1;overflow-y:auto;padding:0 .75rem .5rem}

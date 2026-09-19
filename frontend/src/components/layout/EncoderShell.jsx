@@ -136,7 +136,7 @@ const CSS = `
   .enc-sb{width:248px;flex-shrink:0;background:var(--enc-ink);color:#fff;display:flex;flex-direction:column;height:100%;overflow:hidden}
   .enc-sb-brand{padding:1.5rem 1.25rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:.875rem;flex-shrink:0}
   .enc-sb-brand img{width:38px;height:38px;border-radius:50%;object-fit:contain;background:rgba(255,255,255,.06);padding:2px}
-  .enc-sb-brand-name{font-size:16px;font-weight:600;color:#fff;letter-spacing:-.01em;line-height:1.2}
+  .enc-sb-brand-name{font-size:16px;font-weight:600;color:#fff;letter-spacing:-.01em;line-height:1.2;white-space:nowrap}
   .enc-sb-brand-sub{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--enc-gold-soft);margin-top:3px;font-weight:600}
   .enc-sb-nav{flex:1;padding:.75rem 0;overflow-y:auto}
   .enc-sb-group-label{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.38);font-weight:600;padding:1.25rem 1.25rem .4rem}

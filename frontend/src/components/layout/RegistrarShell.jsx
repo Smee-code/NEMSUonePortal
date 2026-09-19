@@ -334,7 +334,7 @@ const CSS = `
     flex-shrink:0;
   }
   .reg-sb-brand img{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.04);padding:2px}
-  .reg-sb-brand-name{font-size:20px;color:#fff;letter-spacing:-.01em;font-weight:500}
+  .reg-sb-brand-name{font-size:20px;color:#fff;letter-spacing:-.01em;font-weight:500;white-space:nowrap}
   .reg-sb-brand-sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--reg-gold-soft);margin-top:3px;font-weight:600}
   .reg-sb-nav{flex:1;overflow-y:auto;padding:0 .75rem .5rem}
   .reg-sb-nav::-webkit-scrollbar{width:4px}

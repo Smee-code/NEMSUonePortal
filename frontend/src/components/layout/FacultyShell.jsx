@@ -35,7 +35,7 @@ const CSS = `
     display:flex;align-items:center;gap:.875rem;flex-shrink:0}
   .fac-sb-brand img{width:36px;height:36px;border-radius:4px;object-fit:contain;
     background:rgba(255,255,255,.06);padding:2px}
-  .fac-sb-brand-name{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.01em;line-height:1.2}
+  .fac-sb-brand-name{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.01em;line-height:1.2;white-space:nowrap}
   .fac-sb-brand-sub{font-size:9px;letter-spacing:.18em;text-transform:uppercase;
     color:var(--gold-soft);margin-top:3px;font-weight:600}
   .fac-sb-nav{flex:1;padding:.75rem 0;overflow-y:auto}

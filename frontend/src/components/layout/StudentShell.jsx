@@ -59,7 +59,7 @@ const CSS = `
   .sb-brand{display:flex;align-items:center;gap:12px;padding:1.5rem 1.5rem 1.25rem;border-bottom:1px solid var(--line-dark);}
   .sb-brand img{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.04);padding:2px;}
   .sb-brand-text{line-height:1.2;min-width:0;}
-  .sb-brand-name{font-size:20px;color:#fff;letter-spacing:-.01em;font-weight:500;}
+  .sb-brand-name{font-size:20px;color:#fff;letter-spacing:-.01em;font-weight:500;white-space:nowrap;}
   .sb-brand-sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-soft);margin-top:3px;font-weight:600;}
   .sb-section{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--on-dark-faint);font-weight:600;padding:1.5rem 1.5rem .75rem;}
   .sb-nav{flex:1;overflow-y:auto;padding:0 .75rem .5rem;}
