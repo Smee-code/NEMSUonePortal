@@ -112,6 +112,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
         choices=[(1, '1st Year'), (2, '2nd Year'), (3, '3rd Year'), (4, '4th Year')],
     )
+    # Faculty classification: a GEC faculty teaches general-education courses across
+    # programs; otherwise a faculty's `program` marks the program they are core to.
+    is_gec_faculty = models.BooleanField(default=False)
 
     # Account lockout — OWASP A07
     failed_login_attempts = models.PositiveSmallIntegerField(default=0)
@@ -129,6 +132,17 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f'{self.full_name} ({self.institutional_email})'
+
+    @property
+    def faculty_classification(self):
+        """A label like 'BS Information Technology Faculty' or 'GEC Faculty'."""
+        if self.role != 'faculty':
+            return None
+        if self.is_gec_faculty:
+            return 'GEC Faculty'
+        if self.program_id:
+            return f'{self.program.name} Faculty'
+        return 'Unclassified'
 
     def is_locked(self):
         return bool(self.locked_until and timezone.now() < self.locked_until)

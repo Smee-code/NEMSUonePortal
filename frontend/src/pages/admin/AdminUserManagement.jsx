@@ -83,10 +83,11 @@ export default function AdminUserManagement() {
   const [saving,     setSaving]     = useState(null);
 
   const [departments, setDepartments] = useState([]);
+  const [programs, setPrograms] = useState([]);
 
   const EMPTY_CREATE = {
     full_name: '', institutional_email: '', student_id: '',
-    role: 'faculty', department: '', password: '',
+    role: 'faculty', department: '', program: '', is_gec_faculty: false, password: '',
   };
   const [showCreate,  setShowCreate]  = useState(false);
   const [createForm,  setCreateForm]  = useState(EMPTY_CREATE);
@@ -96,6 +97,7 @@ export default function AdminUserManagement() {
   useEffect(() => {
     api.get('/auth/admin/stats/').then(r => setStats(r.data)).catch(() => {});
     api.get('/auth/departments/').then(r => setDepartments(r.data || [])).catch(() => {});
+    api.get('/enrollment/admin/programs/').then(r => setPrograms(r.data?.results ?? r.data ?? [])).catch(() => {});
   }, []);
 
   function openCreate() {
@@ -118,7 +120,11 @@ export default function AdminUserManagement() {
         role:                createForm.role,
         password:            createForm.password,
       };
-      if (createForm.role === 'department_encoder') payload.department = createForm.department;
+      if (createForm.role === 'department_encoder' || createForm.role === 'faculty') payload.department = createForm.department;
+      if (createForm.role === 'faculty') {
+        payload.is_gec_faculty = createForm.is_gec_faculty;
+        if (!createForm.is_gec_faculty && createForm.program) payload.program = Number(createForm.program);
+      }
       await api.post('/auth/admin/users/', payload);
       const msg = `${ROLE_LABEL[createForm.role]} account for ${payload.full_name} created.`;
       setSuccessMsg(msg);
@@ -164,7 +170,11 @@ export default function AdminUserManagement() {
     if (!editForm[u.id]) {
       setEditForm(prev => ({
         ...prev,
-        [u.id]: { role: u.role, is_active: u.is_active, unlock: false, department: u.department_code || '' },
+        [u.id]: {
+          role: u.role, is_active: u.is_active, unlock: false,
+          department: u.department_code || '',
+          program: u.program_id || '', is_gec_faculty: u.is_gec_faculty || false,
+        },
       }));
     }
   }
@@ -181,10 +191,20 @@ export default function AdminUserManagement() {
       if (form.role !== u.role)           payload.role      = form.role;
       if (form.is_active !== u.is_active) payload.is_active = form.is_active;
       if (form.unlock)                    payload.unlock    = true;
-      // Department only applies to encoders; send when it changed.
+      // Department applies to encoders and faculty; send when it changed.
+      const effRoleD = form.role ?? u.role;
       const curDept = u.department_code || '';
-      const newDept = form.role === 'department_encoder' ? (form.department || '') : '';
+      const newDept = (effRoleD === 'department_encoder' || effRoleD === 'faculty') ? (form.department ?? curDept) : '';
       if (newDept !== curDept) payload.department = newDept;
+      // Faculty classification (program + GEC).
+      const effRole = form.role ?? u.role;
+      if (effRole === 'faculty') {
+        const newGec = form.is_gec_faculty ?? u.is_gec_faculty ?? false;
+        if (newGec !== (u.is_gec_faculty || false)) payload.is_gec_faculty = newGec;
+        const curProg = u.program_id || '';
+        const newProg = newGec ? '' : (form.program ?? curProg);
+        if (String(newProg) !== String(curProg)) payload.program = newProg ? Number(newProg) : null;
+      }
       if (Object.keys(payload).length === 0) { setSaving(null); return; }
       await api.patch(`/auth/admin/users/${u.id}/`, payload);
       const msg = `Account for ${u.full_name} updated.`;
@@ -338,6 +358,9 @@ export default function AdminUserManagement() {
                       {u.role === 'department_encoder' && u.department_code && (
                         <div className="um-dept-line">{u.department_code}</div>
                       )}
+                      {u.role === 'faculty' && u.faculty_classification && u.faculty_classification !== 'Unclassified' && (
+                        <div className="um-dept-line">{u.faculty_classification}</div>
+                      )}
                     </td>
                     <td>
                       {u.is_locked
@@ -385,7 +408,7 @@ export default function AdminUserManagement() {
                                   ))}
                                 </select>
                               </div>
-                              {(form.role || u.role) === 'department_encoder' && (
+                              {((form.role || u.role) === 'department_encoder' || (form.role || u.role) === 'faculty') && (
                                 <div className="um-edit-field">
                                   <label className="um-edit-label">Department</label>
                                   <select
@@ -399,6 +422,27 @@ export default function AdminUserManagement() {
                                     ))}
                                   </select>
                                 </div>
+                              )}
+                              {(form.role || u.role) === 'faculty' && (
+                                <>
+                                  <label className="um-edit-unlock" style={{ paddingTop: '1.5rem' }}>
+                                    <input type="checkbox"
+                                      checked={form.is_gec_faculty ?? u.is_gec_faculty ?? false}
+                                      onChange={e => setField(u.id, 'is_gec_faculty', e.target.checked)} />
+                                    GEC faculty
+                                  </label>
+                                  {!(form.is_gec_faculty ?? u.is_gec_faculty) && (
+                                    <div className="um-edit-field">
+                                      <label className="um-edit-label">Core program</label>
+                                      <select className="um-edit-select"
+                                        value={form.program ?? (u.program_id || '')}
+                                        onChange={e => setField(u.id, 'program', e.target.value)}>
+                                        <option value="">— None —</option>
+                                        {programs.map(p => <option key={p.id} value={p.id}>{p.code}</option>)}
+                                      </select>
+                                    </div>
+                                  )}
+                                </>
                               )}
                               <div className="um-edit-field">
                                 <label className="um-edit-label">Status</label>
@@ -548,11 +592,13 @@ export default function AdminUserManagement() {
                   </select>
                 </div>
 
-                {createForm.role === 'department_encoder' && (
+                {(createForm.role === 'department_encoder' || createForm.role === 'faculty') && (
                   <div className="um-modal-field">
-                    <label className="um-edit-label">Department</label>
+                    <label className="um-edit-label">
+                      Department{createForm.role === 'faculty' ? ' (optional)' : ''}
+                    </label>
                     <select
-                      className="um-modal-input" required
+                      className="um-modal-input" required={createForm.role === 'department_encoder'}
                       value={createForm.department}
                       onChange={e => setCreateField('department', e.target.value)}
                     >
@@ -564,6 +610,24 @@ export default function AdminUserManagement() {
                   </div>
                 )}
               </div>
+
+              {createForm.role === 'faculty' && (
+                <div className="um-modal-field">
+                  <label className="um-edit-label">Faculty classification</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0 8px' }}>
+                    <input type="checkbox" checked={createForm.is_gec_faculty}
+                      onChange={e => setCreateField('is_gec_faculty', e.target.checked)} />
+                    GEC faculty (teaches general-education courses across programs)
+                  </label>
+                  {!createForm.is_gec_faculty && (
+                    <select className="um-modal-input" value={createForm.program}
+                      onChange={e => setCreateField('program', e.target.value)}>
+                      <option value="">— Core program (optional) —</option>
+                      {programs.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
 
               <div className="um-modal-field">
                 <label className="um-edit-label">Temporary password</label>

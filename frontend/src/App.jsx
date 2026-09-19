@@ -16,8 +16,8 @@ import AnnouncementsPage from './pages/announcements/AnnouncementsPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUserManagement from './pages/admin/AdminUserManagement';
 import AdminPrograms from './pages/admin/AdminPrograms';
+import AdminCurriculum from './pages/admin/AdminCurriculum';
 import AdminTerms from './pages/admin/AdminTerms';
-import AdminFacultyLoad from './pages/admin/AdminFacultyLoad';
 import AdminReports from './pages/admin/AdminReports';
 import AdminBlocks from './pages/admin/AdminBlocks';
 import AdminAuditLog from './pages/admin/AdminAuditLog';
@@ -131,8 +131,8 @@ export default function App() {
             <Route path="dashboard"    element={<AdminDashboard />} />
             <Route path="users"        element={<AdminUserManagement />} />
             <Route path="programs"     element={<AdminPrograms />} />
+            <Route path="curriculum"   element={<AdminCurriculum />} />
             <Route path="terms"        element={<AdminTerms />} />
-            <Route path="faculty-load" element={<AdminFacultyLoad />} />
             <Route path="reports"      element={<AdminReports />} />
             <Route path="blocks"       element={<AdminBlocks />} />
             <Route path="audit-log"    element={<AdminAuditLog />} />

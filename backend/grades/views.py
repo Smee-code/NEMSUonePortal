@@ -380,7 +380,7 @@ class RegistrarFacultyListView(APIView):
         )
         faculty = (
             User.objects.filter(role='faculty')
-            .select_related('department')
+            .select_related('department', 'program')
             .prefetch_related('teaching_assignments')
             .order_by('department__code', 'full_name')
         )
@@ -396,6 +396,9 @@ class RegistrarFacultyListView(APIView):
                 'email': f.institutional_email,
                 'department_code': f.department.code if f.department else None,
                 'department_name': f.department.name if f.department else None,
+                'program_name': f.program.name if f.program_id else None,
+                'is_gec_faculty': f.is_gec_faculty,
+                'classification': f.faculty_classification,
                 'current_term_load': current_load,
                 'total_assignments': f.teaching_assignments.count(),
             })

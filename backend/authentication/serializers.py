@@ -328,6 +328,9 @@ class AdminUserListSerializer(serializers.ModelSerializer):
     is_locked = serializers.SerializerMethodField()
     department_code = serializers.CharField(source='department.code', read_only=True, default=None)
     department_name = serializers.CharField(source='department.name', read_only=True, default=None)
+    program_id = serializers.IntegerField(source='program.id', read_only=True, default=None)
+    program_name = serializers.CharField(source='program.name', read_only=True, default=None)
+    faculty_classification = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
@@ -336,6 +339,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
             'role', 'is_active', 'is_verified', 'is_staff', 'date_joined',
             'failed_login_attempts', 'locked_until', 'is_locked',
             'department_code', 'department_name',
+            'program_id', 'program_name', 'is_gec_faculty', 'faculty_classification',
         ]
         read_only_fields = fields
 
@@ -352,6 +356,9 @@ class AdminUserUpdateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=ADMIN_ASSIGNABLE_ROLES, required=False)
     # Department assignment (by code). Empty string clears it.
     department = serializers.CharField(required=False, allow_blank=True)
+    # Faculty classification: program (by id, 0/'' clears it) + GEC flag.
+    program = serializers.IntegerField(required=False, allow_null=True)
+    is_gec_faculty = serializers.BooleanField(required=False)
     unlock = serializers.BooleanField(required=False, default=False)
 
     def validate_department(self, value):
@@ -363,6 +370,15 @@ class AdminUserUpdateSerializer(serializers.Serializer):
         except Department.DoesNotExist:
             raise serializers.ValidationError(f"No department with code '{value}'.")
 
+    def validate_program(self, value):
+        from enrollment.models import Program
+        if not value:
+            return None
+        try:
+            return Program.objects.get(pk=value)
+        except Program.DoesNotExist:
+            raise serializers.ValidationError('Selected program does not exist.')
+
 
 class AdminUserCreateSerializer(serializers.Serializer):
     """Admin creates a staff account (faculty / registrar / department_encoder / admin)."""
@@ -372,6 +388,8 @@ class AdminUserCreateSerializer(serializers.Serializer):
     contact_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
     role = serializers.ChoiceField(choices=ADMIN_ASSIGNABLE_ROLES)
     department = serializers.CharField(required=False, allow_blank=True)
+    program = serializers.IntegerField(required=False, allow_null=True)
+    is_gec_faculty = serializers.BooleanField(required=False, default=False)
     password = serializers.CharField(write_only=True, min_length=8)
 
     def validate_institutional_email(self, value):
@@ -405,11 +423,25 @@ class AdminUserCreateSerializer(serializers.Serializer):
                 {'department': 'A department encoder must be assigned to a department.'}
             )
         attrs['department_obj'] = dept
+
+        # Faculty may carry a core program + a GEC flag (ignored for other roles).
+        prog = None
+        prog_id = attrs.get('program')
+        if attrs['role'] == 'faculty' and prog_id and not attrs.get('is_gec_faculty'):
+            from enrollment.models import Program
+            try:
+                prog = Program.objects.get(pk=prog_id)
+            except Program.DoesNotExist:
+                raise serializers.ValidationError({'program': 'Selected program does not exist.'})
+        attrs['program_obj'] = prog
         return attrs
 
     def create(self, validated_data):
         dept = validated_data.pop('department_obj', None)
-        validated_data.pop('department', None)
+        prog = validated_data.pop('program_obj', None)
+        is_gec = validated_data.get('role') == 'faculty' and bool(validated_data.get('is_gec_faculty'))
+        for k in ('department', 'program', 'is_gec_faculty'):
+            validated_data.pop(k, None)
         password = validated_data.pop('password')
         user = User.objects.create_user(
             institutional_email=validated_data['institutional_email'],
@@ -419,6 +451,8 @@ class AdminUserCreateSerializer(serializers.Serializer):
             role=validated_data['role'],
             contact_number=validated_data.get('contact_number', ''),
             department=dept,
+            program=prog,
+            is_gec_faculty=is_gec,
             is_verified=True,   # staff accounts created by admin are pre-verified
             is_active=True,
         )

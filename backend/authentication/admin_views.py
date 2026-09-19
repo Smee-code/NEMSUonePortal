@@ -324,6 +324,21 @@ class AdminUserDetailView(APIView):
                 user.department = new_dept
                 update_fields.append('department')
 
+        if 'is_gec_faculty' in data:
+            user.is_gec_faculty = bool(data['is_gec_faculty'])
+            update_fields.append('is_gec_faculty')
+
+        if 'program' in data:
+            new_prog = data['program']  # Program instance or None
+            user.program = new_prog
+            update_fields.append('program')
+
+        # A GEC faculty has no single core program.
+        if user.is_gec_faculty and user.program_id:
+            user.program = None
+            if 'program' not in update_fields:
+                update_fields.append('program')
+
         # A department encoder must always be bound to a department.
         effective_role = user.role
         if effective_role == 'department_encoder' and user.department_id is None:
