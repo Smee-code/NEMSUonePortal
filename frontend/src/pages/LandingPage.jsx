@@ -93,6 +93,15 @@ const CSS = `
     .burger{display:flex;margin-left:auto;flex-shrink:0;width:42px;height:42px;border-radius:2px;border:1px solid var(--line);background:#fff;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);}
     .burger i{font-size:20px}
   }
+  .nav-mobile-back{position:fixed;inset:0;top:0;background:rgba(10,22,40,.35);z-index:99;animation:navfade .15s ease;}
+  @keyframes navfade{from{opacity:0}to{opacity:1}}
+  .nav-mobile{position:absolute;top:100%;left:0;right:0;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 12px 28px -12px rgba(10,22,40,.25);z-index:101;display:flex;flex-direction:column;padding:.5rem 1.25rem 1.25rem;animation:navdrop .18s ease;}
+  @keyframes navdrop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+  .nav-mobile-link{padding:14px 4px;font-size:15px;font-weight:500;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line-soft);}
+  .nav-mobile-link:last-of-type{border-bottom:none;}
+  .nav-mobile-link.active{color:var(--gold);}
+  .nav-mobile-sep{height:1px;background:var(--line);margin:.5rem 0;}
+  .nav-mobile-cta{margin-top:1rem;width:100%;justify-content:center;}
 
   /* ── Hero ── */
   .hero{position:relative;min-height:88vh;background:var(--ink-3);color:#fff;overflow:hidden;display:flex;flex-direction:column;}
@@ -911,10 +920,22 @@ function Topbar() {
   );
 }
 function Navbar({ scrolled, onEnroll, activeNav, onNavClick }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const close = () => setMenuOpen(false);
+  const handleNav = (href) => { onNavClick(href); close(); };
+
+  // Lock body scroll while the mobile menu is open
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [menuOpen]);
+
   return (
     <nav className={`nav${scrolled ? ' scrolled' : ''}`}>
       <div className="nav-inner">
-        <a href="#home" className="brand" onClick={() => onNavClick('#home')}>
+        <a href="#home" className="brand" onClick={() => handleNav('#home')}>
           <img src="/logo.png" alt="NEMSU" className="brand-logo" />
           <div className="brand-text">
             <div className="brand-name">NEMSUonePortal</div>
@@ -932,10 +953,30 @@ function Navbar({ scrolled, onEnroll, activeNav, onNavClick }) {
         <button className="btn btn-primary nav-cta" onClick={onEnroll}>
           Apply now <i className="ti ti-arrow-right" />
         </button>
-        <button className="burger" aria-label="Menu">
-          <i className="ti ti-menu-2" />
+        <button className="burger" aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
+          <i className={`ti ${menuOpen ? 'ti-x' : 'ti-menu-2'}`} />
         </button>
       </div>
+
+      {menuOpen && (
+        <>
+          <div className="nav-mobile-back" onClick={close} />
+          <div className="nav-mobile">
+            {NAV_LINKS.map(l => (
+              <a key={l.label} href={l.href} className={`nav-mobile-link${activeNav === l.href ? ' active' : ''}`}
+                onClick={() => handleNav(l.href)}>
+                {l.label}
+              </a>
+            ))}
+            <div className="nav-mobile-sep" />
+            <Link to="/login" className="nav-mobile-link" onClick={close}>Log in</Link>
+            <Link to="/signup" className="nav-mobile-link" onClick={close}>Sign up</Link>
+            <button className="btn btn-primary nav-mobile-cta" onClick={() => { close(); onEnroll(); }}>
+              Apply now <i className="ti ti-arrow-right" />
+            </button>
+          </div>
+        </>
+      )}
     </nav>
   );
 }
