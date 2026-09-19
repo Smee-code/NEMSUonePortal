@@ -4,6 +4,9 @@ import { AuthProvider } from './context/AuthContext';
 
 import LandingPage from './pages/LandingPage';
 import NewsPage from './pages/NewsPage';
+import ProgramsPage from './pages/ProgramsPage';
+import CampusLifePage from './pages/CampusLifePage';
+import StoryPage from './pages/StoryPage';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import Unauthorized from './pages/Unauthorized';
@@ -148,6 +151,9 @@ export default function App() {
           {/* ── Landing & fallback ────────────────────────────────── */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/news" element={<NewsPage />} />
+          <Route path="/programs" element={<ProgramsPage />} />
+          <Route path="/campus-life" element={<CampusLifePage />} />
+          <Route path="/in-focus" element={<StoryPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

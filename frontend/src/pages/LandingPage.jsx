@@ -996,7 +996,6 @@ function AudiencePortals({ onLogin, onEnroll }) {
 function Spotlight({ content }) {
   const post = content || SPOTLIGHT_FALLBACK;
   const dateLabel = post.date || post.createdAt || '';
-  const [openStory, setOpenStory] = useState(false);
 
   return (
     <section className="spot">
@@ -1021,19 +1020,13 @@ function Spotlight({ content }) {
               <h3>{post.title}</h3>
               <p>{post.body}</p>
               <div className="spot-byline">{post.byline}{dateLabel ? ` · ${dateLabel}` : ''}</div>
-              <button type="button" className="btn-link" style={{ alignSelf: 'flex-start' }} onClick={() => setOpenStory(true)}>
+              <Link to="/in-focus" className="btn-link" style={{ alignSelf: 'flex-start' }}>
                 Read the full story <i className="ti ti-arrow-right" />
-              </button>
+              </Link>
             </div>
           </Reveal>
         </div>
       </div>
-      {openStory && (
-        <DetailModal
-          onClose={() => setOpenStory(false)}
-          item={{ image: post.imageUrl, meta: post.category, title: post.title, body: post.body, sub: `${post.byline}${dateLabel ? ` · ${dateLabel}` : ''}` }}
-        />
-      )}
     </section>
   );
 }
@@ -1158,7 +1151,6 @@ function VisionMission({ content }) {
 }
 
 function Programs({ programs, content }) {
-  const [showModal, setShowModal] = useState(false);
   const PREVIEW_COUNT = 6;
 
   const list = programs?.length
@@ -1184,9 +1176,9 @@ function Programs({ programs, content }) {
                 {content?.heading || <>Undergraduate programs at <em>Cantilan Campus</em>.</>}
               </h2>
             </div>
-            <button type="button" className="btn-link" onClick={() => setShowModal(true)}>
+            <Link to="/programs" className="btn-link">
               All programs{hasMore ? ` (${list.length})` : ''} <i className="ti ti-arrow-right" />
-            </button>
+            </Link>
           </div>
         </Reveal>
         <div className="progs-grid">
@@ -1203,14 +1195,12 @@ function Programs({ programs, content }) {
           ))}
         </div>
       </div>
-      {showModal && <AllProgramsModal list={list} onClose={() => setShowModal(false)} />}
     </section>
   );
 }
 const LIFE_CLS  = ['life-a', 'life-b', 'life-c', 'life-d', 'life-e', 'life-f'];
 const LIFE_KEYS = ['lifeA', 'lifeB', 'lifeC', 'lifeD', 'lifeE', 'lifeF'];
 function Life({ content }) {
-  const [showGallery, setShowGallery] = useState(false);
   const items = (content?.items ?? LIFE).map((l, i) => ({
     ...l,
     cls: l.cls || LIFE_CLS[i % 6],
@@ -1225,22 +1215,21 @@ function Life({ content }) {
               <div className="eyebrow">{content?.eyebrow || 'Campus life'}</div>
               <h2 className="h-section" style={{ marginTop: '1rem' }}>{content?.heading || <>Life at <em>Cantilan</em>.</>}</h2>
             </div>
-            <button type="button" className="btn-link" onClick={() => setShowGallery(true)}>Explore campus <i className="ti ti-arrow-right" /></button>
+            <Link to="/campus-life" className="btn-link">Explore campus <i className="ti ti-arrow-right" /></Link>
           </div>
         </Reveal>
         <div className="life-grid">
           {items.map((l, i) => (
-            <button key={l.id || i} type="button" className={`life-item ${l.cls}`} onClick={() => setShowGallery(true)}>
+            <Link key={l.id || i} to="/campus-life" className={`life-item ${l.cls}`}>
               <Img src={l.src} alt={l.title} />
               <div className="meta">
                 <div className="micro">{l.tag}</div>
                 <div className="title">{l.title}</div>
               </div>
-            </button>
+            </Link>
           ))}
         </div>
       </div>
-      {showGallery && <LifeGalleryModal items={items} onClose={() => setShowGallery(false)} />}
     </section>
   );
 }
@@ -1425,71 +1414,6 @@ function DetailModal({ item, onClose }) {
           {item.title && <h3>{item.title}</h3>}
           {item.sub && <div className="lp-dtl-sub">{item.sub}</div>}
           {item.body && <p>{item.body}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AllProgramsModal({ list, onClose }) {
-  useEffect(() => {
-    const onKey = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-  const groups = {};
-  list.forEach(p => { const d = p.dept || 'Other'; (groups[d] = groups[d] || []).push(p); });
-  const deptNames = Object.keys(groups).sort();
-  return (
-    <div className="modal-back" onClick={onClose}>
-      <div className="lp-progmodal" onClick={e => e.stopPropagation()}>
-        <div className="lp-progmodal-head">
-          <div>
-            <div className="eyebrow">Academic programs</div>
-            <h3>All programs by department</h3>
-          </div>
-          <button className="lp-dtl-x" onClick={onClose} aria-label="Close"><i className="ti ti-x" /></button>
-        </div>
-        <div className="lp-progmodal-body">
-          {deptNames.map(dept => (
-            <div key={dept} className="lp-progdept">
-              <div className="lp-progdept-name">{dept}<span>{groups[dept].length}</span></div>
-              <ul>
-                {groups[dept].map((p, i) => (
-                  <li key={i}><span className="lp-progdot" />{p.name}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LifeGalleryModal({ items, onClose }) {
-  useEffect(() => {
-    const onKey = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-  return (
-    <div className="modal-back" onClick={onClose}>
-      <div className="lp-gallery" onClick={e => e.stopPropagation()}>
-        <div className="lp-gallery-head">
-          <h3>Life at Cantilan</h3>
-          <button className="lp-dtl-x" onClick={onClose} aria-label="Close"><i className="ti ti-x" /></button>
-        </div>
-        <div className="lp-gallery-grid">
-          {items.map((l, i) => (
-            <div key={l.id || i} className="lp-gallery-item">
-              <img src={l.src} alt={l.title || ''} />
-              <div className="lp-gallery-meta">
-                <div className="lp-gallery-tag">{l.tag}</div>
-                <div className="lp-gallery-title">{l.title}</div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
