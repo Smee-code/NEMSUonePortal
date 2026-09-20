@@ -55,8 +55,9 @@ export default function FacultyTeachingLoad() {
   const [declareSubjects, setDeclareSubjects] = useState([]);
   const [selectedTerm, setSelectedTerm] = useState('');
   const [load, setLoad] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState('');
+  const [termsReady, setTermsReady] = useState(false);
 
   const [showDeclare, setShowDeclare] = useState(false);
   const [declareForm, setDeclareForm] = useState({ term_semester: '', department_id: '', program_id: '', year_level: '', subject_id: '', block_id: '', section: '' });
@@ -89,7 +90,8 @@ export default function FacultyTeachingLoad() {
         : null;
       const active = termsRes.data.find(t => t.is_active);
       if (current || active) setSelectedTerm(String((current || active).id));
-    }).catch(() => setPageError('Failed to load terms and curriculum filters.'));
+      setTermsReady(true);
+    }).catch(() => { setPageError('Failed to load terms and curriculum filters.'); setTermsReady(true); setLoading(false); });
   }, []);
 
   const fetchLoad = (termId) => {
@@ -102,7 +104,13 @@ export default function FacultyTeachingLoad() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchLoad(selectedTerm); }, [selectedTerm]);
+  // Wait until terms have loaded and the current term is chosen before the first
+  // load. This avoids a wasteful "all terms" fetch of every past assignment on
+  // mount (and the race where that slow response overwrote the scoped one).
+  useEffect(() => {
+    if (!termsReady) return;
+    fetchLoad(selectedTerm);
+  }, [selectedTerm, termsReady]);
 
   // ── Declare assignment ───────────────────────────────────────────────────────
 
