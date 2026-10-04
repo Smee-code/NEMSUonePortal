@@ -11,7 +11,7 @@ const SEMESTER_CHOICES = [
 
 const EMPTY_FORM = {
   year: '', semester: 'first',
-  is_active: false, enrollment_open: false,
+  enrollment_open: false,
   start_date: '', end_date: '',
 };
 
@@ -66,7 +66,12 @@ export default function AdminTerms() {
   function fetchTerms() {
     setLoading(true);
     api.get('/enrollment/admin/terms/')
-      .then(res => setTerms(Array.isArray(res.data) ? res.data : (res.data.results ?? [])))
+      .then(res => {
+        const list = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+        // Newest start date first — the current term always leads the list.
+        list.sort((a, b) => (b.start_date || '').localeCompare(a.start_date || ''));
+        setTerms(list);
+      })
       .catch(() => setError('Failed to load academic terms.'))
       .finally(() => setLoading(false));
   }
@@ -81,7 +86,7 @@ export default function AdminTerms() {
     setEditTarget(term);
     setForm({
       year: term.year, semester: term.semester,
-      is_active: term.is_active, enrollment_open: term.enrollment_open,
+      enrollment_open: term.enrollment_open,
       start_date: term.start_date, end_date: term.end_date,
     });
     setFormError(''); setShowForm(true);
@@ -108,21 +113,6 @@ export default function AdminTerms() {
           : 'Failed to save term.'
       );
     } finally { setSaving(false); }
-  }
-
-  async function setActiveTerm(term) {
-    if (hasEnded(term)) {
-      toast('A term that has already ended cannot be set as the active term.', { type: 'error' });
-      return;
-    }
-    try {
-      await api.patch(`/enrollment/admin/terms/${term.id}/`, { is_active: true });
-      const msg = `${term.semester_display} ${term.year} set as active term.`;
-      toast(msg, { type: 'success' });
-      fetchTerms();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to set active term.');
-    }
   }
 
   // Local YYYY-MM-DD for comparing against a term's end_date.
@@ -175,7 +165,7 @@ export default function AdminTerms() {
         <div className="page-head-l">
           <div className="eyebrow">Manage · {terms.length} terms</div>
           <h2>Academic <em>terms</em></h2>
-          <div className="sub">Manage semester windows, open or close enrollment, and set the active term for the system.</div>
+          <div className="sub">Manage semester windows and open or close enrollment. The current term is set automatically — whichever term has the latest start date.</div>
         </div>
         <div className="actions">
           <button className="btn-pri" onClick={openCreate}>
@@ -247,30 +237,10 @@ export default function AdminTerms() {
                 />
               </div>
             </div>
-            {(() => {
-              // A term whose end date is in the past cannot be the active term
-              // (unless it is already the active one being edited).
-              const formEnded = form.end_date && form.end_date < todayStr;
-              const lockActive = formEnded && !(editTarget && editTarget.is_active);
-              return (
-                <div className="at-form-toggle-row">
-                  <label className="at-form-toggle-label" style={lockActive ? { opacity: .5, cursor: 'not-allowed' } : undefined}>
-                    <input
-                      type="checkbox"
-                      checked={form.is_active && !lockActive}
-                      disabled={lockActive}
-                      onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
-                    />
-                    Set as active term
-                  </label>
-                  <span className="at-form-toggle-hint">
-                    {lockActive
-                      ? 'This term has already ended and cannot be set as active.'
-                      : 'Setting active will deactivate all other terms.'}
-                  </span>
-                </div>
-              );
-            })()}
+            <div className="at-form-note">
+              <i className="ti ti-info-circle" />
+              <span>The current term is set automatically — the term with the latest start date becomes current and enrollment can only be opened there.</span>
+            </div>
             <div className="at-form-actions">
               <button type="button" className="btn-sec" onClick={() => setShowForm(false)}>Cancel</button>
               <button type="submit" className="btn-pri" disabled={saving}>
@@ -293,23 +263,24 @@ export default function AdminTerms() {
         <div className="grid-cards">
           {terms.map(t => {
             const ended = hasEnded(t);
-            // An ended term can't reopen enrollment; only allow closing if it's stuck open.
+            const isCurrent = t.is_active;   // derived: the newest term by start date
+            // Only the current term can host enrollment. Within it, an ended term
+            // still can't (re)open a window — only close one that's stuck open.
             const enrollLocked = ended && !t.enrollment_open;
+            const canToggle = isCurrent && !enrollLocked;
             return (
             <div key={t.id}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div className="at-card-eyebrow" style={{ color: t.is_active ? 'var(--adm-gold)' : 'var(--adm-muted)' }}>
-                    {t.is_active ? 'Active term' : ended ? 'Past term' : `A.Y. ${t.year}`}
+                  <div className="at-card-eyebrow" style={{ color: isCurrent ? 'var(--adm-gold)' : 'var(--adm-muted)' }}>
+                    {isCurrent ? 'Current term' : ended ? 'Past term' : `A.Y. ${t.year}`}
                   </div>
                   <div className="at-card-semester">{t.semester_display}</div>
-                  {t.is_active && <div className="at-card-year">A.Y. {t.year}</div>}
+                  {isCurrent && <div className="at-card-year">A.Y. {t.year}</div>}
                 </div>
                 <TermCardMenu items={[
                   { icon: 'ti-pencil', label: 'Edit', onClick: () => openEdit(t) },
-                  ...(!t.is_active && !ended ? [{ icon: 'ti-star', label: 'Set as active', onClick: () => setActiveTerm(t) }] : []),
-                  'sep',
-                  ...(!enrollLocked ? [{
+                  ...(canToggle ? [{
                     icon: t.enrollment_open ? 'ti-lock' : 'ti-lock-open',
                     label: t.enrollment_open ? 'Close enrollment' : 'Open enrollment',
                     onClick: () => toggleEnrollment(t),
@@ -333,17 +304,21 @@ export default function AdminTerms() {
               <div className="at-card-enroll-row">
                 <span className="at-card-enroll-label">Enrollment</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: t.enrollment_open ? 'var(--adm-green)' : 'var(--adm-muted)' }}>
-                    {enrollLocked ? 'Term ended' : t.enrollment_open ? 'Open' : 'Closed'}
+                  <span style={{ fontSize: 11, color: (isCurrent && t.enrollment_open) ? 'var(--adm-green)' : 'var(--adm-muted)' }}>
+                    {isCurrent
+                      ? (t.enrollment_open ? 'Open' : 'Closed')
+                      : ended ? 'Term ended' : 'Not current'}
                   </span>
-                  <button
-                    className={`toggle${t.enrollment_open ? ' on' : ''}`}
-                    disabled={updatingEnrollId === t.id || enrollLocked}
-                    onClick={() => toggleEnrollment(t)}
-                    title={enrollLocked ? 'This term has ended — enrollment cannot be opened'
-                      : t.enrollment_open ? 'Close enrollment' : 'Open enrollment'}
-                    style={enrollLocked ? { opacity: .4, cursor: 'not-allowed' } : undefined}
-                  />
+                  {isCurrent && (
+                    <button
+                      className={`toggle${t.enrollment_open ? ' on' : ''}`}
+                      disabled={updatingEnrollId === t.id || enrollLocked}
+                      onClick={() => toggleEnrollment(t)}
+                      title={enrollLocked ? 'This term has ended — enrollment cannot be opened'
+                        : t.enrollment_open ? 'Close enrollment' : 'Open enrollment'}
+                      style={enrollLocked ? { opacity: .4, cursor: 'not-allowed' } : undefined}
+                    />
+                  )}
                 </div>
               </div>
 
@@ -377,6 +352,8 @@ const CSS = `
   .at-form-toggle-row{display:flex;align-items:center;gap:.75rem;padding:.5rem 0}
   .at-form-toggle-label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--adm-ink);cursor:pointer;font-weight:500}
   .at-form-toggle-hint{font-size:11px;color:var(--adm-faint)}
+  .at-form-note{display:flex;align-items:flex-start;gap:8px;padding:.6rem .75rem;background:var(--adm-warm);border:1px solid var(--adm-line-soft);font-size:12px;color:var(--adm-muted);line-height:1.45}
+  .at-form-note i{color:var(--adm-gold);font-size:15px;flex-shrink:0;margin-top:1px}
   .at-form-actions{display:flex;justify-content:flex-end;gap:.5rem;padding-top:.25rem;border-top:1px solid var(--adm-line-soft)}
   .at-card-eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-bottom:6px}
   .at-card-semester{font-family:'Inter',-apple-system,sans-serif;font-weight:500;font-size:24px;color:var(--adm-ink);letter-spacing:-.01em;line-height:1.15}

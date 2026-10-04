@@ -13,24 +13,48 @@ class AcademicTerm(models.Model):
 
     year = models.CharField(max_length=9)           # e.g. "2024-2025"
     semester = models.CharField(max_length=10, choices=SEMESTER_CHOICES)
-    # Exactly one term is the system's active term. New terms are inactive by
-    # default and must be explicitly activated (which deactivates the rest).
+    # The current term is derived automatically: whichever term has the latest
+    # start date is the single active term. Admins never set this by hand — they
+    # just add the next term and it takes over (see sync_current()).
     is_active = models.BooleanField(default=False)
     enrollment_open = models.BooleanField(default=False)
     start_date = models.DateField()
     end_date = models.DateField()
 
     class Meta:
-        ordering = ['-year', 'semester']
+        ordering = ['-start_date', '-year', 'semester']
         unique_together = [('year', 'semester')]
 
     def __str__(self):
         return f"{self.get_semester_display()} {self.year}"
 
+    @classmethod
+    def sync_current(cls):
+        """Make the term with the latest start date the single current term.
+
+        'Current' is derived from the start date — the newest term always wins.
+        Every other term is demoted, and any enrollment window left open on a
+        superseded term is force-closed, so a window can only ever live on the
+        current term. Call this after any term is created, edited, or deleted.
+        Returns the current term (or None when no terms exist).
+        """
+        latest = cls.objects.order_by('-start_date', '-id').first()
+        if latest is None:
+            return None
+        # Demote everyone else and close any stray open enrollment on them.
+        cls.objects.exclude(pk=latest.pk).filter(
+            models.Q(is_active=True) | models.Q(enrollment_open=True)
+        ).update(is_active=False, enrollment_open=False)
+        # Promote the newest term (leave its own enrollment_open untouched).
+        if not latest.is_active:
+            cls.objects.filter(pk=latest.pk).update(is_active=True)
+            latest.is_active = True
+        return latest
+
     def save(self, *args, **kwargs):
-        # Enforce the single-active-term invariant no matter how the term is
-        # saved (admin endpoint, shell, seed script): activating one term
-        # deactivates every other one.
+        # Safety invariant: only one term may carry is_active at the DB level.
+        # The authoritative selection is sync_current(); this just prevents a
+        # second active term slipping in via a direct save.
         super().save(*args, **kwargs)
         if self.is_active:
             AcademicTerm.objects.exclude(pk=self.pk).filter(is_active=True).update(is_active=False)

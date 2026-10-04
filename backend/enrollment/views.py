@@ -851,13 +851,22 @@ class EnrollmentTermStatusView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # A term whose end date has passed can no longer accept enrollment — the
-        # admin cannot (re)open a window on it. Closing a stuck-open one is fine.
-        if enrollment_open and term.end_date and term.end_date < timezone.localdate():
-            return Response(
-                {'error': 'This term has already ended; enrollment cannot be opened for a past term.'},
-                status=status.HTTP_409_CONFLICT,
-            )
+        # Enrollment can only be opened on the current term — the one with the
+        # latest start date. Closing a window on any term stays allowed.
+        if enrollment_open:
+            current = AcademicTerm.objects.order_by('-start_date', '-id').first()
+            if current and current.pk != term.pk:
+                return Response(
+                    {'error': 'Enrollment can only be opened on the current term '
+                              '(the one with the latest start date).'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            # A term whose end date has passed can no longer accept enrollment.
+            if term.end_date and term.end_date < timezone.localdate():
+                return Response(
+                    {'error': 'This term has already ended; enrollment cannot be opened for a past term.'},
+                    status=status.HTTP_409_CONFLICT,
+                )
 
         with transaction.atomic():
             if enrollment_open:
@@ -880,13 +889,15 @@ class AdminTermListCreateView(generics.ListCreateAPIView):
     """GET/POST /api/enrollment/admin/terms/"""
     serializer_class = AcademicTermSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
-    queryset = AcademicTerm.objects.all().order_by('-year', 'semester')
+    queryset = AcademicTerm.objects.all().order_by('-start_date', '-id')
 
     def perform_create(self, serializer):
         with transaction.atomic():
-            if serializer.validated_data.get('is_active') is True:
-                AcademicTerm.objects.update(is_active=False)
             instance = serializer.save()
+            # The newest start date is always the current term; promoting it
+            # also closes any enrollment window left open on an older term.
+            AcademicTerm.sync_current()
+        instance.refresh_from_db()
         _audit(
             self.request.user, self.request.user.role,
             'academic_term_created', self.request.path,
@@ -904,9 +915,11 @@ class AdminTermDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         with transaction.atomic():
-            if serializer.validated_data.get('is_active') is True:
-                AcademicTerm.objects.exclude(pk=serializer.instance.pk).update(is_active=False)
             serializer.save()
+            # Editing a start date can change which term is newest, so re-derive
+            # the current term (and close any window orphaned on a demoted term).
+            AcademicTerm.sync_current()
+        serializer.instance.refresh_from_db()
         _audit(
             self.request.user, self.request.user.role,
             'academic_term_updated', self.request.path,
@@ -928,6 +941,8 @@ class AdminTermDetailView(generics.RetrieveUpdateDestroyAPIView):
             {'term_id': instance.pk, 'term': str(instance)},
         )
         instance.delete()
+        # Deleting the current term promotes the next-newest one automatically.
+        AcademicTerm.sync_current()
 
 
 class AdminSubjectListCreateView(generics.ListCreateAPIView):

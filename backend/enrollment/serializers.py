@@ -12,18 +12,34 @@ class AcademicTermSerializer(serializers.ModelSerializer):
             'id', 'year', 'semester', 'semester_display',
             'is_active', 'enrollment_open', 'start_date', 'end_date',
         ]
+        # is_active is derived from the latest start date (AcademicTerm.sync_current),
+        # never set by the client.
+        read_only_fields = ['is_active']
 
     def validate(self, data):
         from django.utils import timezone
-        # Block *activating* a term whose end date has already passed. Editing a
-        # term that is already the active one (e.g. to fix its dates) stays allowed.
-        is_active = data.get('is_active', getattr(self.instance, 'is_active', False))
-        was_active = getattr(self.instance, 'is_active', False)
-        end_date = data.get('end_date', getattr(self.instance, 'end_date', None))
-        if is_active and not was_active and end_date and end_date < timezone.localdate():
-            raise serializers.ValidationError(
-                'A term that has already ended cannot be set as the active term.'
-            )
+        # Enrollment may only be opened on the current term — the one with the
+        # latest start date — and never on a term that has already ended.
+        enrollment_open = data.get(
+            'enrollment_open', getattr(self.instance, 'enrollment_open', False)
+        )
+        if enrollment_open:
+            start_date = data.get('start_date', getattr(self.instance, 'start_date', None))
+            end_date = data.get('end_date', getattr(self.instance, 'end_date', None))
+
+            others = AcademicTerm.objects.all()
+            if self.instance is not None:
+                others = others.exclude(pk=self.instance.pk)
+            newest_other = others.order_by('-start_date', '-id').first()
+            if start_date and newest_other and newest_other.start_date > start_date:
+                raise serializers.ValidationError({
+                    'enrollment_open': 'Enrollment can only be opened on the current term '
+                                       '(the one with the latest start date).'
+                })
+            if end_date and end_date < timezone.localdate():
+                raise serializers.ValidationError({
+                    'enrollment_open': 'This term has already ended; enrollment cannot be opened.'
+                })
         return data
 
 
