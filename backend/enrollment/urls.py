@@ -11,8 +11,8 @@ urlpatterns = [
     path('admin/site-content/upload-image/', sc.AdminSiteImageUploadView.as_view(), name='admin-site-content-upload'),
     path('admin/site-content/<str:key>/', sc.AdminSiteContentDetailView.as_view(), name='admin-site-content-detail'),
 
-    # Curriculum management (Department Encoder / Admin)
-    path('encoder/programs/', cv.EncoderProgramListView.as_view(), name='encoder-programs'),
+    # Curriculum management (Registrar / Admin)
+    path('curriculum/programs/', cv.CurriculumProgramListView.as_view(), name='curriculum-programs'),
     path('curricula/', cv.CurriculumListCreateView.as_view(), name='curriculum-list-create'),
     path('curricula/<int:pk>/', cv.CurriculumDetailView.as_view(), name='curriculum-detail'),
     path('curricula/<int:pk>/subjects/', cv.CurriculumSubjectView.as_view(), name='curriculum-add-subject'),
@@ -32,6 +32,8 @@ urlpatterns = [
 
     # Student
     path('submit/', views.EnrollmentSubmitView.as_view(), name='enrollment-submit'),
+    path('offered/', views.StudentOfferedCoursesView.as_view(), name='enrollment-offered'),
+    path('enroll/continuing/', views.ContinuingEnrollmentSubmitView.as_view(), name='enrollment-continuing'),
     path('my/', views.StudentEnrollmentHistoryView.as_view(), name='enrollment-my'),
 
     # Registrar / Admin — enrollment schedules

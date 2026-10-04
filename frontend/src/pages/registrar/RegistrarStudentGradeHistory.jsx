@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
 export default function RegistrarStudentGradeHistory() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { studentId } = useParams();
   const navigate = useNavigate();
 
@@ -70,42 +70,20 @@ export default function RegistrarStudentGradeHistory() {
   };
 
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <img src="/logo.png" alt="NEMSU" className="sidebar-logo" />
-          NEMSUonePortal
-        </div>
-        <Link className="sidebar-link" to="/registrar/dashboard">Dashboard</Link>
-        <Link className="sidebar-link" to="/registrar/enrollment">Enrollment Requests</Link>
-        <Link className="sidebar-link active" to="/registrar/grades">List of Students</Link>
-        <Link className="sidebar-link" to="/registrar/faculty">Faculty</Link>
-        <Link className="sidebar-link" to="/registrar/schedule">Class Schedules</Link>
-        <Link className="sidebar-link" to="/registrar/documents">Document Requests</Link>
-        <Link className="sidebar-link" to="/registrar/academic-data">Academic Data</Link>
-        <Link className="sidebar-link" to="/registrar/announcements">Announcements</Link>
-      </aside>
-
-      <main className="dashboard-content">
-        <div className="dashboard-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button onClick={() => navigate('/registrar/grades')} style={styles.backBtn}>
-              &larr; Back
-            </button>
-            <div>
-              <h1>Grade History</h1>
-              <span className="badge">{user?.role}</span>
-            </div>
-          </div>
-          <button className="btn-logout" onClick={logout}>Sign Out</button>
-        </div>
-
+    <>
         {error && <div style={styles.alertError}>{error}</div>}
 
         {loading ? (
           <p style={{ color: '#6b7280' }}>Loading grade history...</p>
         ) : !data ? null : (
           <>
+            {/* Back button */}
+            <button type="button" style={styles.backBtn} onClick={() => navigate(-1)}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e5e7eb'; }}>
+              <i className="ti ti-arrow-left" style={{ fontSize: 16 }} /> Back
+            </button>
+
             {/* Student info card */}
             <div style={styles.studentCard}>
               <div style={styles.studentName}>{student.full_name}</div>
@@ -131,7 +109,7 @@ export default function RegistrarStudentGradeHistory() {
               <div style={styles.summaryCard}>
                 <div style={styles.summaryLabel}>Cumulative GPA</div>
                 <div style={{ ...styles.summaryValue, color: gpaColor(summary.cumulative_gpa) }}>
-                  {summary.cumulative_gpa ?? '—'}
+                  {summary.cumulative_gpa ?? '-'}
                 </div>
               </div>
               <div style={styles.summaryCard}>
@@ -186,8 +164,7 @@ export default function RegistrarStudentGradeHistory() {
             )}
           </>
         )}
-      </main>
-    </div>
+    </>
   );
 }
 
@@ -233,18 +210,18 @@ function TermBlock({ term, semNumber, gradeColor, gpaColor, getStatus }) {
                   <td style={{ ...styles.td, color: '#374151' }}>{g.subject_name}</td>
                   <td style={{ ...styles.td, textAlign: 'center' }}>{g.subject_units}</td>
                   <td style={{ ...styles.td, textAlign: 'center', color: '#6b7280' }}>
-                    {g.midterm_grade ?? '—'}
+                    {g.midterm_grade ?? '-'}
                   </td>
                   <td style={{ ...styles.td, textAlign: 'center', color: '#6b7280' }}>
-                    {g.final_grade ?? '—'}
+                    {g.final_grade ?? '-'}
                   </td>
                   <td style={{ ...styles.td, textAlign: 'center', fontWeight: 700, color: gradeColor(g.grade) }}>
-                    {g.grade || '—'}
+                    {g.grade || '-'}
                   </td>
                   <td style={{ ...styles.td, color: '#1e3a5f', fontSize: '0.85rem', fontWeight: 500 }}>
                     {g.encoded_by_name
                       ? <span style={styles.instructorChip}>{g.encoded_by_name}</span>
-                      : <span style={{ color: '#9ca3af' }}>—</span>}
+                      : <span style={{ color: '#9ca3af' }}>-</span>}
                   </td>
                   <td style={styles.td}>
                     {(() => {
@@ -263,11 +240,11 @@ function TermBlock({ term, semNumber, gradeColor, gpaColor, getStatus }) {
                             <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{g.remarks}</span>
                           )}
                         </div>
-                      ) : <span style={{ color: '#9ca3af' }}>—</span>;
+                      ) : <span style={{ color: '#9ca3af' }}>-</span>;
                     })()}
                   </td>
                   <td style={{ ...styles.td, color: '#6b7280', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
-                    {g.submitted_at ? new Date(g.submitted_at).toLocaleDateString() : '—'}
+                    {g.submitted_at ? new Date(g.submitted_at).toLocaleDateString() : '-'}
                   </td>
                 </tr>
               ))}
@@ -281,9 +258,11 @@ function TermBlock({ term, semNumber, gradeColor, gpaColor, getStatus }) {
 
 const styles = {
   backBtn: {
-    background: 'none', border: '1px solid #d1d5db',
-    padding: '0.35rem 0.85rem', borderRadius: 6, cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    background: '#fff', border: '1px solid #e5e7eb',
+    padding: '0.4rem 0.85rem', borderRadius: 6, cursor: 'pointer',
     fontSize: '0.88rem', color: '#374151', fontWeight: 600,
+    marginBottom: '1rem', transition: 'background .12s, border-color .12s',
   },
   alertError: {
     background: '#fee2e2', color: '#991b1b', padding: '0.75rem',

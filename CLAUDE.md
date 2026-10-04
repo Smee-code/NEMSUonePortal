@@ -22,7 +22,7 @@ Replace fragmented, manual academic workflows with a unified digital portal acce
 | Role                     | Key Responsibilities                                                                                                                                        |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Student**              | Sign up/log in, enroll online, view grades, check schedules, request documents, view announcements                                                          |
-| **Faculty**              | Log in, encode & submit grades, view teaching load, post announcements                                                                                      |
+| **Faculty**              | Log in, encode & submit grades, view teaching load, view announcements                                                                                      |
 | **Registrar / Admin**    | Approve/reject enrollments, process document requests, upload academic data, view reports, add courses/subjects offered per program together with its units |
 | **System Administrator** | Manage user accounts, configure system settings, view audit logs, view reports                                                                              |
 
@@ -78,6 +78,10 @@ All roles share a **Single Sign-On (SSO)** login. Access is governed by **Role-B
 - **Framework:** React.js
 - **Build Tool:** Vite
 - **Languages:** HTML, CSS, JavaScript (JSX)
+- **Routing:** React Router DOM
+- **HTTP client:** Axios (interceptors handle JWT refresh)
+- **Charts:** Recharts
+- **Icons/Fonts:** Tabler Icons + Google Fonts (Inter, Instrument Serif) — loaded via CDN
 - **Design:** Responsive to all screen-sizes, component-based, mobile-accessible via browser
 
 ### Backend
@@ -88,8 +92,14 @@ All roles share a **Single Sign-On (SSO)** login. Access is governed by **Role-B
 
 ### Database
 
-- **System:** PostgreSQL
+- **System:** SQLite (Django's `django.db.backends.sqlite3`)
+- **Driver:** none required — `sqlite3` ships with the Python standard library
+- **File:** `backend/db.sqlite3` (git-ignored; override the path with the `DB_NAME` env var)
+- **PRAGMAs:** WAL journal mode, `synchronous=NORMAL`, `foreign_keys=ON`, `busy_timeout=5000`, `transaction_mode=IMMEDIATE`
 - **Stores:** Student records, enrollments, grades, schedules, document requests, user accounts
+- **Deployment note:** SQLite is a single file on disk. On Railway/Render the filesystem is
+  ephemeral, so the database must live on a mounted persistent volume or it is wiped on every
+  redeploy. Protect it with filesystem permissions rather than transport encryption.
 
 ### Authentication
 
@@ -161,7 +171,7 @@ NEMSUonePortal/
 | Approve/reject enrollment | ❌      | ❌                | ✅           | ❌        |
 | Submit document request   | ✅      | ❌                | ❌           | ❌        |
 | Process document request  | ❌      | ❌                | ✅           | ❌        |
-| Post announcements        | ❌      | ✅                | ✅           | ✅        |
+| Post announcements        | ❌      | ❌                | ✅           | ✅        |
 | Manage user accounts      | ❌      | ❌                | ❌           | ✅        |
 | View audit logs           | ❌      | ❌                | ✅ (limited) | ✅ (full) |
 | Configure system settings | ❌      | ❌                | ❌           | ✅        |

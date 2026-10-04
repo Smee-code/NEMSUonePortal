@@ -3,6 +3,7 @@ import RequireRole from './components/RequireRole';
 import { AuthProvider } from './context/AuthContext';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import { ToastProvider } from './components/Toast';
+import { SupportProvider } from './components/SupportModal';
 import SiteChrome from './components/SiteChrome';
 
 import LandingPage from './pages/LandingPage';
@@ -27,11 +28,12 @@ import AnnouncementsPage from './pages/announcements/AnnouncementsPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUserManagement from './pages/admin/AdminUserManagement';
 import AdminPrograms from './pages/admin/AdminPrograms';
-import AdminCurriculum from './pages/admin/AdminCurriculum';
 import AdminSiteContent from './pages/admin/AdminSiteContent';
+import AdminSchedule from './pages/admin/AdminSchedule';
+import FacilitiesManager from './pages/facilities/FacilitiesManager';
 import AdminTerms from './pages/admin/AdminTerms';
 import AdminReports from './pages/admin/AdminReports';
-import AdminBlocks from './pages/admin/AdminBlocks';
+import AdminMidtermReopen from './pages/admin/AdminMidtermReopen';
 import AdminAuditLog from './pages/admin/AdminAuditLog';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminSpotlight from './pages/admin/AdminSpotlight';
@@ -42,9 +44,6 @@ import FacultyProfile from './pages/faculty/FacultyProfile';
 import FacultyRoster from './pages/faculty/FacultyRoster';
 import FacultySchedule from './pages/faculty/FacultySchedule';
 import RegistrarShell from './components/layout/RegistrarShell';
-import EncoderShell from './components/layout/EncoderShell';
-import EncoderApplications from './pages/encoder/EncoderApplications';
-import EncoderCurriculum from './pages/encoder/EncoderCurriculum';
 import RegistrarDashboard from './pages/registrar/RegistrarDashboard';
 import RegistrarEnrollmentRequests from './pages/registrar/RegistrarEnrollmentRequests';
 import RegistrarRegistrations from './pages/registrar/RegistrarRegistrations';
@@ -52,11 +51,11 @@ import RegistrarFaculty from './pages/registrar/RegistrarFaculty';
 import RegistrarGrades from './pages/registrar/RegistrarGrades';
 import RegistrarStudentGradeHistory from './pages/registrar/RegistrarStudentGradeHistory';
 import RegistrarStudents from './pages/registrar/RegistrarStudents';
-import RegistrarBlocks from './pages/registrar/RegistrarBlocks';
 import RegistrarDocuments from './pages/registrar/RegistrarDocuments';
 import RegistrarSchedule from './pages/registrar/RegistrarSchedule';
 import StudentShell from './components/layout/StudentShell';
 import StudentDashboard    from './pages/student/StudentDashboard';
+import StudentEnrollment   from './pages/student/StudentEnrollment';
 import StudentGrades       from './pages/student/StudentGrades';
 import StudentSchedule     from './pages/student/StudentSchedule';
 import StudentDocuments    from './pages/student/StudentDocuments';
@@ -71,6 +70,7 @@ export default function App() {
       <BrowserRouter>
         <ToastProvider>
         <ConfirmProvider>
+        <SupportProvider>
         <SiteChrome />
         <Routes>
           {/* ── Public routes ─────────────────────────────────────── */}
@@ -86,6 +86,7 @@ export default function App() {
           <Route path="/student" element={<RequireRole roles={['student']}><StudentShell /></RequireRole>}>
             <Route index                element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"     element={<StudentDashboard />} />
+            <Route path="enrollment"    element={<StudentEnrollment />} />
             <Route path="grades"        element={<StudentGrades />} />
             <Route path="schedule"      element={<StudentSchedule />} />
             <Route path="curriculum"    element={<StudentCurriculum />} />
@@ -119,19 +120,11 @@ export default function App() {
             <Route path="students"      element={<RegistrarStudents />} />
             <Route path="faculty"       element={<RegistrarFaculty />} />
             <Route path="schedule"      element={<RegistrarSchedule />} />
-            <Route path="blocks"        element={<RegistrarBlocks />} />
+            <Route path="facilities"    element={<FacilitiesManager />} />
             <Route path="documents"     element={<RegistrarDocuments />} />
             <Route path="academic-data" element={<AdminPrograms />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="*"             element={<Navigate to="dashboard" replace />} />
-          </Route>
-
-          {/* ── Department Encoder routes ─────────────────────────── */}
-          <Route path="/encoder" element={<RequireRole roles={['department_encoder']}><EncoderShell /></RequireRole>}>
-            <Route index               element={<Navigate to="applications" replace />} />
-            <Route path="applications" element={<EncoderApplications />} />
-            <Route path="curriculum"   element={<EncoderCurriculum />} />
-            <Route path="*"            element={<Navigate to="applications" replace />} />
           </Route>
 
           {/* ── Admin routes ──────────────────────────────────────── */}
@@ -140,11 +133,12 @@ export default function App() {
             <Route path="dashboard"    element={<AdminDashboard />} />
             <Route path="users"        element={<AdminUserManagement />} />
             <Route path="programs"     element={<AdminPrograms />} />
-            <Route path="curriculum"   element={<AdminCurriculum />} />
+            <Route path="schedule"     element={<AdminSchedule />} />
+            <Route path="facilities"   element={<FacilitiesManager />} />
             <Route path="landing"      element={<AdminSiteContent />} />
             <Route path="terms"        element={<AdminTerms />} />
             <Route path="reports"      element={<AdminReports />} />
-            <Route path="blocks"       element={<AdminBlocks />} />
+            <Route path="midterm-reopen" element={<AdminMidtermReopen />} />
             <Route path="audit-log"    element={<AdminAuditLog />} />
             <Route path="settings"     element={<AdminSettings />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
@@ -163,6 +157,7 @@ export default function App() {
           <Route path="/cookies" element={<CookiePolicy />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </SupportProvider>
         </ConfirmProvider>
         </ToastProvider>
       </BrowserRouter>

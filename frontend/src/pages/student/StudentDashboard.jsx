@@ -6,9 +6,11 @@ import { useShell } from '../../components/layout/StudentShell';
 
 const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 
-function initials(name) {
-  const p = (name || '').trim().split(/\s+/);
-  return p.length === 1 ? (p[0][0] || '?').toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
+function greeting(d) {
+  const h = d.getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
 function fmtTime(timeStr) {
@@ -16,6 +18,12 @@ function fmtTime(timeStr) {
   const [h, m] = timeStr.split(':').map(Number);
   const ampm = h < 12 ? 'AM' : 'PM';
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+function toMinutes(timeStr) {
+  if (!timeStr) return null;
+  const [h, m] = timeStr.split(':').map(Number);
+  return h * 60 + m;
 }
 
 function gradeColor(g) {
@@ -26,68 +34,145 @@ function gradeColor(g) {
   return 'var(--red)';
 }
 
-/* ── Sub-components ─────────────────────────────────────────────── */
+/* ── Today's classes — the focal element ────────────────────────── */
 
-function Kpi({ label, value, icon, sub }) {
-  return (
-    <div className="kpi">
-      <div className="kpi-head">
-        <div className="kpi-label">{label}</div>
-        <div className="kpi-icon"><i className={`ti ${icon}`} /></div>
-      </div>
-      <div>
-        <div className="kpi-value">{value ?? '-'}</div>
-        {sub && <div className="kpi-sub"><span>{sub}</span></div>}
-      </div>
-    </div>
+const SLOT_STATE = {
+  now:  { label: 'In session', tone: 'var(--green)', bar: 'var(--green)' },
+  next: { label: 'Up next',    tone: 'var(--gold)',  bar: 'var(--gold)'  },
+};
+
+function TodaysClasses({ slots, navigate, dayLabel, nowMinutes }) {
+  // Sort chronologically, then classify each session against the clock.
+  const sorted = [...slots].sort(
+    (a, b) => (toMinutes(a.start_time) ?? 0) - (toMinutes(b.start_time) ?? 0)
   );
-}
+  let nextMarked = false;
+  const rows = sorted.map(s => {
+    const start = toMinutes(s.start_time);
+    const end   = toMinutes(s.end_time);
+    let state = null;
+    if (nowMinutes != null && start != null && end != null) {
+      if (nowMinutes >= end) state = 'done';
+      else if (nowMinutes >= start) state = 'now';
+      else if (!nextMarked) { state = 'next'; nextMarked = true; }
+    } else if (!nextMarked) { state = 'next'; nextMarked = true; }
+    return { s, state };
+  });
 
-function TodaysClasses({ slots, navigate, dayLabel }) {
   return (
     <div className="card" style={{ padding: 0 }}>
       <div className="card-head" style={{ padding: '1.5rem 1.5rem 1rem', marginBottom: 0 }}>
         <h4>Today's classes<span>{dayLabel} · {slots.length} session{slots.length !== 1 ? 's' : ''}</span></h4>
         <button className="sec-action" onClick={() => navigate('/student/schedule')}>
-          Full schedule <i className="ti ti-arrow-right" style={{ fontSize: 11, marginLeft: 4 }} />
+          Full schedule
         </button>
       </div>
       <div style={{ padding: '0 1.5rem 1.25rem', display: 'flex', flexDirection: 'column' }}>
-        {slots.length === 0 ? (
-          <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-            No classes scheduled today. Enjoy the day.
+        {rows.length === 0 ? (
+          <div style={{ padding: '2.5rem 0', textAlign: 'center' }}>
+            <i className="ti ti-coffee" style={{ fontSize: 26, color: 'var(--faint)', display: 'block', marginBottom: 8 }} />
+            <div style={{ color: 'var(--muted)', fontSize: 13 }}>No classes scheduled today.</div>
           </div>
-        ) : slots.map((s, i) => {
+        ) : rows.map(({ s, state }, i) => {
           const start = fmtTime(s.start_time);
           const [timePart, ampmPart] = start.split(' ');
+          const meta = SLOT_STATE[state];
+          const done = state === 'done';
           return (
             <div key={i} style={{
               display: 'grid', gridTemplateColumns: 'auto auto 1fr', gap: '1.25rem',
               alignItems: 'center', padding: '14px 0',
-              borderBottom: i < slots.length - 1 ? '1px solid var(--line-soft)' : 'none',
+              borderBottom: i < rows.length - 1 ? '1px solid var(--line-soft)' : 'none',
+              opacity: done ? 0.5 : 1,
             }}>
-              <div style={{ width: 60, textAlign: 'center' }}>
+              <div style={{ width: 58, textAlign: 'center' }}>
                 <div style={{ fontWeight: 500, fontSize: 22, color: 'var(--ink)', lineHeight: 1 }}>{timePart}</div>
                 <div style={{ fontSize: 10, color: 'var(--gold)', fontWeight: 600, letterSpacing: '.1em', marginTop: 2 }}>{ampmPart}</div>
               </div>
-              <div style={{ width: 6, height: 48, background: i === 0 ? 'var(--gold)' : 'var(--ink-2)', flexShrink: 0 }} />
+              <div style={{ width: 4, height: 48, background: meta ? meta.bar : 'var(--line)', flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                   <span style={{ fontSize: 11, letterSpacing: '.1em', color: 'var(--gold)', textTransform: 'uppercase', fontWeight: 600 }}>
                     {s.subject_code || s.code}
                   </span>
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>· {start} – {fmtTime(s.end_time)}</span>
-                  {i === 0 && <span className="tag pending">Up next</span>}
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{start} – {fmtTime(s.end_time)}</span>
+                  {meta && (
+                    <span style={{
+                      fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700,
+                      padding: '2px 7px', color: '#fff', background: meta.tone,
+                    }}>{meta.label}</span>
+                  )}
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500 }}>
-                  {s.subject_name || s.name || s.subject_code} · {s.room}
+                  {s.subject_name || s.name || s.subject_code}{s.room ? ` · ${s.room}` : ''}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{s.instructor_name || s.instructor}</div>
+                {(s.instructor_name || s.instructor) && (
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{s.instructor_name || s.instructor}</div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ── Term status rail (replaces the flat KPI strip) ─────────────── */
+
+function StatRow({ label, value, tone, onClick }) {
+  const Tag = onClick ? 'button' : 'div';
+  return (
+    <Tag
+      {...(onClick ? { onClick, type: 'button' } : {})}
+      style={{
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12,
+        padding: '14px 0', width: '100%', textAlign: 'left',
+        background: 'none', border: 0, borderBottom: '1px solid var(--line-soft)',
+        font: 'inherit', cursor: onClick ? 'pointer' : 'default', color: 'inherit',
+      }}>
+      <span style={{ fontSize: 12, color: 'var(--muted)' }}>{label}</span>
+      <span style={{ fontSize: 20, fontWeight: 500, color: tone || 'var(--ink)', letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>
+        {value}
+      </span>
+    </Tag>
+  );
+}
+
+function TermStatus({ termLabel, enrolled, gwa, units, subjectCount, openCount, navigate }) {
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div className="card-head" style={{ padding: '1.5rem 1.5rem 1rem', marginBottom: 0 }}>
+        <h4>This term<span>{termLabel}</span></h4>
+      </div>
+      <div style={{ padding: '0 1.5rem' }}>
+        <StatRow
+          label="Enrollment"
+          value={enrolled ? 'Enrolled' : 'Not enrolled'}
+          tone={enrolled ? 'var(--green)' : 'var(--amber)'}
+          onClick={() => navigate('/student/enrollment')}
+        />
+        <StatRow
+          label="General average"
+          value={gwa ?? '—'}
+          tone={gradeColor(gwa)}
+          onClick={() => navigate('/student/grades')}
+        />
+        <StatRow label="Units enrolled" value={subjectCount ? units : '—'} />
+        <StatRow
+          label="Open requests"
+          value={openCount > 0 ? `${openCount} active` : 'None'}
+          onClick={() => navigate('/student/documents')}
+        />
+      </div>
+      {!enrolled && (
+        <div style={{ padding: '1rem 1.5rem 1.5rem' }}>
+          <button className="btn-pri" style={{ width: '100%', justifyContent: 'center' }}
+            onClick={() => navigate('/student/enrollment')}>
+            <i className="ti ti-clipboard-check" /> Enroll for {termLabel}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -102,13 +187,13 @@ function OpenRequests({ docs, navigate }) {
   return (
     <div className="card" style={{ background: 'var(--warm)' }}>
       <div className="card-head">
-        <h4>Open requests<span>{docs.length} active</span></h4>
+        <h4>Document requests<span>{docs.length ? `${docs.length} in progress` : 'Nothing pending'}</span></h4>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
         {docs.length === 0 ? (
-          <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--green)', fontSize: 13 }}>
+          <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--green)', fontSize: 13 }}>
             <i className="ti ti-circle-check" style={{ fontSize: 24, display: 'block', marginBottom: 6 }} />
-            No open requests
+            You're all caught up
           </div>
         ) : docs.map(d => {
           const meta = DOC_TAG[d.status] ?? { cls: 'pending', label: d.status };
@@ -133,7 +218,6 @@ function OpenRequests({ docs, navigate }) {
                 </div>
               </div>
               <span className={`tag ${meta.cls}`}>{meta.label}</span>
-              <i className="ti ti-arrow-right" style={{ fontSize: 14, color: 'var(--faint)' }} />
             </div>
           );
         })}
@@ -145,26 +229,38 @@ function OpenRequests({ docs, navigate }) {
   );
 }
 
+function GradeCell({ label, value, big = false, placeholder = '—' }) {
+  return (
+    <div style={{ textAlign: 'right' }}>
+      <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, marginBottom: 4, whiteSpace: 'nowrap' }}>{label}</div>
+      <div style={{ fontWeight: big ? 600 : 500, fontSize: big ? 22 : 16, color: gradeColor(value), fontVariantNumeric: 'tabular-nums' }}>
+        {value ?? placeholder}
+      </div>
+    </div>
+  );
+}
+
 function SubjectsThisTerm({ subjects, gradeFor, termLabel, blockCode }) {
   if (!subjects.length) return null;
   return (
-    <div style={{ background: '#fff', border: '1px solid var(--line)', marginBottom: '1.75rem' }}>
+    <div style={{ background: '#fff', border: '1px solid var(--line)' }}>
       <div className="card-head" style={{ margin: '1.25rem 1.5rem 0', paddingBottom: '1rem' }}>
         <h4>Subjects enrolled<span>{termLabel}{blockCode ? ` · ${blockCode}` : ''}</span></h4>
       </div>
       <div>
         {subjects.map((s, i) => {
-          const grade = gradeFor(s.code || s.subject_code);
+          const code = s.code || s.subject_code;
+          const combined = s.grade ?? gradeFor(code);
           return (
-            <div key={i} style={{
+            <div key={i} className="sd-term-row" style={{
               padding: '1.25rem 1.5rem', borderTop: '1px solid var(--line-soft)',
-              display: 'grid', gridTemplateColumns: '1.6fr 140px 80px 1fr', gap: '1.5rem', alignItems: 'center',
+              display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 72px 72px 96px 56px', gap: '1rem', alignItems: 'center',
             }}>
-              <div>
+              <div className="sd-term-info" style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 11, letterSpacing: '.1em', color: 'var(--gold)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
-                  {s.code || s.subject_code}
+                  {code}
                 </div>
-                <div style={{ fontWeight: 500, fontSize: 18, color: 'var(--ink)', letterSpacing: '-.005em' }}>
+                <div style={{ fontWeight: 500, fontSize: 17, color: 'var(--ink)', letterSpacing: '-.005em' }}>
                   {s.name || s.subject_name}
                 </div>
                 {(s.instructor || s.instructor_name) && (
@@ -173,18 +269,12 @@ function SubjectsThisTerm({ subjects, gradeFor, termLabel, blockCode }) {
                   </div>
                 )}
               </div>
-              <div>
-                <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>Grade</div>
-                <div style={{ fontWeight: 500, fontSize: 22, color: gradeColor(grade) }}>{grade ?? '-'}</div>
-              </div>
-              <div>
+              <GradeCell label="Midterm" value={s.midterm_grade} />
+              <GradeCell label="Final" value={s.final_grade} />
+              <GradeCell label="Final Grade" value={combined} big placeholder="Pending" />
+              <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>Units</div>
                 <div style={{ fontWeight: 500, fontSize: 18, color: 'var(--ink)' }}>{s.units}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span className="tag" style={{ background: 'var(--cool-2)', color: 'var(--ink-2)' }}>
-                  {s.section || blockCode || 'Enrolled'}
-                </span>
               </div>
             </div>
           );
@@ -229,7 +319,7 @@ function RecentActivity({ docs, grades }) {
       </div>
       <div className="activity" style={{ padding: '0 1.5rem 1.25rem' }}>
         {sorted.length === 0 ? (
-          <div style={{ padding: '1.5rem 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>No recent activity.</div>
+          <div style={{ padding: '1.5rem 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Nothing new yet. Grades and request updates show up here.</div>
         ) : sorted.map((r, i) => (
           <div key={i} className="activity-row">
             <div className="act-icon"><i className={`ti ${r.icon}`} /></div>
@@ -246,48 +336,12 @@ function RecentActivity({ docs, grades }) {
   );
 }
 
-function RemindersCard({ docs }) {
-  const reminders = docs.map(d => ({
-    icon:  d.status === 'ready' ? 'ti-file-text' : 'ti-clock',
-    label: d.status === 'ready' ? `${d.document_type_display || d.document_type} ready for pickup` : `${d.document_type_display || d.document_type} in progress`,
-    sub:   `Ref: ${d.id}`,
-    tone:  d.status === 'ready' ? 'green' : 'amber',
-  }));
-
-  return (
-    <div className="card" style={{ background: 'var(--warm)' }}>
-      <div className="card-head">
-        <h4>Reminders<span>Upcoming notices</span></h4>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {reminders.length === 0 ? (
-          <div style={{ padding: '1rem 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-            No reminders at this time.
-          </div>
-        ) : reminders.map((r, i) => {
-          const toneColor = r.tone === 'green' ? 'var(--green)' : r.tone === 'amber' ? 'var(--amber)' : 'var(--ink)';
-          return (
-            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 14px', background: '#fff', border: '1px solid var(--line)' }}>
-              <div style={{ width: 36, height: 36, background: 'var(--cool)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: toneColor }}>
-                <i className={`ti ${r.icon}`} style={{ fontSize: 16 }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{r.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5, marginTop: 2 }}>{r.sub}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function QuickActions({ navigate }) {
   const actions = [
     { icon: 'ti-school',          title: 'View my grades',    desc: 'Current term grades and history per semester',     path: '/student/grades'      },
     { icon: 'ti-calendar-event',  title: 'My schedule',       desc: 'Weekly timetable with room and instructor info',   path: '/student/schedule'    },
     { icon: 'ti-file-text',       title: 'Request document',  desc: 'TOR, certificates, and other registrar documents', path: '/student/documents'   },
+    { icon: 'ti-clipboard-check', title: 'My enrollment',     desc: 'Submit and track your enrollment for the term',     path: '/student/enrollment'  },
   ];
   return (
     <div className="quick">
@@ -309,11 +363,11 @@ export default function StudentDashboard() {
   const { currentTerm }  = useShell();
   const navigate         = useNavigate();
 
-  const [loading, setLoading]         = useState(true);
-  const [grades, setGrades]           = useState([]);
-  const [documents, setDocuments]     = useState([]);
-  const [schedule, setSchedule]       = useState([]);
-  const [now]                         = useState(new Date());
+  const [loading, setLoading]     = useState(true);
+  const [grades, setGrades]       = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [schedule, setSchedule]   = useState([]);
+  const [now]                     = useState(new Date());
 
   useEffect(() => {
     Promise.allSettled([
@@ -333,19 +387,19 @@ export default function StudentDashboard() {
   }, [currentTerm?.id]);
 
   /* ── Derived ─────────────────────────────────────────── */
-  const blockCode     = '';
+  const blockCode = '';
 
-  // Weighted GWA across all graded records
-  const gradedRecords = grades.filter(g => g.grade != null);
-  const totalWeightedGrade = gradedRecords.reduce((s, g) => s + parseFloat(g.grade) * (g.units || 1), 0);
-  const totalUnitsGraded   = gradedRecords.reduce((s, g) => s + (g.units || 1), 0);
+  // Weighted GWA across all numerically-graded records (INC / DRP are excluded).
+  const unitsOf = g => parseFloat(g.subject_units ?? g.units ?? 1) || 1;
+  const gradedRecords = grades.filter(g => g.grade != null && !isNaN(parseFloat(g.grade)));
+  const totalWeightedGrade = gradedRecords.reduce((s, g) => s + parseFloat(g.grade) * unitsOf(g), 0);
+  const totalUnitsGraded   = gradedRecords.reduce((s, g) => s + unitsOf(g), 0);
   const gwa = totalUnitsGraded > 0 ? (totalWeightedGrade / totalUnitsGraded).toFixed(2) : null;
 
-  // Grades for current term (to show in subjects table)
+  // Grades for the current term (feeds the subjects table)
   const currentTermGrades = currentTerm
     ? grades.filter(g => {
         if (g.academic_term === currentTerm.id) return true;
-        // fallback: match by year/semester string
         return (
           String(g.term_year) === String(currentTerm.year) &&
           String(g.term_semester) === String(currentTerm.semester)
@@ -362,33 +416,32 @@ export default function StudentDashboard() {
     return currentTermGrades.find(g => g.subject_code === code)?.grade ?? null;
   }
 
-  // Enrolled subjects this term now come from the instructor-built roster
+  // Enrolled subjects this term come from the instructor-built roster
   // (the student's own course grade-records), not the old subject-selection.
   const subjects = currentTermGrades.map(g => ({
     subject_code: g.subject_code,
     subject_name: g.subject_name,
     units: g.subject_units,
     instructor_name: g.faculty_name,
+    midterm_grade: g.midterm_grade,
+    final_grade: g.final_grade,
+    grade: g.grade,
   }));
   const enrolledUnits = subjects.reduce((s, x) => s + parseFloat(x.units || 0), 0);
-  const enrollStatus = subjects.length > 0 ? 'enrolled' : null;
+  const enrolled = subjects.length > 0;
 
-  // Open documents
   const pendingDocs = documents.filter(d => ['submitted','processing','ready'].includes(d.status));
 
   // Today's schedule
-  const todayName  = DAY_NAMES[now.getDay()];
-  const todaySlots = schedule.filter(s => s.day_of_week === todayName);
+  const todayName   = DAY_NAMES[now.getDay()];
+  const todaySlots  = schedule.filter(s => s.day_of_week === todayName);
+  const nowMinutes  = now.getHours() * 60 + now.getMinutes();
 
-  const termLabel  = currentTerm
+  const termLabel = currentTerm
     ? `${currentTerm.semester_display} ${currentTerm.year}`
     : 'No active term';
-  const dayLabel   = now.toLocaleDateString('en-PH', { weekday: 'long' });
-  const firstName  = (user?.full_name || '').split(' ')[0];
-
-  const enrollStatusLabel = enrollStatus
-    ? enrollStatus.charAt(0).toUpperCase() + enrollStatus.slice(1)
-    : '-';
+  const dayLabel  = now.toLocaleDateString('en-PH', { weekday: 'long' });
+  const firstName = (user?.full_name || '').split(' ')[0] || 'there';
 
   if (loading) {
     return (
@@ -398,55 +451,66 @@ export default function StudentDashboard() {
     );
   }
 
+  // A plain-language summary line that adapts to what actually matters today.
+  const summaryBits = [];
+  if (!enrolled) summaryBits.push(<>you're <strong style={{ color: 'var(--amber)' }}>not enrolled yet</strong> for {termLabel}</>);
+  else summaryBits.push(<>you have <strong style={{ color: 'var(--ink)' }}>{todaySlots.length} class{todaySlots.length !== 1 ? 'es' : ''}</strong> today</>);
+  if (pendingDocs.length > 0) summaryBits.push(<><strong style={{ color: 'var(--ink)' }}>{pendingDocs.length} document request{pendingDocs.length !== 1 ? 's' : ''}</strong> in progress</>);
+  if (gwa) summaryBits.push(<>a general average of <strong style={{ color: 'var(--ink)' }}>{gwa}</strong></>);
+
   return (
-    <div className="page">
+    <div className="page" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      <style>{`
+        @media(max-width:640px){
+          .sd-term-row{grid-template-columns:repeat(4,1fr)!important;gap:.85rem 1rem!important;padding:1.1rem 1.25rem!important;}
+          .sd-term-info{grid-column:1/-1!important;}
+        }
+        @media(max-width:400px){
+          .sd-term-row{grid-template-columns:repeat(2,1fr)!important;}
+        }
+      `}</style>
 
       {/* ── Welcome ──────────────────────────────────────── */}
       <div className="welcome">
         <div className="welcome-head">
-          <div className="welcome-eyebrow">Overview · {termLabel}</div>
-          <h1>Good morning, <em>{firstName}</em>.</h1>
+          <div className="welcome-eyebrow">Student portal · {termLabel}</div>
+          <h1>{greeting(now)}, <em>{firstName}</em>.</h1>
           <p>
-            You have{' '}
-            <strong style={{ color: 'var(--ink)' }}>{todaySlots.length} class{todaySlots.length !== 1 ? 'es' : ''} today</strong>,{' '}
-            <strong style={{ color: 'var(--ink)' }}>{pendingDocs.length} document request{pendingDocs.length !== 1 ? 's' : ''}</strong>{' '}
-            in progress, and your current GWA is{' '}
-            <strong style={{ color: 'var(--ink)' }}>{gwa ?? '-'}</strong>.
+            Here's where things stand —{' '}
+            {summaryBits.map((b, i) => (
+              <span key={i}>{i > 0 ? (i === summaryBits.length - 1 ? ', and ' : ', ') : ''}{b}</span>
+            ))}.
           </p>
         </div>
         <div className="welcome-side">
-          <div className="live-indicator"><span className="dot" /> Live data</div>
           <div className="stamp">{now.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>
       </div>
 
-      {/* ── KPI strip ────────────────────────────────────── */}
-      <div className="kpis">
-        <Kpi label="Subjects"        value={subjects.length || '-'} icon="ti-book-2"          sub="enrolled this term" />
-        <Kpi label="Units enrolled"  value={enrolledUnits || '-'}   icon="ti-stack-2"          sub={`of the required load`} />
-        <Kpi label="GWA"             value={gwa ?? '-'}             icon="ti-school"           sub={gradedRecords.length > 0 ? `${gradedRecords.length} graded subjects` : 'No grades yet'} />
-        <Kpi label="Doc. requests"   value={documents.length}       icon="ti-file-text"        sub={pendingDocs.length > 0 ? `${pendingDocs.length} in progress` : 'None pending'} />
-        <Kpi label="Enrollment"      value={enrollStatusLabel}       icon="ti-clipboard-check"  sub={termLabel} />
-      </div>
-
-      {/* ── Today's Classes + Open Requests ──────────────── */}
-      <div className="row-21" style={{ marginBottom: '1.75rem' }}>
-        <TodaysClasses slots={todaySlots} navigate={navigate} dayLabel={dayLabel} />
-        <OpenRequests docs={pendingDocs} navigate={navigate} />
+      {/* ── Hero: Today + term status ────────────────────── */}
+      <div className="row-21">
+        <TodaysClasses slots={todaySlots} navigate={navigate} dayLabel={dayLabel} nowMinutes={nowMinutes} />
+        <TermStatus
+          termLabel={termLabel}
+          enrolled={enrolled}
+          gwa={gwa}
+          units={enrolledUnits}
+          subjectCount={subjects.length}
+          openCount={pendingDocs.length}
+          navigate={navigate}
+        />
       </div>
 
       {/* ── Subjects this term ────────────────────────────── */}
       {subjects.length > 0 && (
-        <>
+        <div>
           <div className="sec-head">
             <div>
               <h3>This <em>term</em></h3>
               <div className="sub">{subjects.length} subjects · {enrolledUnits} units{blockCode ? ` · ${blockCode}` : ''}</div>
             </div>
             <div className="actions">
-              <Link to="/student/grades" className="sec-action">
-                <i className="ti ti-school" style={{ fontSize: 13, marginRight: 4 }} />View grades
-              </Link>
+              <Link to="/student/grades" className="sec-action">View grades</Link>
             </div>
           </div>
           <SubjectsThisTerm
@@ -455,26 +519,28 @@ export default function StudentDashboard() {
             termLabel={termLabel}
             blockCode={blockCode}
           />
-        </>
+        </div>
       )}
 
-      {/* ── Recent Activity + Reminders ───────────────────── */}
-      <div className="row-21" style={{ margin: '1.75rem 0' }}>
+      {/* ── Recent activity + Document requests ───────────── */}
+      <div className="row-21">
         <RecentActivity docs={documents} grades={grades} />
-        <RemindersCard docs={pendingDocs} />
+        <OpenRequests docs={pendingDocs} navigate={navigate} />
       </div>
 
-      {/* ── Quick Actions ─────────────────────────────────── */}
-      <div className="sec-head" style={{ marginTop: '.5rem' }}>
-        <div>
-          <h3>Quick <em>actions</em></h3>
-          <div className="sub">Your most common workflows.</div>
+      {/* ── Quick actions ─────────────────────────────────── */}
+      <div>
+        <div className="sec-head">
+          <div>
+            <h3>Quick <em>actions</em></h3>
+            <div className="sub">Jump straight to what you need.</div>
+          </div>
         </div>
+        <QuickActions navigate={navigate} />
       </div>
-      <QuickActions navigate={navigate} />
 
       {/* ── Footer ───────────────────────────────────────── */}
-      <div className="foot-note" style={{ marginTop: '1.25rem' }}>
+      <div className="foot-note">
         <span>
           Data as of {now.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
         </span>

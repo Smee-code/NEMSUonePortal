@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/axios';
 import { PageLoader } from '../components/Spinner';
+import ScrollMemory from '../components/ScrollMemory';
 
 function fmtDate(n) {
   if (!n?.my) return '';
@@ -13,6 +14,15 @@ export default function NewsPage() {
   const [items, setItems] = useState(null);
   const [heading, setHeading] = useState('News & updates');
   const [active, setActive] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Return to the previous scroll position on the landing page (a real back
+  // navigation lets ScrollMemory restore it); fall back to a fresh home load.
+  const goHome = () => {
+    if (location.key && location.key !== 'default') navigate(-1);
+    else navigate('/');
+  };
 
   useEffect(() => {
     document.title = 'News · NEMSUonePortal';
@@ -32,6 +42,7 @@ export default function NewsPage() {
 
   return (
     <div className="np">
+      <ScrollMemory />
       <style>{CSS}</style>
 
       <header className="np-top">
@@ -39,7 +50,9 @@ export default function NewsPage() {
           <img src="/logo.png" alt="NEMSU" />
           <span>NEMSUonePortal</span>
         </Link>
-        <Link to="/" className="np-back"><i className="ti ti-arrow-left" /> Back to home</Link>
+        <button type="button" className="np-back" onClick={goHome}>
+          <i className="ti ti-arrow-left" /> Back to home
+        </button>
       </header>
 
       <div className="np-wrap">
@@ -93,7 +106,7 @@ const CSS = `
   .np-top{display:flex;justify-content:space-between;align-items:center;padding:1rem 2rem;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10;}
   .np-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#0a1628;font-weight:600;font-size:15px;}
   .np-brand img{width:34px;height:34px;border-radius:50%;object-fit:contain;}
-  .np-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5a6478;text-decoration:none;font-weight:500;}
+  .np-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5a6478;text-decoration:none;font-weight:500;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
   .np-back:hover{color:#0a1628;}
   .np-wrap{max-width:1100px;margin:0 auto;padding:2.5rem 2rem 4rem;}
   .np-head{margin-bottom:2rem;}
@@ -101,7 +114,7 @@ const CSS = `
   .np-head h1{font-size:38px;font-weight:600;letter-spacing:-.02em;margin:.5rem 0;}
   .np-head p{color:#5a6478;font-size:15px;}
   .np-empty{padding:3rem;text-align:center;color:#5a6478;background:#fff;border:1px solid #e5e7eb;}
-  .np-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.25rem;}
+  .np-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:1.25rem;}
   .np-card{background:#fff;border:1px solid #e5e7eb;text-align:left;font-family:inherit;cursor:pointer;padding:0;display:flex;flex-direction:column;width:100%;transition:border-color .15s,box-shadow .15s;}
   .np-card:hover{border-color:#b89043;box-shadow:0 8px 24px -14px rgba(10,22,40,.3);}
   .np-card-img{aspect-ratio:16/9;overflow:hidden;background:#eef1f7;}

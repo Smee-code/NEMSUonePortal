@@ -68,19 +68,23 @@ WSGI_APPLICATION = 'nemsuoneportal.wsgi.application'
 ASGI_APPLICATION = 'nemsuoneportal.asgi.application'
 
 # ── Database ──────────────────────────────────────────────────────────────────
-# All credentials via environment variables — nothing hardcoded (OWASP A02, A04)
+# SQLite — file-based, no server process required.
+# Path is overridable via DB_NAME so deployments can point at a persistent volume.
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': config('DB_NAME', default=str(BASE_DIR / 'db.sqlite3')),
         'OPTIONS': {
-            'sslmode': config('DB_SSL_MODE', default='prefer'),
+            # WAL improves concurrent read performance; busy timeout avoids
+            # immediate "database is locked" errors under concurrent writes.
+            'init_command': (
+                'PRAGMA journal_mode=WAL;'
+                'PRAGMA synchronous=NORMAL;'
+                'PRAGMA foreign_keys=ON;'
+                'PRAGMA busy_timeout=5000;'
+            ),
+            'transaction_mode': 'IMMEDIATE',
         },
-        'CONN_MAX_AGE': 600,
     }
 }
 
@@ -151,14 +155,14 @@ REST_FRAMEWORK = {
         'registrar_grade_read': '60/hour',   # Sprint 4 — paginated PII bulk read
         'faculty_grade_read': '120/hour',    # Sprint 4 — faculty reads student roster
         'student_schedule_read': '60/hour',  # Sprint 5 — student views own schedule
-        'faculty_schedule_read': '60/hour',  # Sprint 5 — faculty views teaching load
+        'faculty_schedule_read': '600/hour',  # Sprint 5 — faculty views teaching load + class roster (shared read, hit repeatedly)
         'faculty_schedule_write': '100/hour', # Sprint 5 — faculty adds/removes schedule slots
         'registrar_schedule_manage': '100/hour',  # Sprint 5 — CRUD on class schedules
         'announcement_list': '120/hour',           # Sprint 6 — viewing announcements
         'announcement_create': '20/hour',          # Sprint 6 — posting announcements
         'announcement_manage': '50/hour',          # Sprint 6 — editing/deleting announcements
         'document_submit': '10/day',               # Sprint 7 — student submits document request
-        'document_list': '60/hour',                # Sprint 7 — viewing document requests
+        'document_list': '300/hour',               # Sprint 7 — viewing document requests (list + counts)
         'registrar_document_manage': '100/hour',   # Sprint 7 — registrar updates status
         'admin_user_list': '60/hour',              # Sprint 8 — admin lists users (PII bulk read)
         'admin_user_manage': '50/hour',            # Sprint 8 — admin updates user accounts

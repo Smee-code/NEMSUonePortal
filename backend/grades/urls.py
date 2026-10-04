@@ -15,6 +15,7 @@ urlpatterns = [
     path('faculty/assignments/<int:pk>/', views.FacultyTeachingAssignmentDeleteView.as_view(), name='faculty-assignment-detail'),
     path('faculty/courses/<int:pk>/import/', views.FacultyCourseImportView.as_view(), name='faculty-course-import'),
     path('faculty/courses/<int:pk>/add-student/', views.FacultyCourseAddStudentView.as_view(), name='faculty-course-add-student'),
+    path('faculty/midterm-reopen/', views.FacultyMidtermReopenView.as_view(), name='faculty-midterm-reopen'),
 
     # Registrar / Admin
     path('all/', views.RegistrarGradeListView.as_view(), name='grade-all'),
@@ -24,7 +25,12 @@ urlpatterns = [
 
     # Admin / Registrar — teaching assignment management
     path('admin/assignments/', views.AdminTeachingAssignmentListCreateView.as_view(), name='admin-assignments'),
+    path('admin/assignments/resolve/', views.AdminTeachingAssignmentResolveView.as_view(), name='admin-assignment-resolve'),
     path('admin/assignments/<int:pk>/', views.AdminTeachingAssignmentDetailView.as_view(), name='admin-assignment-detail'),
+
+    # Admin — midterm reopen requests
+    path('admin/midterm-reopen/', views.AdminMidtermReopenListView.as_view(), name='admin-midterm-reopen'),
+    path('admin/midterm-reopen/<int:pk>/', views.AdminMidtermReopenReviewView.as_view(), name='admin-midterm-reopen-detail'),
 
     # Admin — reports
     path('admin/reports/submission-progress/', views.AdminGradeSubmissionReportView.as_view(), name='admin-grade-report'),

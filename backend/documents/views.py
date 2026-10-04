@@ -189,6 +189,26 @@ class RegistrarDocumentListView(generics.ListAPIView):
         return response
 
 
+class RegistrarDocumentCountsView(APIView):
+    """GET /api/documents/counts/ — per-status request counts in a single query.
+
+    Replaces the five separate ?limit=1&status=… calls the dashboard used to make
+    (which burned through the document_list rate limit and 429'd the page)."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    throttle_classes   = [DocumentListThrottle]
+
+    def get(self, request):
+        from django.db.models import Count
+        rows = DocumentRequest.objects.values('status').annotate(n=Count('id'))
+        by_status = {r['status']: r['n'] for r in rows}
+        counts = {
+            s: by_status.get(s, 0)
+            for s in ('submitted', 'processing', 'ready', 'released', 'rejected')
+        }
+        counts['total'] = sum(counts.values())
+        return Response(counts)
+
+
 class RegistrarDocumentStatusView(APIView):
     """PATCH /api/documents/all/<uuid>/status/
     Registrar updates the status of a document request with optional remarks."""
@@ -230,3 +250,54 @@ class RegistrarDocumentStatusView(APIView):
         _send_status_email(doc)
 
         return Response(RegistrarDocumentSerializer(doc).data)
+
+
+# ── Admin — Reports ────────────────────────────────────────────────────────────
+
+class AdminDocumentReportView(APIView):
+    """GET /api/documents/admin/reports/"""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+
+    def get(self, request):
+        from django.db.models import Count
+
+        qs = DocumentRequest.objects.all()
+
+        by_type_raw = qs.values('document_type').annotate(count=Count('id'))
+        type_display = dict(DocumentRequest.DOCUMENT_TYPE_CHOICES)
+        by_type = sorted([
+            {
+                'document_type': row['document_type'],
+                'document_type_display': type_display.get(row['document_type'], row['document_type']),
+                'count': row['count'],
+            }
+            for row in by_type_raw
+        ], key=lambda x: x['document_type'])
+
+        by_status_raw = qs.values('status').annotate(count=Count('id'))
+        by_status = {s: 0 for s in ('submitted', 'processing', 'ready', 'released', 'rejected')}
+        for row in by_status_raw:
+            if row['status'] in by_status:
+                by_status[row['status']] = row['count']
+
+        # Average turnaround (submitted_at → processed_at) for released requests only
+        released_qs = qs.filter(status=DocumentRequest.STATUS_RELEASED, processed_at__isnull=False)
+        avg_turnaround_days = {}
+        for doc_type, _ in DocumentRequest.DOCUMENT_TYPE_CHOICES:
+            type_released = released_qs.filter(document_type=doc_type)
+            count = type_released.count()
+            if count > 0:
+                total_seconds = sum(
+                    (r.processed_at - r.submitted_at).total_seconds()
+                    for r in type_released
+                )
+                avg_turnaround_days[doc_type] = round(total_seconds / count / 86400, 1)
+            else:
+                avg_turnaround_days[doc_type] = None
+
+        return Response({
+            'total': qs.count(),
+            'by_type': by_type,
+            'by_status': by_status,
+            'avg_turnaround_days': avg_turnaround_days,
+        })

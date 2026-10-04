@@ -13,6 +13,19 @@ class AcademicTermSerializer(serializers.ModelSerializer):
             'is_active', 'enrollment_open', 'start_date', 'end_date',
         ]
 
+    def validate(self, data):
+        from django.utils import timezone
+        # Block *activating* a term whose end date has already passed. Editing a
+        # term that is already the active one (e.g. to fix its dates) stays allowed.
+        is_active = data.get('is_active', getattr(self.instance, 'is_active', False))
+        was_active = getattr(self.instance, 'is_active', False)
+        end_date = data.get('end_date', getattr(self.instance, 'end_date', None))
+        if is_active and not was_active and end_date and end_date < timezone.localdate():
+            raise serializers.ValidationError(
+                'A term that has already ended cannot be set as the active term.'
+            )
+        return data
+
 
 class SubjectSerializer(serializers.ModelSerializer):
     units = serializers.DecimalField(max_digits=4, decimal_places=2, coerce_to_string=False)
@@ -113,6 +126,7 @@ class AdminSubjectSerializer(serializers.ModelSerializer):
 class EnrollmentRequestSerializer(serializers.ModelSerializer):
     academic_term = AcademicTermSerializer(read_only=True)
     subjects = SubjectSerializer(many=True, read_only=True)
+    student_uuid = serializers.UUIDField(source='student.id', read_only=True)
     student_name = serializers.CharField(source='student.full_name', read_only=True)
     student_id = serializers.CharField(source='student.student_id', read_only=True)
     student_email = serializers.CharField(source='student.institutional_email', read_only=True)
@@ -129,7 +143,7 @@ class EnrollmentRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = EnrollmentRequest
         fields = [
-            'id', 'student_name', 'student_id', 'student_email',
+            'id', 'student_uuid', 'student_name', 'student_id', 'student_email',
             'academic_term', 'year_level', 'year_level_display',
             'program_id', 'program_code', 'program_name',
             'block_id', 'block_name',
@@ -158,12 +172,13 @@ class StudentOwnEnrollmentSerializer(serializers.ModelSerializer):
     block_name = serializers.SerializerMethodField()
     student_type_display = serializers.CharField(source='get_student_type_display', read_only=True)
     total_units = serializers.SerializerMethodField()
+    student_id = serializers.CharField(source='student.student_id', read_only=True)
 
     class Meta:
         model = EnrollmentRequest
         fields = [
             'id', 'academic_term', 'year_level', 'year_level_display',
-            'program_code', 'program_name', 'block_name',
+            'program_code', 'program_name', 'block_name', 'student_id',
             'student_type', 'student_type_display',
             'subjects', 'status', 'remarks', 'submitted_at', 'processed_at', 'total_units',
         ]
@@ -214,9 +229,9 @@ class EnrollmentSubmitSerializer(serializers.Serializer):
         max_length=10,
     )
     student_type = serializers.ChoiceField(
-        choices=['freshman', 'regular', 'shiftee', 'transferee'],
+        choices=['new', 'transferee', 'returnee', 'continuing'],
         required=False,
-        default='regular',
+        default='continuing',
     )
 
     def validate_academic_term_id(self, value):
@@ -285,7 +300,7 @@ class RegistrarReviewSerializer(serializers.Serializer):
 
 
 class PendingEnrollmentCreateSerializer(serializers.Serializer):
-    student_type   = serializers.ChoiceField(choices=['freshman', 'transferee'])
+    student_type   = serializers.ChoiceField(choices=['new', 'transferee', 'returnee'])
     first_name     = serializers.CharField(max_length=100)
     last_name      = serializers.CharField(max_length=100)
     middle_name    = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
@@ -295,6 +310,7 @@ class PendingEnrollmentCreateSerializer(serializers.Serializer):
     date_of_birth  = serializers.DateField(required=False, allow_null=True, default=None)
     sex            = serializers.CharField(max_length=10, required=False, allow_blank=True, default='')
     program_name   = serializers.CharField(max_length=200, required=False, allow_blank=True, default='')
+    program_id     = serializers.IntegerField(required=False, allow_null=True, default=None)
     year_level     = serializers.IntegerField(min_value=1, max_value=4, default=1)
     term_id        = serializers.IntegerField(required=False, allow_null=True, default=None)
 
@@ -437,7 +453,7 @@ class BlockExpansionRequestSerializer(serializers.ModelSerializer):
         read_only_fields = ['requested_by', 'current_capacity', 'status', 'reviewed_at', 'reviewed_by']
 
 
-# ── Curriculum management (Department Encoder) ─────────────────────────────────
+# ── Curriculum management (Registrar / Admin) ─────────────────────────────────
 
 class CurriculumSubjectSerializer(serializers.ModelSerializer):
     """A course as it appears inside a curriculum (placement lives on the Subject)."""

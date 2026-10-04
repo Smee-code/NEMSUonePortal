@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import SidebarStudent from '../../components/layout/SidebarStudent';
 
 const TYPE_COLORS = {
   lecture: { bg: '#eff6ff', color: '#1d4ed8', label: 'Lecture' },
@@ -31,17 +32,7 @@ export default function StudentCourses() {
 
   return (
     <div className="dashboard">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><img src="/logo.png" alt="NEMSU" className="sidebar-logo" />NEMSUonePortal</div>
-        <Link className="sidebar-link" to="/student/dashboard">Dashboard</Link>
-        <Link className="sidebar-link" to="/student/enrollment">Enrollment</Link>
-        <Link className="sidebar-link active" to="/student/courses">My Courses</Link>
-        <Link className="sidebar-link" to="/student/grades">My Grades</Link>
-        <Link className="sidebar-link" to="/student/schedule">Schedule</Link>
-        <Link className="sidebar-link" to="/student/documents">Document Requests</Link>
-        <Link className="sidebar-link" to="/student/announcements">Announcements</Link>
-        <Link className="sidebar-link" to="/student/profile">My Profile</Link>
-      </aside>
+      <SidebarStudent active="courses" />
 
       <main className="dashboard-content">
         <div className="dashboard-header">
@@ -76,7 +67,7 @@ export default function StudentCourses() {
               </div>
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '0.5rem 1rem' }}>
                 <span style={{ fontSize: 12, color: '#6b7280' }}>Program</span>
-                <div style={{ fontWeight: 700, color: '#065f46', fontSize: 15 }}>{current.program_code} — {current.program_name}</div>
+                <div style={{ fontWeight: 700, color: '#065f46', fontSize: 15 }}>{current.program_code} - {current.program_name}</div>
               </div>
               <div style={{ background: '#fdf4ff', border: '1px solid #e9d5ff', borderRadius: 8, padding: '0.5rem 1rem' }}>
                 <span style={{ fontSize: 12, color: '#6b7280' }}>Year Level</span>
@@ -94,8 +85,8 @@ export default function StudentCourses() {
                 No subjects were assigned to this enrollment. Please contact the registrar.
               </div>
             ) : (
-              <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 480 }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
                       <th style={th}>#</th>

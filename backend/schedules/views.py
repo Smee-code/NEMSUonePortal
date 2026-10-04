@@ -12,11 +12,13 @@ from authentication.permissions import IsFaculty, IsRegistrarOrAdmin, IsStudent,
 from enrollment.models import AcademicTerm, EnrollmentRequest, EnrollmentSubject
 from grades.models import GradeRecord, TeachingAssignment
 
-from .models import ClassSchedule
+from .models import Building, ClassSchedule, Room
 from .serializers import (
+    BuildingSerializer,
     ClassScheduleReadSerializer,
     ClassScheduleWriteSerializer,
     FacultySlotCreateSerializer,
+    RoomSerializer,
     ScheduleSlotSerializer,
 )
 from .throttles import (
@@ -54,7 +56,94 @@ def _check_conflicts(room, day_of_week, start_time, end_time, teaching_assignmen
             f'{teaching_assignment.faculty.full_name} already has a class on '
             f'{day_of_week} during this time slot.'
         )
+    # Block (student cohort) clash: a block can't be in two classes at once,
+    # regardless of room or instructor.
+    if teaching_assignment.block_id and qs.filter(
+        teaching_assignment__block_id=teaching_assignment.block_id
+    ).exists():
+        errors.append(
+            f'{teaching_assignment.block} already has a class on '
+            f'{day_of_week} during this time slot.'
+        )
     return errors
+
+
+# ── Facilities: buildings & rooms (registrar / admin) ──────────────────────────
+
+class FacilityBuildingListCreateView(generics.ListCreateAPIView):
+    """GET/POST /api/schedules/facilities/buildings/
+    List every building (with nested rooms) or create one. A building may belong
+    to a department, or be shared (department omitted)."""
+    permission_classes = [IsRegistrarOrAdmin]
+    serializer_class = BuildingSerializer
+
+    def get_queryset(self):
+        return Building.objects.select_related('department').prefetch_related('rooms')
+
+    def perform_create(self, serializer):
+        obj = serializer.save()
+        _audit(self.request.user, self.request.user.role, 'building_created',
+               f'building:{obj.id}', get_client_ip(self.request), 'success', {'name': obj.name})
+
+
+class FacilityBuildingDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PATCH/DELETE /api/schedules/facilities/buildings/<pk>/"""
+    permission_classes = [IsRegistrarOrAdmin]
+    serializer_class = BuildingSerializer
+    queryset = Building.objects.select_related('department').prefetch_related('rooms')
+    http_method_names = ['get', 'patch', 'delete', 'head', 'options']
+
+    def perform_update(self, serializer):
+        obj = serializer.save()
+        _audit(self.request.user, self.request.user.role, 'building_updated',
+               f'building:{obj.id}', get_client_ip(self.request), 'success', {'name': obj.name})
+
+    def perform_destroy(self, instance):
+        _audit(self.request.user, self.request.user.role, 'building_deleted',
+               f'building:{instance.id}', get_client_ip(self.request), 'success', {'name': instance.name})
+        instance.delete()
+
+
+class FacilityRoomCreateView(APIView):
+    """POST /api/schedules/facilities/buildings/<building_id>/rooms/ — add a room."""
+    permission_classes = [IsRegistrarOrAdmin]
+
+    def post(self, request, building_id):
+        try:
+            building = Building.objects.get(pk=building_id)
+        except Building.DoesNotExist:
+            return Response({'error': 'Building not found.'}, status=status.HTTP_404_NOT_FOUND)
+        name = (request.data.get('name') or '').strip()
+        if not name:
+            return Response({'error': 'Room name is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        room_type = request.data.get('room_type', 'lecture')
+        if room_type not in dict(Room.ROOM_TYPES):
+            room_type = 'lecture'
+        if Room.objects.filter(building=building, name__iexact=name).exists():
+            return Response({'error': 'That room already exists in this building.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        room = Room.objects.create(building=building, name=name, room_type=room_type)
+        _audit(request.user, request.user.role, 'room_created', f'room:{room.id}',
+               get_client_ip(request), 'success', {'name': name, 'building': building.name})
+        return Response(RoomSerializer(room).data, status=status.HTTP_201_CREATED)
+
+
+class FacilityRoomDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """PATCH/DELETE /api/schedules/facilities/rooms/<pk>/"""
+    permission_classes = [IsRegistrarOrAdmin]
+    serializer_class = RoomSerializer
+    queryset = Room.objects.all()
+    http_method_names = ['patch', 'delete', 'head', 'options']
+
+    def perform_update(self, serializer):
+        obj = serializer.save()
+        _audit(self.request.user, self.request.user.role, 'room_updated',
+               f'room:{obj.id}', get_client_ip(self.request), 'success', {'name': obj.name})
+
+    def perform_destroy(self, instance):
+        _audit(self.request.user, self.request.user.role, 'room_deleted',
+               f'room:{instance.id}', get_client_ip(self.request), 'success', {'name': instance.name})
+        instance.delete()
 
 
 # ── Student ────────────────────────────────────────────────────────────────────
@@ -81,46 +170,46 @@ class StudentScheduleView(APIView):
             if not term:
                 return Response([])
 
-        # Scope: student sees only their own approved enrollment (RBAC / A01)
-        try:
-            enrollment = EnrollmentRequest.objects.get(
+        # Scope (RBAC / A01): the student's classes are the courses a professor
+        # has added them to — one GradeRecord per roster membership — for this term.
+        records = (
+            GradeRecord.objects
+            .filter(
                 student=request.user,
                 academic_term=term,
-                status='approved',
+                teaching_assignment__isnull=False,
             )
-        except EnrollmentRequest.DoesNotExist:
-            _audit(request.user, request.user.role, 'student_schedule_view',
-                   f'term:{term.id}', ip, 'success', {'note': 'no_approved_enrollment'})
-            return Response([])
+            .select_related(
+                'teaching_assignment',
+                'teaching_assignment__subject',
+                'teaching_assignment__faculty',
+            )
+        )
 
-        _audit(request.user, request.user.role, 'student_schedule_view',
-               f'term:{term.id}', ip, 'success', {'term': str(term)})
-
+        seen = set()
         result = []
-        for subject in enrollment.subjects.filter(is_active=True).order_by('code'):
-            ta = TeachingAssignment.objects.filter(
-                subject=subject,
-                academic_term=term,
-            ).select_related('faculty').first()
-
-            slots_qs = ClassSchedule.objects.none()
-            faculty_name = 'TBA'
-            ta_id = None
-            if ta:
-                ta_id = ta.id
-                faculty_name = ta.faculty.full_name
-                slots_qs = ClassSchedule.objects.filter(teaching_assignment=ta)
-
+        for rec in records:
+            ta = rec.teaching_assignment
+            if ta.id in seen:
+                continue
+            seen.add(ta.id)
+            subject = ta.subject
+            slots_qs = ClassSchedule.objects.filter(teaching_assignment=ta)
             result.append({
-                'teaching_assignment_id': ta_id,
+                'teaching_assignment_id': ta.id,
                 'subject_code': subject.code,
                 'subject_name': subject.name,
                 'subject_units': subject.units,
-                'faculty_name': faculty_name,
+                'faculty_name': ta.faculty.full_name if ta.faculty_id else 'TBA',
+                'section': ta.section,
                 'term': str(term),
                 'term_id': term.id,
                 'slots': ScheduleSlotSerializer(slots_qs, many=True).data,
             })
+        result.sort(key=lambda r: r['subject_code'])
+
+        _audit(request.user, request.user.role, 'student_schedule_view',
+               f'term:{term.id}', ip, 'success', {'term': str(term), 'courses': len(result)})
 
         return Response(result)
 

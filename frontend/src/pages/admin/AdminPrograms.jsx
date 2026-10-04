@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
-import EnrollmentScheduleManager from '../../components/EnrollmentScheduleManager';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const YEAR_LEVEL_OPTIONS = [
-  { value: '', label: '— None —' },
+  { value: '', label: 'None' },
   { value: 1, label: '1st Year' },
   { value: 2, label: '2nd Year' },
   { value: 3, label: '3rd Year' },
@@ -15,7 +15,7 @@ const YEAR_LEVEL_OPTIONS = [
 ];
 
 const SEMESTER_OPTIONS = [
-  { value: '', label: '— None —' },
+  { value: '', label: 'None' },
   { value: 'first', label: '1st Semester' },
   { value: 'second', label: '2nd Semester' },
   { value: 'summer', label: 'Summer' },
@@ -208,7 +208,9 @@ function SearchableSelect({ value, options, onChange, placeholder = 'Search or s
 }
 
 export default function AdminPrograms() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();  // eslint-disable-line no-unused-vars
+  const confirm = useConfirm();
+  const toast = useToast();
 
   // ── Department state ──────────────────────────────────────────────────────
   const [depts, setDepts] = useState([]);
@@ -247,6 +249,9 @@ export default function AdminPrograms() {
   const [deptSearch, setDeptSearch] = useState('');
   const [programSearch, setProgramSearch] = useState('');
   const [subjectSearch, setSubjectSearch] = useState('');
+
+  // Which data area is shown (one at a time, instead of one long scroll).
+  const [section, setSection] = useState('departments');
 
   // ── Curriculum modal state ────────────────────────────────────────────────
   const [curriculumProgram, setCurriculumProgram] = useState(null);
@@ -343,7 +348,7 @@ export default function AdminPrograms() {
   };
 
   const deleteDept = async (dept) => {
-    if (!window.confirm(`Delete department "${dept.name}"?`)) return;
+    if (!await confirm({ title: 'Delete department?', message: `"${dept.name}" will be permanently deleted.`, confirmText: 'Delete' })) return;
     setDeletingDept(dept.id); setPageError('');
     try { await api.delete(`/enrollment/admin/departments/${dept.id}/`); fetchDepts(); }
     catch (err) { setPageError(err.response?.data?.detail || err.response?.data?.error || 'Failed to delete department.'); }
@@ -370,7 +375,7 @@ export default function AdminPrograms() {
   };
 
   const deleteProgram = async (prog) => {
-    if (!window.confirm(`Delete program "${prog.name}"? Subjects in it will become unassigned.`)) return;
+    if (!await confirm({ title: 'Delete program?', message: `"${prog.name}" will be deleted. Subjects in it will become unassigned.`, confirmText: 'Delete' })) return;
     setDeletingProgram(prog.id); setPageError('');
     try { await api.delete(`/enrollment/admin/programs/${prog.id}/`); fetchPrograms(programDeptFilter); fetchDepts(); }
     catch (err) { setPageError(err.response?.data?.detail || err.response?.data?.error || 'Failed to delete program.'); }
@@ -427,25 +432,30 @@ export default function AdminPrograms() {
         subject_type: editCurrForm.subject_type || 'minor',
         prerequisite: editCurrForm.prerequisite || null,
       });
+      toast(`${editCurrForm.code.trim().toUpperCase()} updated.`, { type: 'success' });
       setEditingCurrSubject(null);
       fetchCurriculumSubjects(curriculumProgram.id);
     } catch (err) {
       const d = err.response?.data;
-      setEditCurrError(d?.code?.[0] || d?.name?.[0] || d?.units?.[0] || d?.subject_type?.[0] || d?.prerequisite?.[0] || d?.detail || d?.error || 'Failed to save.');
+      setEditCurrError(d?.code?.[0] || d?.name?.[0] || d?.units?.[0] || d?.subject_type?.[0] || d?.prerequisite?.[0] || d?.detail || d?.error || 'Couldn’t save the course. Try again.');
     } finally { setEditCurrSaving(false); }
   };
 
   const handleDeleteCurrSubject = async (subj) => {
-    if (!window.confirm(`Remove "${subj.code} — ${subj.name}" from this curriculum?\nThis deletes the subject if it has no enrollment or grade records.`)) return;
+    if (!await confirm({ title: `Remove ${subj.code}?`, message: `"${subj.code} - ${subj.name}" will be removed from this curriculum. This deletes the course if it has no enrollment or grade records.`, confirmText: 'Remove' })) return;
     setDeletingCurrSubject(subj.id);
     try {
       await api.delete(`/enrollment/admin/subjects/${subj.id}/`);
       setCurriculumSubjects(prev => prev.filter(s => s.id !== subj.id));
+      toast(`${subj.code} removed from the curriculum.`, { type: 'success' });
     } catch {
       // If protected, unlink from program instead
       await api.patch(`/enrollment/admin/subjects/${subj.id}/`, { program: null, year_level: null, semester: null })
-        .then(() => setCurriculumSubjects(prev => prev.filter(s => s.id !== subj.id)))
-        .catch(e2 => setPageError(e2.response?.data?.detail || e2.response?.data?.error || 'Failed to remove subject.'));
+        .then(() => {
+          setCurriculumSubjects(prev => prev.filter(s => s.id !== subj.id));
+          toast(`${subj.code} removed from the curriculum.`, { type: 'success' });
+        })
+        .catch(e2 => setPageError(e2.response?.data?.detail || e2.response?.data?.error || 'Couldn’t remove the course.'));
     } finally { setDeletingCurrSubject(null); }
   };
 
@@ -472,7 +482,7 @@ export default function AdminPrograms() {
   };
 
   const handleDeleteDoc = async (doc) => {
-    if (!window.confirm(`Delete "${doc.file_name}"?`)) return;
+    if (!await confirm({ title: 'Delete document?', message: `"${doc.file_name}" will be permanently deleted.`, confirmText: 'Delete' })) return;
     setDeletingDoc(doc.id);
     try {
       await api.delete(`/enrollment/admin/programs/${curriculumProgram.id}/documents/${doc.id}/`);
@@ -500,11 +510,12 @@ export default function AdminPrograms() {
         subject_type: addForm.subject_type || 'minor',
         prerequisite: addForm.prerequisite || null,
       });
+      toast(`${addForm.code.trim().toUpperCase()} added to ${curriculumProgram.code}.`, { type: 'success' });
       setAddForm({ code: '', name: '', units: '', description: '', year_level: '', semester: '', subject_type: 'minor', prerequisite: '' });
       fetchCurriculumSubjects(curriculumProgram.id);
     } catch (err) {
       const d = err.response?.data;
-      setAddError(d?.code?.[0] || d?.name?.[0] || d?.units?.[0] || d?.subject_type?.[0] || d?.prerequisite?.[0] || d?.detail || d?.error || d?.[0] || 'Failed to add subject.');
+      setAddError(d?.code?.[0] || d?.name?.[0] || d?.units?.[0] || d?.subject_type?.[0] || d?.prerequisite?.[0] || d?.detail || d?.error || d?.[0] || 'Couldn’t add the course. Check the fields and try again.');
     } finally { setAddSaving(false); }
   };
 
@@ -543,7 +554,7 @@ export default function AdminPrograms() {
   };
 
   const deleteSubject = async (subj) => {
-    if (!window.confirm(`Delete subject "${subj.code}"? Deactivate it instead if it has records.`)) return;
+    if (!await confirm({ title: 'Delete subject?', message: `"${subj.code}" will be deleted. Deactivate it instead if it has records.`, confirmText: 'Delete' })) return;
     setDeletingSubject(subj.id); setPageError('');
     try { await api.delete(`/enrollment/admin/subjects/${subj.id}/`); fetchSubjects(subjectProgramFilter); }
     catch (err) { setPageError(err.response?.data?.[0] || err.response?.data?.detail || err.response?.data?.error || 'Failed to delete subject.'); }
@@ -563,8 +574,8 @@ export default function AdminPrograms() {
     });
 
   const programSelectOptions = [
-    { value: '', label: '— None —' },
-    ...programs.map(p => ({ value: p.id, label: `${p.code} — ${p.name}` })),
+    { value: '', label: 'None' },
+    ...programs.map(p => ({ value: p.id, label: `${p.code} - ${p.name}` })),
   ];
 
   const prerequisiteSelectOptions = [
@@ -576,7 +587,7 @@ export default function AdminPrograms() {
   const renderCurriculumView = () => {
     if (curriculumLoading) return <p style={s.loading}>Loading curriculum…</p>;
     if (curriculumSubjects.length === 0) return (
-      <p style={s.empty}>No subjects yet. Use <strong>Upload File</strong> or <strong>Add Manually</strong> to build the curriculum.</p>
+      <p style={s.empty}>No courses yet. Use <strong>Upload File</strong> or <strong>Add Manually</strong> to build the curriculum.</p>
     );
 
     const grouped = groupByYearSemester(curriculumSubjects);
@@ -593,80 +604,25 @@ export default function AdminPrograms() {
               {semKeys.map(sem => (
                 <div key={sem} style={{ marginTop: '0.6rem' }}>
                   {sem && <div style={s.currSemLabel}>{SEM_LABELS[sem] || sem}</div>}
-                  <table style={s.table}>
+                  <div className="table-scroll"><table style={s.table}>
                     <thead>
                       <tr>
                         <th style={s.th}>Code</th>
-                        <th style={s.th}>Subject Name</th>
+                        <th style={s.th}>Course Name</th>
                         <th style={{ ...s.th, textAlign: 'center' }}>Units</th>
                         <th style={s.th}>Prerequisite</th>
-                        <th style={s.th}>Actions</th>
+                        <th style={{ ...s.th, textAlign: 'right' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {sems[sem].map(subj => (
-                        editingCurrSubject?.id === subj.id ? (
-                          <tr key={subj.id} style={{ ...s.tr, background: '#f0f9ff' }}>
-                            <td style={s.td} colSpan={5}>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 0.6fr 1fr 1fr', gap: '0.5rem', alignItems: 'end' }}>
-                                <div>
-                                  <label style={s.inlineLabel}>Code</label>
-                                  <input style={s.inlineInput} value={editCurrForm.code} onChange={e => setEditCurrForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} maxLength={20} />
-                                </div>
-                                <div>
-                                  <label style={s.inlineLabel}>Name</label>
-                                  <input style={s.inlineInput} value={editCurrForm.name} onChange={e => setEditCurrForm(f => ({ ...f, name: e.target.value }))} />
-                                </div>
-                                <div>
-                                  <label style={s.inlineLabel}>Units</label>
-                                  <input style={s.inlineInput} type="number" min={0.5} max={12} step={0.01} value={editCurrForm.units} onChange={e => setEditCurrForm(f => ({ ...f, units: e.target.value }))} />
-                                </div>
-                                <div>
-                                  <label style={s.inlineLabel}>Year</label>
-                                  <select style={s.inlineInput} value={editCurrForm.year_level} onChange={e => setEditCurrForm(f => ({ ...f, year_level: e.target.value }))}>
-                                    {YEAR_LEVEL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                  </select>
-                                </div>
-                                <div>
-                                  <label style={s.inlineLabel}>Semester</label>
-                                  <select style={s.inlineInput} value={editCurrForm.semester} onChange={e => setEditCurrForm(f => ({ ...f, semester: e.target.value }))}>
-                                    {SEMESTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                  </select>
-                                </div>
-                              </div>
-                              <div style={{ marginTop: '0.5rem' }}>
-                                <label style={s.inlineLabel}>Subject Type</label>
-                                <select style={{ ...s.inlineInput, width: '100%' }} value={editCurrForm.subject_type} onChange={e => setEditCurrForm(f => ({ ...f, subject_type: e.target.value }))}>
-                                  {SUBJECT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                </select>
-                              </div>
-                              <div style={{ marginTop: '0.5rem' }}>
-                                <label style={s.inlineLabel}>Description</label>
-                                <input style={{ ...s.inlineInput, width: '100%' }} value={editCurrForm.description} onChange={e => setEditCurrForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional" />
-                              </div>
-                              <div style={{ marginTop: '0.5rem' }}>
-                                <label style={s.inlineLabel}>Prerequisite</label>
-                                <select style={{ ...s.inlineInput, width: '100%' }} value={editCurrForm.prerequisite} onChange={e => setEditCurrForm(f => ({ ...f, prerequisite: e.target.value }))}>
-                                  <option value="">None</option>
-                                  {curriculumPrerequisiteOptions(editingCurrSubject?.id).map(s => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}
-                                </select>
-                              </div>
-                              {editCurrError && <p style={{ ...s.formError, marginTop: '0.35rem' }}>{editCurrError}</p>}
-                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem' }}>
-                                <button style={{ ...s.btnSm, ...s.btnSmPrimary }} onClick={saveEditCurrSubject} disabled={editCurrSaving}>
-                                  {editCurrSaving ? 'Saving…' : 'Save'}
-                                </button>
-                                <button style={s.btnSm} onClick={() => setEditingCurrSubject(null)}>Cancel</button>
-                              </div>
-                            </td>
-                          </tr>
-                        ) : (
-                          <tr key={subj.id} style={s.tr}>
-                            <td style={s.td}><code style={s.code}>{subj.code}</code></td>
-                            <td style={s.td}>{subj.name}</td>
-                            <td style={{ ...s.td, textAlign: 'center' }}>{formatUnits(subj.units)}</td>
-                            <td style={s.td}>{prerequisiteLabel(subj)}</td>
-                            <td style={s.td}>
+                        <tr key={subj.id} style={s.tr}>
+                          <td style={s.td}><code style={s.code}>{subj.code}</code></td>
+                          <td style={s.td}>{subj.name}</td>
+                          <td style={{ ...s.td, textAlign: 'center' }}>{formatUnits(subj.units)}</td>
+                          <td style={s.td}>{prerequisiteLabel(subj)}</td>
+                          <td style={s.tdActions}>
+                            <div style={s.rowActions}>
                               <button style={{ ...s.btnSm, ...s.btnSmEdit }} onClick={() => openEditCurrSubject(subj)}>Edit</button>
                               <button
                                 style={{ ...s.btnSm, ...s.btnSmDanger }}
@@ -675,19 +631,19 @@ export default function AdminPrograms() {
                               >
                                 {deletingCurrSubject === subj.id ? '…' : 'Remove'}
                               </button>
-                            </td>
-                          </tr>
-                        )
+                            </div>
+                          </td>
+                        </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </div>
               ))}
             </div>
           );
         })}
         <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '0.5rem' }}>
-          Total: {curriculumSubjects.length} subject(s) · {formatUnits(curriculumSubjects.reduce((a, s) => a + parseFloat(s.units || 0), 0))} units
+          Total: {curriculumSubjects.length} course{curriculumSubjects.length !== 1 ? 's' : ''} · {formatUnits(curriculumSubjects.reduce((a, s) => a + parseFloat(s.units || 0), 0))} units
         </p>
       </div>
     );
@@ -705,13 +661,13 @@ export default function AdminPrograms() {
         ) : currDocs.length === 0 ? (
           <p style={s.empty}>No files uploaded yet.</p>
         ) : (
-          <table style={s.table}>
+          <div className="table-scroll"><table style={s.table}>
             <thead>
               <tr>
                 <th style={s.th}>File Name</th>
                 <th style={s.th}>Size</th>
                 <th style={s.th}>Uploaded</th>
-                <th style={s.th}>Actions</th>
+                <th style={{ ...s.th, textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -739,7 +695,7 @@ export default function AdminPrograms() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 
@@ -752,7 +708,7 @@ export default function AdminPrograms() {
         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.85rem 1rem', marginBottom: '1rem', fontSize: '0.82rem', color: '#374151' }}>
           <strong>Accepted formats:</strong> {ACCEPTED_LABEL}
           <br />
-          <span style={{ color: '#6b7280' }}>CSV files will also automatically import subjects into the curriculum.</span>
+          <span style={{ color: '#5a6478' }}>CSV files will also automatically import courses into the curriculum.</span>
         </div>
 
         <button
@@ -805,16 +761,16 @@ export default function AdminPrograms() {
 
   const renderAddTab = () => (
     <div>
-      <p style={{ fontSize: '0.9rem', color: '#374151', marginBottom: '1rem' }}>
-        Add a single subject to <strong>{curriculumProgram?.name}</strong>.
+      <p style={{ fontSize: '0.9rem', color: '#5a6478', marginBottom: '1rem' }}>
+        Add a single course to <strong>{curriculumProgram?.name}</strong>.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
         <div style={{ ...s.fieldGroup, gridColumn: '1 / -1' }}>
-          <label style={s.label}>Subject Name *</label>
+          <label style={s.label}>Course Name *</label>
           <input style={s.input} placeholder="e.g. Introduction to Computing" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
         </div>
         <div style={s.fieldGroup}>
-          <label style={s.label}>Subject Code *</label>
+          <label style={s.label}>Course Code *</label>
           <input style={s.input} placeholder="e.g. CC101" value={addForm.code} onChange={e => setAddForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} maxLength={20} />
         </div>
         <div style={s.fieldGroup}>
@@ -822,7 +778,7 @@ export default function AdminPrograms() {
           <input style={s.input} type="number" min={0.5} max={12} step={0.01} placeholder="e.g. 3 or 1.25" value={addForm.units} onChange={e => setAddForm(f => ({ ...f, units: e.target.value }))} />
         </div>
         <div style={s.fieldGroup}>
-          <label style={s.label}>Subject Type</label>
+          <label style={s.label}>Course Type</label>
           <select style={s.input} value={addForm.subject_type} onChange={e => setAddForm(f => ({ ...f, subject_type: e.target.value }))}>
             {SUBJECT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -854,7 +810,7 @@ export default function AdminPrograms() {
       {addError && <p style={s.formError}>{addError}</p>}
       <div style={s.modalActions}>
         <button style={s.btnPrimary} onClick={handleAddSubject} disabled={addSaving}>
-          {addSaving ? 'Saving…' : 'Add Subject'}
+          {addSaving ? 'Saving…' : 'Add course'}
         </button>
       </div>
     </div>
@@ -884,48 +840,56 @@ export default function AdminPrograms() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const isRegistrar = user?.role === 'registrar';
-
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><img src="/logo.png" alt="NEMSU" className="sidebar-logo" />NEMSUonePortal</div>
-        {isRegistrar ? (
-          <>
-            <Link className="sidebar-link" to="/registrar/dashboard">Dashboard</Link>
-            <Link className="sidebar-link" to="/registrar/enrollment">Enrollment Requests</Link>
-            <Link className="sidebar-link" to="/registrar/grades">List of Students</Link>
-            <Link className="sidebar-link" to="/registrar/faculty">Faculty</Link>
-            <Link className="sidebar-link" to="/registrar/schedule">Class Schedules</Link>
-            <Link className="sidebar-link" to="/registrar/documents">Document Requests</Link>
-            <Link className="sidebar-link active" to="/registrar/academic-data">Academic Data</Link>
-            <Link className="sidebar-link" to="/registrar/announcements">Announcements</Link>
-          </>
-        ) : (
-          <>
-            <Link className="sidebar-link" to="/admin/dashboard">Dashboard</Link>
-            <Link className="sidebar-link" to="/admin/users">User Management</Link>
-            <Link className="sidebar-link active" to="/admin/programs">Programs &amp; Curriculum</Link>
-            <Link className="sidebar-link" to="/admin/audit-log">Audit Log</Link>
-            <Link className="sidebar-link" to="/admin/announcements">Announcements</Link>
-            <Link className="sidebar-link" to="/admin/settings">System Settings</Link>
-          </>
-        )}
-      </aside>
-
-      <main className="dashboard-content">
-        <div className="dashboard-header">
-          <div>
-            <h1>Programs &amp; Curriculum</h1>
-            <span className="badge">{user?.role}</span>
+    <>
+      <style>{`
+        .table-scroll tbody tr{ transition:background .12s; }
+        .table-scroll tbody tr:hover > td{ background:#faf9f6; }
+      `}</style>
+      <div className="page-head">
+        <div className="page-head-l">
+          <div style={{ fontSize: '10px', letterSpacing: '.16em', textTransform: 'uppercase', color: '#b89043', fontWeight: 700, marginBottom: '.5rem', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ width: 22, height: 1, background: '#b89043' }} /> Departments · Programs · Curriculum
           </div>
-          <button className="btn-logout" onClick={logout}>Sign Out</button>
+          <h2 style={{ margin: 0, font: '600 24px/1.15 Inter, sans-serif', color: '#0a1628', letterSpacing: '-.015em' }}>Academic data</h2>
+          <div className="sub" style={{ marginTop: '.35rem' }}>
+            Manage departments, programs, and subjects, and build each program&rsquo;s curriculum.
+          </div>
         </div>
+        <div className="actions">
+          <button className="btn-sec" onClick={downloadTemplate}>
+            <i className="ti ti-file-export" /> Curriculum template
+          </button>
+        </div>
+      </div>
 
-        {pageError && <div style={s.alertError}>{pageError}</div>}
+      {pageError && <div style={s.alertError}>{pageError}</div>}
 
-        {/* ── DEPARTMENTS ──────────────────────────────────────────────────── */}
-        <div style={s.section}>
+      {/* Section tabs — show one data area at a time */}
+      <div style={s.tabbar}>
+        {[
+          { key: 'departments', label: 'Departments', count: depts.length },
+          { key: 'programs',    label: 'Programs',    count: programs.length },
+          { key: 'subjects',    label: 'Subjects',    count: subjects.length },
+        ].map((t, i, arr) => {
+          const on = section === t.key;
+          return (
+            <button
+              key={t.key}
+              style={{ ...s.tabbarBtn, ...(on ? s.tabbarBtnActive : {}), ...(i === arr.length - 1 ? { borderRight: 'none' } : {}) }}
+              onClick={() => setSection(t.key)}
+            >
+              {t.label}
+              {t.count != null && (
+                <span style={{ ...s.tabbarCount, ...(on ? { background: '#fff', color: '#0a1628' } : {}) }}>{t.count}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── DEPARTMENTS ──────────────────────────────────────────────────── */}
+      <div style={{ ...s.section, display: section === 'departments' ? undefined : 'none' }}>
           <SectionHeader title="Departments" count={depts.length} onAdd={openAddDept} />
           <div style={s.filterRow}>
             <input style={s.searchInput} placeholder="Search departments…" value={deptSearch} onChange={e => setDeptSearch(e.target.value)} />
@@ -934,10 +898,10 @@ export default function AdminPrograms() {
             <p style={s.empty}>{depts.length === 0 ? 'No departments yet.' : 'No departments match your search.'}</p>
           ) : (
             <>
-              <table style={s.table}>
+              <div className="table-scroll"><table style={s.table}>
                 <thead><tr>
                   <th style={s.th}>Code</th><th style={s.th}>Name</th>
-                  <th style={s.th}>Programs</th><th style={s.th}>Status</th><th style={s.th}>Actions</th>
+                  <th style={s.th}>Programs</th><th style={s.th}>Status</th><th style={{ ...s.th, textAlign: 'right' }}>Actions</th>
                 </tr></thead>
                 <tbody>
                   {displayedDepts.map(dept => (
@@ -946,14 +910,16 @@ export default function AdminPrograms() {
                       <td style={s.td}>{dept.name}</td>
                       <td style={s.td}>{dept.program_count}</td>
                       <td style={s.td}><span style={dept.is_active ? s.badgeActive : s.badgeInactive}>{dept.is_active ? 'Active' : 'Inactive'}</span></td>
-                      <td style={s.td}>
-                        <button style={s.btnSm} onClick={() => openEditDept(dept)}>Edit</button>
-                        <button style={{ ...s.btnSm, ...s.btnSmDanger }} disabled={deletingDept === dept.id} onClick={() => deleteDept(dept)}>{deletingDept === dept.id ? '…' : 'Delete'}</button>
+                      <td style={s.tdActions}>
+                        <div style={s.rowActions}>
+                          <button style={s.btnSm} onClick={() => openEditDept(dept)}>Edit</button>
+                          <button style={{ ...s.btnSm, ...s.btnSmDanger }} disabled={deletingDept === dept.id} onClick={() => deleteDept(dept)}>{deletingDept === dept.id ? '…' : 'Delete'}</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               {filteredDepts.length > PAGE_SIZE && (
                 <p style={s.tableInfo}>Showing 15 of {filteredDepts.length} {deptSearchQ ? 'results' : 'departments'}</p>
               )}
@@ -962,7 +928,7 @@ export default function AdminPrograms() {
         </div>
 
         {/* ── PROGRAMS ─────────────────────────────────────────────────────── */}
-        <div style={s.section}>
+        <div style={{ ...s.section, display: section === 'programs' ? undefined : 'none' }}>
           <SectionHeader title="Programs" count={programs.length} onAdd={openAddProgram} />
           <div style={s.filterRow}>
             <label style={s.filterLabel}>Filter by Department</label>
@@ -976,28 +942,30 @@ export default function AdminPrograms() {
             <p style={s.empty}>{programs.length === 0 ? `No programs${programDeptFilter ? ' in this department' : ''}.` : 'No programs match your search.'}</p>
           ) : (
             <>
-              <table style={s.table}>
+              <div className="table-scroll"><table style={s.table}>
                 <thead><tr>
                   <th style={s.th}>Code</th><th style={s.th}>Program Name</th><th style={s.th}>Department</th>
-                  <th style={s.th}>Subjects</th><th style={s.th}>Status</th><th style={s.th}>Actions</th>
+                  <th style={s.th}>Subjects</th><th style={s.th}>Status</th><th style={{ ...s.th, textAlign: 'right' }}>Actions</th>
                 </tr></thead>
                 <tbody>
                   {displayedPrograms.map(prog => (
                     <tr key={prog.id} style={s.tr}>
                       <td style={s.td}><code style={s.code}>{prog.code}</code></td>
                       <td style={s.td}>{prog.name}</td>
-                      <td style={s.td}>{prog.department_code} — {prog.department_name}</td>
+                      <td style={s.td}>{prog.department_code} - {prog.department_name}</td>
                       <td style={s.td}>{prog.subject_count}</td>
                       <td style={s.td}><span style={prog.is_active ? s.badgeActive : s.badgeInactive}>{prog.is_active ? 'Active' : 'Inactive'}</span></td>
-                      <td style={s.td}>
-                        <button style={{ ...s.btnSm, ...s.btnCurriculum }} onClick={() => openCurriculum(prog)}>Curriculum</button>
-                        <button style={s.btnSm} onClick={() => openEditProgram(prog)}>Edit</button>
-                        <button style={{ ...s.btnSm, ...s.btnSmDanger }} disabled={deletingProgram === prog.id} onClick={() => deleteProgram(prog)}>{deletingProgram === prog.id ? '…' : 'Delete'}</button>
+                      <td style={s.tdActions}>
+                        <div style={s.rowActions}>
+                          <button style={{ ...s.btnSm, ...s.btnCurriculum }} onClick={() => openCurriculum(prog)}>Curriculum</button>
+                          <button style={s.btnSm} onClick={() => openEditProgram(prog)}>Edit</button>
+                          <button style={{ ...s.btnSm, ...s.btnSmDanger }} disabled={deletingProgram === prog.id} onClick={() => deleteProgram(prog)}>{deletingProgram === prog.id ? '…' : 'Delete'}</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               {filteredPrograms.length > PAGE_SIZE && (
                 <p style={s.tableInfo}>Showing 15 of {filteredPrograms.length} {programSearchQ ? 'results' : 'programs'}</p>
               )}
@@ -1006,13 +974,13 @@ export default function AdminPrograms() {
         </div>
 
         {/* ── SUBJECTS ─────────────────────────────────────────────────────── */}
-        <div style={s.section}>
-          <SectionHeader title="All Subjects / Courses" count={subjects.length} onAdd={openAddSubject} />
+        <div style={{ ...s.section, display: section === 'subjects' ? undefined : 'none' }}>
+          <SectionHeader title="Subjects &amp; courses" count={subjects.length} onAdd={openAddSubject} />
           <div style={s.filterRow}>
             <label style={s.filterLabel}>Filter by Program</label>
             <select value={subjectProgramFilter} onChange={e => { setSubjectProgramFilter(e.target.value); fetchSubjects(e.target.value); }} style={s.filterSelect}>
               <option value="">All Programs</option>
-              {programs.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+              {programs.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
             </select>
             <input style={s.searchInput} placeholder="Search subjects…" value={subjectSearch} onChange={e => setSubjectSearch(e.target.value)} />
           </div>
@@ -1020,11 +988,11 @@ export default function AdminPrograms() {
             <p style={s.empty}>{subjects.length === 0 ? `No subjects${subjectProgramFilter ? ' in this program' : ''}.` : 'No subjects match your search.'}</p>
           ) : (
             <>
-              <table style={s.table}>
+              <div className="table-scroll"><table style={s.table}>
                 <thead><tr>
                   <th style={s.th}>Code</th><th style={s.th}>Subject Name</th>
                   <th style={s.th}>Units</th><th style={s.th}>Year</th><th style={s.th}>Semester</th>
-                  <th style={s.th}>Program</th><th style={s.th}>Prerequisite</th><th style={s.th}>Status</th><th style={s.th}>Actions</th>
+                  <th style={s.th}>Program</th><th style={s.th}>Prerequisite</th><th style={s.th}>Status</th><th style={{ ...s.th, textAlign: 'right' }}>Actions</th>
                 </tr></thead>
                 <tbody>
                   {displayedSubjects.map(subj => (
@@ -1035,19 +1003,21 @@ export default function AdminPrograms() {
                         <div style={s.mutedSmall}>{subj.subject_type_display || SUBJECT_TYPE_LABELS[subj.subject_type] || 'Minor Subject'}</div>
                       </td>
                       <td style={{ ...s.td, textAlign: 'center' }}>{formatUnits(subj.units)}</td>
-                      <td style={s.td}>{subj.year_level ? YEAR_LABELS[subj.year_level] : '—'}</td>
-                      <td style={s.td}>{subj.semester ? SEM_LABELS[subj.semester] : '—'}</td>
-                      <td style={s.td}>{subj.program_code ? <code style={s.code}>{subj.program_code}</code> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                      <td style={s.td}>{subj.year_level ? YEAR_LABELS[subj.year_level] : '-'}</td>
+                      <td style={s.td}>{subj.semester ? SEM_LABELS[subj.semester] : '-'}</td>
+                      <td style={s.td}>{subj.program_code ? <code style={s.code}>{subj.program_code}</code> : <span style={{ color: '#9ca3af' }}>-</span>}</td>
                       <td style={s.td}>{prerequisiteLabel(subj)}</td>
                       <td style={s.td}><span style={subj.is_active ? s.badgeActive : s.badgeInactive}>{subj.is_active ? 'Active' : 'Inactive'}</span></td>
-                      <td style={s.td}>
-                        <button style={s.btnSm} onClick={() => openEditSubject(subj)}>Edit</button>
-                        <button style={{ ...s.btnSm, ...s.btnSmDanger }} disabled={deletingSubject === subj.id} onClick={() => deleteSubject(subj)}>{deletingSubject === subj.id ? '…' : 'Delete'}</button>
+                      <td style={s.tdActions}>
+                        <div style={s.rowActions}>
+                          <button style={s.btnSm} onClick={() => openEditSubject(subj)}>Edit</button>
+                          <button style={{ ...s.btnSm, ...s.btnSmDanger }} disabled={deletingSubject === subj.id} onClick={() => deleteSubject(subj)}>{deletingSubject === subj.id ? '…' : 'Delete'}</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               {filteredSubjects.length > PAGE_SIZE && (
                 <p style={s.tableInfo}>Showing 15 of {filteredSubjects.length} {subjectSearchQ ? 'results' : 'subjects'}</p>
               )}
@@ -1055,23 +1025,14 @@ export default function AdminPrograms() {
           )}
         </div>
 
-        {/* ── LANDING PAGE SETTINGS ────────────────────────────────────────── */}
-        <div style={s.section}>
-          <div style={{ marginBottom: 14 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', margin: 0 }}>Landing Page Settings</h2>
-            <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 0' }}>Control the enrollment status, academic year, and schedule shown on the public landing page.</p>
-          </div>
-          <EnrollmentScheduleManager />
-        </div>
-      </main>
-
       {/* ══ CURRICULUM MODAL ════════════════════════════════════════════════ */}
       {curriculumProgram && (
         <div style={s.overlay}>
           <div style={{ ...s.modal, maxWidth: 900, width: '95vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             <div style={s.modalHeader}>
               <div>
-                <h2 style={s.modalTitle}>Curriculum — {curriculumProgram.code}</h2>
+                <div style={s.modalEyebrow}>Program curriculum</div>
+                <h2 style={s.modalTitle}>Curriculum for {curriculumProgram.code}</h2>
                 <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>{curriculumProgram.name}</p>
               </div>
               <button style={s.modalClose} onClick={closeCurriculum}>×</button>
@@ -1079,7 +1040,7 @@ export default function AdminPrograms() {
 
             <div style={s.tabs}>
               {[
-                { key: 'view', label: `Subjects (${curriculumSubjects.length})` },
+                { key: 'view', label: `Courses (${curriculumSubjects.length})` },
                 { key: 'upload', label: 'Upload File' },
                 { key: 'add', label: 'Add Manually' },
               ].map(t => (
@@ -1097,6 +1058,78 @@ export default function AdminPrograms() {
               {curriculumTab === 'view' && renderCurriculumView()}
               {curriculumTab === 'upload' && renderUploadTab()}
               {curriculumTab === 'add' && renderAddTab()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT COURSE MODAL (nested over the curriculum modal) ──────────── */}
+      {editingCurrSubject && (
+        <div style={{ ...s.overlay, zIndex: 1100 }} onMouseDown={e => { if (e.target === e.currentTarget) setEditingCurrSubject(null); }}>
+          <div style={{ ...s.modal, maxWidth: 560 }}>
+            <div style={s.modalHeader}>
+              <div>
+                <div style={s.modalEyebrow}>Edit course</div>
+                <h2 style={s.modalTitle}>{editingCurrSubject.code}</h2>
+              </div>
+              <button style={s.modalClose} onClick={() => setEditingCurrSubject(null)}>×</button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 .85rem' }}>
+              <div style={s.fieldGroup}>
+                <label style={s.label}>Code</label>
+                <input style={s.input} value={editCurrForm.code} onChange={e => setEditCurrForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} maxLength={20} />
+              </div>
+              <div style={s.fieldGroup}>
+                <label style={s.label}>Course name</label>
+                <input style={s.input} value={editCurrForm.name} onChange={e => setEditCurrForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 .85rem' }}>
+              <div style={s.fieldGroup}>
+                <label style={s.label}>Units</label>
+                <input style={s.input} type="number" min={0.5} max={12} step={0.01} value={editCurrForm.units} onChange={e => setEditCurrForm(f => ({ ...f, units: e.target.value }))} />
+              </div>
+              <div style={s.fieldGroup}>
+                <label style={s.label}>Year level</label>
+                <select style={s.input} value={editCurrForm.year_level} onChange={e => setEditCurrForm(f => ({ ...f, year_level: e.target.value }))}>
+                  {YEAR_LEVEL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div style={s.fieldGroup}>
+                <label style={s.label}>Semester</label>
+                <select style={s.input} value={editCurrForm.semester} onChange={e => setEditCurrForm(f => ({ ...f, semester: e.target.value }))}>
+                  {SEMESTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={s.fieldGroup}>
+              <label style={s.label}>Course type</label>
+              <select style={s.input} value={editCurrForm.subject_type} onChange={e => setEditCurrForm(f => ({ ...f, subject_type: e.target.value }))}>
+                {SUBJECT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div style={s.fieldGroup}>
+              <label style={s.label}>Description <span style={{ fontWeight: 400, color: '#8a93a3' }}>(optional)</span></label>
+              <input style={s.input} value={editCurrForm.description} onChange={e => setEditCurrForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional" />
+            </div>
+            <div style={s.fieldGroup}>
+              <label style={s.label}>Prerequisite</label>
+              <select style={s.input} value={editCurrForm.prerequisite} onChange={e => setEditCurrForm(f => ({ ...f, prerequisite: e.target.value }))}>
+                <option value="">None</option>
+                {curriculumPrerequisiteOptions(editingCurrSubject?.id).map(o => <option key={o.id} value={o.id}>{o.code} - {o.name}</option>)}
+              </select>
+            </div>
+
+            {editCurrError && <p style={s.formError}>{editCurrError}</p>}
+
+            <div style={s.modalActions}>
+              <button style={s.btnSecondary} onClick={() => setEditingCurrSubject(null)} disabled={editCurrSaving}>Cancel</button>
+              <button style={s.btnPrimary} onClick={saveEditCurrSubject} disabled={editCurrSaving}>
+                {editCurrSaving ? 'Saving…' : 'Save changes'}
+              </button>
             </div>
           </div>
         </div>
@@ -1124,8 +1157,8 @@ export default function AdminPrograms() {
           <div style={s.fieldGroup}><label style={s.label}>Code *</label><input style={s.input} placeholder="e.g. BSIT" value={programForm.code} onChange={e => setProgramForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} maxLength={20} /></div>
           <div style={s.fieldGroup}><label style={s.label}>Department *</label>
             <select style={s.input} value={programForm.department} onChange={e => setProgramForm(f => ({ ...f, department: e.target.value }))}>
-              <option value="">— Select Department —</option>
-              {depts.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+              <option value="">Select Department</option>
+              {depts.map(d => <option key={d.id} value={d.id}>{d.code} - {d.name}</option>)}
             </select>
           </div>
           <div style={s.fieldGroup}><label style={s.label}>Description</label><textarea style={{ ...s.input, height: 72, resize: 'vertical' }} placeholder="Optional" value={programForm.description} onChange={e => setProgramForm(f => ({ ...f, description: e.target.value }))} /></div>
@@ -1158,8 +1191,8 @@ export default function AdminPrograms() {
                 onChange={program => setSubjectForm(f => ({ ...f, program, prerequisite: '' }))}
               />
               <select style={{ display: 'none' }} value={subjectForm.program} onChange={e => setSubjectForm(f => ({ ...f, program: e.target.value, prerequisite: '' }))}>
-                <option value="">— None —</option>
-                {programs.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                <option value="">None</option>
+                {programs.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
               </select>
             </div>
             <div style={s.fieldGroup}><label style={s.label}>Year Level</label>
@@ -1194,64 +1227,73 @@ export default function AdminPrograms() {
           </div>
         </Modal>
       )}
-    </div>
+    </>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = {
-  alertError: { background: '#fee2e2', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem' },
-  alertSuccess: { background: '#d1fae5', color: '#065f46', padding: '0.65rem 1rem', borderRadius: 6, fontSize: '0.9rem' },
-  section: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+  alertError: { background: '#fbeae8', color: '#b42318', padding: '.7rem 1rem', marginBottom: '1rem', fontSize: '13px', border: '1px solid #f3c9c3' },
+  alertSuccess: { background: '#e6f1ec', color: '#0a7c52', padding: '.65rem 1rem', fontSize: '13px' },
+  section: { background: '#fff', border: '1px solid #e5e7eb', padding: '1.25rem' },
   sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' },
-  sectionTitle: { fontWeight: 700, fontSize: '1rem', color: '#1e3a5f' },
-  sectionCount: { background: '#e0e7ff', color: '#3730a3', borderRadius: 20, padding: '0.1rem 0.55rem', fontSize: '0.78rem', fontWeight: 700, marginLeft: '0.6rem' },
-  filterRow: { display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.85rem' },
-  filterLabel: { fontSize: '0.85rem', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' },
-  filterSelect: { padding: '0.4rem 0.65rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.88rem', minWidth: 200 },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' },
-  th: { textAlign: 'left', padding: '0.5rem 0.75rem', fontWeight: 700, color: '#374151', borderBottom: '2px solid #e5e7eb', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' },
-  tr: { borderBottom: '1px solid #f3f4f6' },
-  td: { padding: '0.55rem 0.75rem', color: '#374151', verticalAlign: 'middle' },
-  code: { background: '#f3f4f6', borderRadius: 4, padding: '0.1rem 0.4rem', fontFamily: 'monospace', fontSize: '0.85rem', color: '#1e3a5f', fontWeight: 700 },
-  badgeActive: { background: '#d1fae5', color: '#065f46', borderRadius: 20, padding: '0.15rem 0.55rem', fontSize: '0.75rem', fontWeight: 700 },
-  badgeInactive: { background: '#fee2e2', color: '#991b1b', borderRadius: 20, padding: '0.15rem 0.55rem', fontSize: '0.75rem', fontWeight: 700 },
-  loading: { color: '#9ca3af', fontSize: '0.88rem', padding: '0.5rem 0' },
-  empty: { color: '#9ca3af', fontSize: '0.88rem', fontStyle: 'italic', padding: '0.5rem 0' },
-  mutedSmall: { color: '#6b7280', fontSize: '0.75rem', marginTop: '0.15rem' },
-  btnPrimary: { background: '#1e3a5f', color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1.1rem', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 600 },
-  btnSecondary: { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '0.5rem 1rem', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 600 },
-  btnSm: { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 5, padding: '0.2rem 0.65rem', fontSize: '0.8rem', cursor: 'pointer', marginRight: '0.35rem' },
-  btnSmDanger: { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' },
-  btnSmEdit: { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' },
-  btnSmPrimary: { background: '#1e3a5f', color: '#fff', border: 'none' },
-  btnCurriculum: { background: '#ede9fe', color: '#5b21b6', border: '1px solid #c4b5fd' },
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { background: '#fff', borderRadius: 12, padding: '1.75rem 2rem', width: '100%', maxWidth: 520, boxShadow: '0 8px 32px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' },
+  sectionTitle: { fontWeight: 600, fontSize: '16px', color: '#0a1628', letterSpacing: '-.01em' },
+  sectionCount: { background: '#eef1f7', color: '#5a6478', padding: '2px 8px', fontSize: '12px', fontWeight: 600, marginLeft: '.55rem', fontVariantNumeric: 'tabular-nums' },
+  filterRow: { display: 'flex', alignItems: 'center', gap: '.75rem', marginBottom: '.9rem', flexWrap: 'wrap' },
+  filterLabel: { fontSize: '12.5px', fontWeight: 600, color: '#5a6478', whiteSpace: 'nowrap' },
+  filterSelect: { padding: '8px 11px', border: '1px solid #e5e7eb', fontSize: '13px', minWidth: 200, background: '#fff', color: '#0a1628', outline: 'none' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
+  th: { textAlign: 'left', padding: '10px 12px', fontWeight: 600, color: '#5a6478', borderBottom: '1px solid #e5e7eb', fontSize: '11.5px', background: '#f8f7f3', whiteSpace: 'nowrap' },
+  tr: { borderBottom: '1px solid #eef0f4' },
+  td: { padding: '10px 12px', color: '#0a1628', verticalAlign: 'middle' },
+  code: { background: '#eef1f7', padding: '2px 7px', fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace', fontSize: '12px', color: '#1e3a5f', fontWeight: 600 },
+  badgeActive: { background: '#e6f1ec', color: '#0a7c52', padding: '2px 9px', fontSize: '11px', fontWeight: 600 },
+  badgeInactive: { background: '#eef1f7', color: '#5a6478', padding: '2px 9px', fontSize: '11px', fontWeight: 600 },
+  loading: { color: '#8a93a3', fontSize: '13px', padding: '1rem 0' },
+  empty: { color: '#5a6478', fontSize: '13px', padding: '1.25rem 0' },
+  mutedSmall: { color: '#5a6478', fontSize: '11.5px', marginTop: '2px' },
+  btnPrimary: { background: '#0a1628', color: '#fff', border: '1px solid #0a1628', padding: '9px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 },
+  btnSecondary: { background: '#fff', color: '#5a6478', border: '1px solid #e5e7eb', padding: '9px 15px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 },
+  btnSm: { background: '#fff', color: '#0a1628', border: '1px solid #e5e7eb', padding: '5px 11px', fontSize: '12px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' },
+  // Keeps a row's action buttons on one line, in a fixed spot, whatever the other columns contain.
+  rowActions: { display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', justifyContent: 'flex-end' },
+  tdActions: { padding: '10px 12px', color: '#0a1628', verticalAlign: 'middle', whiteSpace: 'nowrap', width: '1%', textAlign: 'right' },
+  btnSmDanger: { color: '#b42318', border: '1px solid #f3c9c3', background: '#fff' },
+  btnSmEdit: { color: '#1e3a5f', border: '1px solid #cdd6e3' },
+  btnSmPrimary: { background: '#0a1628', color: '#fff', border: '1px solid #0a1628' },
+  btnCurriculum: { color: '#8a6a12', border: '1px solid #e6d3a3', background: '#f8f3e6' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(10,22,40,.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '6vh 1rem', overflowY: 'auto' },
+  modal: { background: '#fff', border: '1px solid #e5e7eb', padding: '1.6rem', width: '100%', maxWidth: 520, boxShadow: '0 24px 60px -20px rgba(10,22,40,.5)', maxHeight: '88vh', overflowY: 'auto' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' },
-  modalTitle: { margin: 0, fontSize: '1.1rem', color: '#1e3a5f', fontWeight: 700 },
-  modalClose: { background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#6b7280', lineHeight: 1 },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' },
-  tabs: { display: 'flex', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '0' },
-  tab: { background: 'none', border: 'none', borderBottom: '2px solid transparent', padding: '0.55rem 1rem', fontSize: '0.9rem', cursor: 'pointer', color: '#6b7280', fontWeight: 600, marginBottom: '-2px' },
-  tabActive: { borderBottomColor: '#1e3a5f', color: '#1e3a5f' },
+  modalEyebrow: { fontSize: '10px', letterSpacing: '.16em', textTransform: 'uppercase', color: '#b89043', fontWeight: 700, marginBottom: '.35rem' },
+  modalTitle: { margin: 0, fontSize: '19px', color: '#0a1628', fontWeight: 600 },
+  modalClose: { background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#5a6478', lineHeight: 1 },
+  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: '.6rem', marginTop: '1.25rem' },
+  tabs: { display: 'flex', gap: '.25rem', borderBottom: '1px solid #e5e7eb', marginBottom: '0' },
+  tab: { background: 'none', border: 'none', borderBottom: '2px solid transparent', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#5a6478', fontWeight: 600, marginBottom: '-1px' },
+  tabActive: { borderBottomColor: '#b89043', color: '#0a1628' },
   fieldGroup: { marginBottom: '1rem' },
-  label: { display: 'block', fontWeight: 600, fontSize: '0.88rem', color: '#374151', marginBottom: '0.35rem' },
-  checkLabel: { fontWeight: 600, fontSize: '0.88rem', color: '#374151', display: 'flex', alignItems: 'center' },
-  input: { width: '100%', padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.92rem', boxSizing: 'border-box' },
+  label: { display: 'block', fontWeight: 600, fontSize: '12.5px', color: '#0a1628', marginBottom: '5px' },
+  checkLabel: { fontWeight: 500, fontSize: '13px', color: '#0a1628', display: 'flex', alignItems: 'center', cursor: 'pointer' },
+  input: { width: '100%', padding: '9px 11px', border: '1px solid #e5e7eb', fontSize: '13px', boxSizing: 'border-box', color: '#0a1628', outline: 'none' },
   combo: { position: 'relative', width: '100%' },
-  comboButton: { position: 'absolute', right: 1, top: 1, bottom: 1, width: 34, border: 'none', borderLeft: '1px solid #e5e7eb', borderRadius: '0 6px 6px 0', background: '#fff', color: '#111827', cursor: 'pointer', fontSize: '0.75rem' },
-  comboMenu: { position: 'absolute', zIndex: 1200, top: 'calc(100% + 4px)', left: 0, right: 0, maxHeight: 180, overflowY: 'auto', background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, boxShadow: '0 8px 20px rgba(15, 23, 42, 0.16)', padding: '0.25rem 0' },
-  comboOption: { display: 'block', width: '100%', border: 'none', background: '#fff', color: '#374151', textAlign: 'left', padding: '0.45rem 0.75rem', fontSize: '0.88rem', cursor: 'pointer' },
-  comboOptionActive: { background: '#e0e7ff', color: '#1e3a5f', fontWeight: 700 },
-  comboEmpty: { padding: '0.5rem 0.75rem', color: '#9ca3af', fontSize: '0.85rem' },
-  inlineLabel: { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' },
-  inlineInput: { width: '100%', padding: '0.3rem 0.5rem', borderRadius: 5, border: '1px solid #d1d5db', fontSize: '0.85rem', boxSizing: 'border-box' },
-  formError: { color: '#b91c1c', fontSize: '0.85rem', marginTop: '0.25rem' },
-  searchInput: { padding: '0.4rem 0.65rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.88rem', minWidth: 200, flex: 1 },
-  tableInfo: { fontSize: '0.8rem', color: '#6b7280', marginTop: '0.5rem', textAlign: 'right' },
-  currYearBlock: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.85rem 1rem' },
-  currYearLabel: { fontWeight: 700, fontSize: '0.95rem', color: '#1e3a5f', marginBottom: '0.25rem' },
-  currSemLabel: { fontSize: '0.82rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem', marginTop: '0.75rem' },
+  comboButton: { position: 'absolute', right: 1, top: 1, bottom: 1, width: 34, border: 'none', borderLeft: '1px solid #e5e7eb', background: '#fff', color: '#0a1628', cursor: 'pointer', fontSize: '0.75rem' },
+  comboMenu: { position: 'absolute', zIndex: 1200, top: 'calc(100% + 4px)', left: 0, right: 0, maxHeight: 180, overflowY: 'auto', background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 12px 28px -12px rgba(10,22,40,.35)', padding: '0.25rem 0' },
+  comboOption: { display: 'block', width: '100%', border: 'none', background: '#fff', color: '#0a1628', textAlign: 'left', padding: '.45rem .75rem', fontSize: '13px', cursor: 'pointer' },
+  comboOptionActive: { background: '#eef1f7', color: '#1e3a5f', fontWeight: 600 },
+  comboEmpty: { padding: '.5rem .75rem', color: '#8a93a3', fontSize: '13px' },
+  inlineLabel: { display: 'block', fontSize: '11px', fontWeight: 600, color: '#5a6478', marginBottom: '.2rem' },
+  inlineInput: { width: '100%', padding: '6px 9px', border: '1px solid #e5e7eb', fontSize: '12.5px', boxSizing: 'border-box', outline: 'none' },
+  formError: { color: '#b42318', fontSize: '12.5px', marginTop: '.25rem' },
+  searchInput: { padding: '9px 11px', border: '1px solid #e5e7eb', fontSize: '13px', minWidth: 200, flex: 1, background: '#fff', color: '#0a1628', outline: 'none' },
+  tableInfo: { fontSize: '12px', color: '#5a6478', marginTop: '.6rem' },
+  currYearBlock: { background: '#f8f7f3', border: '1px solid #e5e7eb', padding: '.85rem 1rem' },
+  currYearLabel: { fontWeight: 600, fontSize: '14px', color: '#0a1628', marginBottom: '.25rem' },
+  currSemLabel: { fontSize: '11.5px', fontWeight: 600, color: '#5a6478', marginBottom: '.35rem', marginTop: '.75rem' },
+  // Section tab bar (Departments / Programs / Subjects / Landing page)
+  tabbar: { display: 'inline-flex', border: '1px solid #e5e7eb', background: '#fff', marginBottom: '1.25rem', flexWrap: 'wrap' },
+  tabbarBtn: { display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 16px', border: 'none', borderRight: '1px solid #e5e7eb', background: 'none', font: "500 13px 'Inter',sans-serif", color: '#5a6478', cursor: 'pointer' },
+  tabbarBtnActive: { background: '#0a1628', color: '#fff' },
+  tabbarCount: { font: "700 11px 'Inter',sans-serif", background: '#eef1f7', color: '#5a6478', padding: '1px 7px', borderRadius: 999, fontVariantNumeric: 'tabular-nums' },
 };

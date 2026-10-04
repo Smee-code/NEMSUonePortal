@@ -13,7 +13,9 @@ class AcademicTerm(models.Model):
 
     year = models.CharField(max_length=9)           # e.g. "2024-2025"
     semester = models.CharField(max_length=10, choices=SEMESTER_CHOICES)
-    is_active = models.BooleanField(default=True)
+    # Exactly one term is the system's active term. New terms are inactive by
+    # default and must be explicitly activated (which deactivates the rest).
+    is_active = models.BooleanField(default=False)
     enrollment_open = models.BooleanField(default=False)
     start_date = models.DateField()
     end_date = models.DateField()
@@ -24,6 +26,14 @@ class AcademicTerm(models.Model):
 
     def __str__(self):
         return f"{self.get_semester_display()} {self.year}"
+
+    def save(self, *args, **kwargs):
+        # Enforce the single-active-term invariant no matter how the term is
+        # saved (admin endpoint, shell, seed script): activating one term
+        # deactivates every other one.
+        super().save(*args, **kwargs)
+        if self.is_active:
+            AcademicTerm.objects.exclude(pk=self.pk).filter(is_active=True).update(is_active=False)
 
 
 class Department(models.Model):
@@ -198,10 +208,10 @@ class EnrollmentRequest(models.Model):
     ]
 
     STUDENT_TYPE_CHOICES = [
-        ('freshman',   'Freshman'),
-        ('regular',    'Regular'),
-        ('shiftee',    'Shiftee'),
+        ('new',        'New Student'),
         ('transferee', 'Transferee'),
+        ('returnee',   'Returnee'),
+        ('continuing', 'Continuing'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -244,7 +254,7 @@ class EnrollmentRequest(models.Model):
         max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING
     )
     student_type = models.CharField(
-        max_length=20, choices=STUDENT_TYPE_CHOICES, default='regular', blank=True
+        max_length=20, choices=STUDENT_TYPE_CHOICES, default='continuing', blank=True
     )
     remarks = models.TextField(blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
@@ -381,8 +391,9 @@ class PendingEnrollment(models.Model):
     On approval the system emails an activation link so they can create their account."""
 
     STUDENT_TYPE_CHOICES = [
-        ('freshman',   'Freshman'),
+        ('new',        'New Student'),
         ('transferee', 'Transferee'),
+        ('returnee',   'Returnee'),
     ]
     STATUS_CHOICES = [
         ('pending',   'Pending'),

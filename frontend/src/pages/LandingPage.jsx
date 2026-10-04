@@ -2,60 +2,69 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
-import Lightbox from '../components/Lightbox';
 import AuthModal from '../components/AuthModal';
+import ScrollMemory from '../components/ScrollMemory';
 
 /* ══════════════════════════════════════════════════════════════
    CSS — ported from landing-redesign.html
 ══════════════════════════════════════════════════════════════ */
 const CSS = `
   :root{
-    --ink:#0a1628;--ink-2:#1e3a5f;--ink-3:#0f1f3a;
-    --muted:#5a6478;--faint:#8a93a3;
-    --paper:#ffffff;--warm:#f8f7f3;--cool:#f4f6fa;
-    --line:#e5e7eb;--line-soft:#eef0f4;
+    /* First light — re-identity palette.
+       Sea-anchored, dawn as the single bold accent, tide for readable
+       labels/links on light. The gold vars are repointed (no longer gold)
+       so the whole page recolors coherently without touching every rule. */
+    --sea-deep:#071722;--sea:#0b1e2d;--tide:#2f6f68;--dawn:#f0a63c;--dawn-soft:#f6c877;--mist:#f4f7f6;
+    --ink:#0b1e2d;--ink-2:#215e57;--ink-3:#0b1e2d;
+    --muted:#51636a;--faint:#889aa0;
+    --paper:#ffffff;--warm:#eef3f1;--cool:#f1f5f4;
+    --line:#e2e8e5;--line-soft:#eef2f0;
     --line-dark:rgba(255,255,255,.10);--line-dark-2:rgba(255,255,255,.20);
-    --gold:#b89043;--gold-soft:#d9b96b;
-    --on-dark:#e8ecf2;--on-dark-mute:rgba(232,236,242,.65);--on-dark-faint:rgba(232,236,242,.42);
+    --gold:#2f6f68;--gold-soft:#f6c877;
+    --on-dark:#e8ecf2;--on-dark-mute:rgba(232,236,242,.66);--on-dark-faint:rgba(232,236,242,.44);
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5;font-size:15px;}
-  .serif{font-weight:500;letter-spacing:-.005em}
+  body{font-family:'Figtree',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5;font-size:15px;}
+  .serif{font-family:'Fraunces',Georgia,serif;font-weight:500;letter-spacing:-.005em}
   a{color:inherit}
   img{display:block;max-width:100%}
 
-  /* ── Reusable ── */
+  /* ── Reusable ──
+     Kicker is a quiet sentence-case label (tide), not a tracked-out
+     ALL-CAPS eyebrow. Headings are Fraunces and carry themselves — the
+     italic-single-word accent is retired (em is neutral). */
   .lp-wrap{max-width:1280px;margin:0 auto;padding:0 2rem}
-  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);display:inline-flex;align-items:center;gap:10px;}
-  .eyebrow::before{content:"";width:24px;height:1px;background:var(--gold);display:inline-block}
-  .eyebrow.on-dark{color:var(--gold-soft)}
-  .eyebrow.on-dark::before{background:var(--gold-soft)}
-  .h-display{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;line-height:1.02;letter-spacing:-.025em;color:var(--ink);font-size:clamp(56px,7.5vw,108px);}
-  .h-display em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400}
-  .h-section{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;line-height:1.05;letter-spacing:-.022em;color:var(--ink);font-size:clamp(36px,4.2vw,54px);}
-  .h-section em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;color:var(--ink-2)}
+  .eyebrow{font-family:'Figtree',sans-serif;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--tide);display:inline-flex;align-items:center;gap:11px;}
+  .eyebrow::before{content:"";width:22px;height:2px;background:var(--dawn);display:inline-block;flex-shrink:0}
+  .eyebrow.on-dark{color:var(--dawn-soft)}
+  .eyebrow.on-dark::before{background:var(--dawn-soft)}
+  .h-display{font-family:'Fraunces',Georgia,serif;font-optical-sizing:auto;font-weight:500;line-height:1.02;letter-spacing:-.02em;color:var(--ink);font-size:clamp(52px,7vw,100px);text-wrap:balance;}
+  .h-display em{font-style:normal;font-family:inherit;font-weight:inherit;color:inherit}
+  .h-section{font-family:'Fraunces',Georgia,serif;font-optical-sizing:auto;font-weight:500;line-height:1.08;letter-spacing:-.015em;color:var(--ink);font-size:clamp(34px,4vw,52px);text-wrap:balance;}
+  .h-section em{font-style:normal;font-family:inherit;font-weight:inherit;color:inherit}
   .h-section.on-dark{color:#fff}
-  .h-section.on-dark em{color:var(--gold-soft)}
+  .h-section.on-dark em{color:inherit}
   .lead{font-size:17px;line-height:1.7;color:var(--muted);max-width:640px}
-  .micro{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  .micro{font-family:'Figtree',sans-serif;font-size:12px;letter-spacing:.02em;text-transform:none;color:var(--muted);font-weight:600}
 
   /* ── Buttons ── */
-  .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:0;clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);font-size:13px;font-weight:500;letter-spacing:.02em;cursor:pointer;border:1px solid transparent;transition:background .2s,border-color .2s,color .2s,transform .15s;text-decoration:none;font-family:inherit;}
-  .btn i{font-size:15px}
-  .btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
-  .btn-primary:hover{background:#000;border-color:#000}
-  .btn-gold{background:var(--gold);color:#fff;border-color:var(--gold)}
-  .btn-gold:hover{background:#a07c33;border-color:#a07c33}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:4px;font-size:14px;font-weight:600;letter-spacing:0;cursor:pointer;border:1px solid transparent;transition:background .2s,border-color .2s,color .2s,transform .18s;text-decoration:none;font-family:inherit;}
+  .btn:hover{transform:translateY(-2px)}
+  .btn i{font-size:16px}
+  .btn-primary{background:var(--sea);color:#fff;border-color:var(--sea)}
+  .btn-primary:hover{background:#123243;border-color:#123243}
+  .btn-gold{background:var(--dawn);color:#2a1704;border-color:var(--dawn)}
+  .btn-gold:hover{background:var(--dawn-soft);border-color:var(--dawn-soft)}
   .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{border-color:var(--ink);background:var(--ink);color:#fff}
-  .btn-onDark{background:#fff;color:var(--ink);border-color:#fff}
+  .btn-onDark{background:#fff;color:var(--sea);border-color:#fff}
   .btn-onDark:hover{background:transparent;color:#fff}
   .btn-onDark-ghost{background:transparent;color:#fff;border-color:var(--line-dark-2)}
   .btn-onDark-ghost:hover{border-color:#fff;background:rgba(255,255,255,.06)}
-  .btn-link{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);text-decoration:none;padding:0 0 4px;background:none;border:0;border-bottom:1px solid var(--ink);cursor:pointer;font-family:inherit;transition:gap .2s;}
-  .btn-link:hover{gap:14px}
-  .btn-link.on-dark{color:#fff;border-bottom-color:rgba(255,255,255,.4)}
+  .btn-link{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--tide);text-decoration:none;padding:0 0 3px;background:none;border:0;border-bottom:2px solid var(--dawn);cursor:pointer;font-family:inherit;transition:color .18s,border-color .18s;}
+  .btn-link:hover{color:var(--sea)}
+  .btn-link.on-dark{color:#fff;border-bottom-color:var(--dawn-soft)}
   .btn-link.on-dark:hover{border-bottom-color:#fff}
 
   /* ── Topbar ── */
@@ -68,7 +77,7 @@ const CSS = `
   .topbar-auth a{color:var(--on-dark-mute);text-decoration:none;transition:color .15s}
   .topbar-auth a:hover{color:#fff}
   .topbar-auth .divider{color:var(--on-dark-faint)}
-  .topbar-portal-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-soft);border:1px solid rgba(217,185,107,.3);border-radius:99px;font-weight:600;}
+  .topbar-portal-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;font-size:11px;letter-spacing:.02em;text-transform:none;color:var(--dawn-soft);border:1px solid rgba(246,200,119,.32);border-radius:99px;font-weight:600;}
 
   /* ── Navbar ── */
   .nav{background:#fff;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--line);}
@@ -77,7 +86,7 @@ const CSS = `
   .brand{display:flex;align-items:center;gap:14px;text-decoration:none;flex-shrink:0}
   .brand-logo{width:48px;height:48px;border-radius:50%;object-fit:contain;background:var(--cool);padding:3px;}
   .brand-text{line-height:1.2}
-  .brand-name{font-family:'Instrument Serif',serif;font-size:24px;font-weight:400;color:var(--ink);letter-spacing:-.01em;}
+  .brand-name{font-family:'Fraunces',Georgia,serif;font-size:24px;font-weight:400;color:var(--ink);letter-spacing:-.01em;}
   .brand-sub{font-size:11px;color:var(--muted);letter-spacing:.04em;margin-top:1px;font-weight:500}
   .nav-links{display:flex;margin-left:auto;gap:.125rem}
   .nav-link{padding:0 16px;height:82px;display:flex;align-items:center;font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;}
@@ -108,7 +117,7 @@ const CSS = `
   .nav-mobile-ic{font-size:19px;color:var(--faint);width:22px;text-align:center;flex-shrink:0;}
   .nav-mobile-chev{margin-left:auto;font-size:15px;color:var(--faint);}
   .nav-mobile-link:hover{background:var(--warm);}
-  .nav-mobile-link.active{color:var(--gold);border-left-color:var(--gold);background:rgba(184,144,67,.10);}
+  .nav-mobile-link.active{color:var(--tide);border-left-color:var(--dawn);background:rgba(47,111,104,.09);}
   .nav-mobile-link.active .nav-mobile-ic{color:var(--gold);}
   .nav-mobile-foot{padding:1rem 1.25rem 1.5rem;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:.5rem;flex-shrink:0;}
   .nav-mobile-secondary{display:flex;align-items:center;gap:10px;padding:11px 12px;font:500 14px 'Inter',sans-serif;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:#fff;width:100%;text-align:left;cursor:pointer;}
@@ -116,27 +125,69 @@ const CSS = `
   .nav-mobile-secondary:hover{border-color:var(--ink);}
   .nav-mobile-cta{margin-top:.5rem;width:100%;justify-content:center;}
 
-  /* ── Hero ── */
-  .hero{position:relative;min-height:88vh;background:var(--ink-3);color:#fff;overflow:hidden;display:flex;flex-direction:column;}
-  .hero-photo{position:absolute;inset:0;z-index:0;}
-  .hero-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;filter:blur(3px);transform:scale(1.06);}
-  .hero-photo::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(10,22,40,.5) 0%,rgba(10,22,40,.32) 35%,rgba(10,22,40,.78) 100%),linear-gradient(90deg,rgba(10,22,40,.9) 0%,rgba(10,22,40,.74) 40%,rgba(10,22,40,.55) 70%,rgba(10,22,40,.32) 100%);}
-  .hero-content{position:relative;z-index:3;flex:1;max-width:1280px;margin:0 auto;width:100%;padding:5rem 2rem 3rem;display:flex;flex-direction:column;justify-content:flex-end;}
-  .hero-eyebrow{display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:2rem;}
-  .hero-eyebrow::before{content:"";width:36px;height:1px;background:var(--gold-soft)}
-  .hero-status-pill{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(255,255,255,.08);backdrop-filter:blur(8px);border:1px solid var(--line-dark-2);border-radius:99px;}
-  .hero-status-pill .dot{width:7px;height:7px;border-radius:50%;background:#5dd6a1;box-shadow:0 0 0 4px rgba(93,214,161,.18);}
-  .hero h1{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;color:#fff;font-size:clamp(54px,8vw,124px);line-height:.98;letter-spacing:-.025em;margin-bottom:1.75rem;max-width:1100px;text-shadow:0 2px 18px rgba(10,22,40,.55);}
-  .hero h1 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:var(--gold-soft);font-weight:400;text-shadow:0 2px 14px rgba(10,22,40,.7),0 1px 3px rgba(10,22,40,.55)}
-  .hero-sub{font-size:18px;line-height:1.6;color:rgba(255,255,255,.82);max-width:580px;margin-bottom:2.5rem;font-weight:400;}
+  /* ── Hero: first light ─────────────────────────────────────────
+     No photography. Identity is carried by a dawn-over-the-Pacific
+     gradient, a rising-sun glow, and a thin horizon line — grounded
+     in Cantilan's eastern-seaboard location. One load animation. */
+  .hero{position:relative;min-height:92vh;color:#fff;overflow:hidden;display:flex;flex-direction:column;
+    background:linear-gradient(176deg,var(--sea-deep) 0%,var(--sea) 40%,#103236 62%,#1f5751 79%,#c9822f 106%);}
+  .hero-sky{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  .hero-sky::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(120% 74% at 76% 100%,rgba(240,166,60,.5),rgba(240,166,60,.1) 42%,transparent 66%);}
+  .hero-sun{position:absolute;left:76%;bottom:-64px;width:340px;height:340px;margin-left:-170px;border-radius:50%;
+    background:radial-gradient(circle,rgba(246,200,119,.95),rgba(240,166,60,.5) 46%,transparent 70%);filter:blur(2px);
+    animation:heroRise 1.4s cubic-bezier(.22,1,.36,1) both;}
+  .hero-horizon{position:absolute;left:0;right:0;bottom:17%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(246,200,119,.45) 28%,rgba(246,200,119,.7) 76%,transparent);
+    animation:heroFade 1.6s ease .3s both;}
+  /* Optional admin-uploaded background photo (full-bleed behind a dark scrim
+     so the white headline stays readable). Sun/horizon hide when set. */
+  .hero.has-photo{background:var(--sea)}
+  .hero-photo{position:absolute;inset:0;z-index:0;overflow:hidden}
+  .hero-photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .hero-photo::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(7,23,34,.58),rgba(7,23,34,.4) 42%,rgba(7,23,34,.72)),
+               linear-gradient(90deg,rgba(7,23,34,.86),rgba(7,23,34,.5) 56%,rgba(7,23,34,.26));}
+  .hero.has-photo .hero-sky{display:none}
+  .hero-content{position:relative;z-index:3;flex:1;max-width:1200px;margin:0 auto;width:100%;
+    padding:6rem 2rem 7rem;display:flex;flex-direction:column;justify-content:center;
+    animation:heroContent 1s cubic-bezier(.22,1,.36,1) both;}
+  .hero-meta{display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:2rem;font-family:'Figtree',sans-serif;}
+  .hero-term{font-size:13px;font-weight:600;color:var(--dawn-soft);}
+  .hero-status{display:inline-flex;align-items:center;gap:8px;padding:5px 13px;font-size:12.5px;font-weight:500;color:#eaf3f1;
+    background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.2);border-radius:999px;}
+  .hero-status .dot{width:7px;height:7px;border-radius:50%;background:#63d6a0;box-shadow:0 0 0 4px rgba(99,214,160,.16);}
+  .hero-status.is-closed .dot{background:#f4886f;box-shadow:0 0 0 4px rgba(244,136,111,.16);}
+  .hero-title{font-family:'Fraunces',Georgia,serif;font-optical-sizing:auto;font-weight:500;
+    font-size:clamp(44px,6.4vw,92px);line-height:1.02;letter-spacing:-.02em;color:#fff;
+    margin-bottom:1.5rem;max-width:16ch;text-wrap:balance;}
+  .hero-sub{font-family:'Figtree',sans-serif;font-size:clamp(16px,1.4vw,19px);line-height:1.65;
+    color:rgba(238,244,242,.82);max-width:560px;margin-bottom:2.5rem;}
   .hero-actions{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
-  .hero-scroll{position:absolute;left:50%;bottom:24px;z-index:4;transform:translateX(-50%);color:rgba(255,255,255,.6);font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:8px;}
-  .hero-scroll i{font-size:14px;animation:lp-bounce 2s ease-in-out infinite}
-  @keyframes lp-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+  .hero-btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 26px;
+    font-family:'Figtree',sans-serif;font-size:15px;font-weight:600;cursor:pointer;border:1px solid transparent;
+    text-decoration:none;transition:transform .18s ease,background .2s,border-color .2s,color .2s;}
+  .hero-btn:hover{transform:translateY(-2px)}
+  .hero-btn-dawn{background:var(--dawn);color:#2a1704;border-color:var(--dawn)}
+  .hero-btn-dawn:hover{background:var(--dawn-soft);border-color:var(--dawn-soft)}
+  .hero-btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.28)}
+  .hero-btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.08)}
+  @keyframes heroRise{from{transform:translateY(90px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes heroFade{from{opacity:0}to{opacity:1}}
+  @keyframes heroContent{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
   @media(max-width:880px){
-    .hero{min-height:76vh}
-    .hero-content{padding:4rem 1.25rem 3rem}
-    .hero-scroll{display:none}
+    .hero{min-height:84vh}
+    .hero-content{padding:4.5rem 1.25rem 5rem}
+    .hero-sun{left:70%;width:260px;height:260px;margin-left:-130px}
+  }
+  @media(max-width:480px){
+    .hero-content{padding:3.5rem 1.25rem 4rem}
+    .hero-title{font-size:36px}
+    .hero-meta{margin-bottom:1.5rem}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .hero-sun,.hero-horizon,.hero-content{animation:none}
+    .hero-btn:hover{transform:none}
   }
 
   /* ── Audience portals ── */
@@ -144,7 +195,7 @@ const CSS = `
   .portals-inner{max-width:1280px;margin:0 auto;padding:0 2rem;display:grid;grid-template-columns:auto repeat(4,1fr);gap:0;}
   .portals-label{padding:1.5rem 2rem 1.5rem 0;border-right:1px solid var(--line-dark);display:flex;flex-direction:column;justify-content:center;}
   .portals-label .micro{color:var(--on-dark-faint);margin-bottom:4px}
-  .portals-label .lbl{font-family:'Instrument Serif',serif;font-size:22px;color:#fff;letter-spacing:-.01em;line-height:1;}
+  .portals-label .lbl{font-family:'Fraunces',Georgia,serif;font-size:22px;color:#fff;letter-spacing:-.01em;line-height:1;}
   .portal{padding:1.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center;border-right:1px solid var(--line-dark);text-decoration:none;color:#fff;transition:background .25s,padding-left .25s;}
   .portal:last-child{border-right:none}
   .portal:hover{background:rgba(255,255,255,.04);padding-left:1.75rem}
@@ -164,26 +215,29 @@ const CSS = `
     .portal:last-child{border-bottom:none}
   }
 
-  /* ── Spotlight ── */
+  /* ── Spotlight (photo-free editorial feature) ── */
   .spot{background:#fff;padding:7rem 0}
-  .spot-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:3rem;gap:2rem;flex-wrap:wrap;}
+  .spot-head{margin-bottom:2.5rem}
   .spot-head .eyebrow{margin-bottom:1rem}
-  .spot-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:0;border-top:1px solid var(--line);}
-  .spot-image{position:relative;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-height:520px;background:var(--cool);}
-  .spot-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
-  .spot-image::after{content:"";position:absolute;left:24px;top:24px;z-index:3;pointer-events:none;font:600 10px/1 'Inter',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#fff;background:rgba(10,22,40,.75);backdrop-filter:blur(4px);padding:6px 10px;}
-  .spot-image[data-tag]::after{content:attr(data-tag)}
-  .spot-body{padding:3.5rem 3rem;border-bottom:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;}
-  .spot-meta{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:1.5rem;}
-  .spot-body h3{font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(32px,3vw,42px);line-height:1.08;color:var(--ink);margin-bottom:1.5rem;letter-spacing:-.015em;}
-  .spot-body h3 em{font-style:italic;color:var(--ink-2);font-weight:400}
-  .spot-body p{font-size:15px;line-height:1.8;color:var(--muted);margin-bottom:2rem}
-  .spot-byline{font-size:12px;letter-spacing:.06em;color:var(--faint);margin-bottom:2rem;padding-top:1.5rem;border-top:1px solid var(--line);}
+  .spot-feature{display:grid;grid-template-columns:.82fr 1.18fr;border:1px solid var(--line)}
+  .spot-feature-side{position:relative;overflow:hidden;min-height:320px;padding:2rem;display:flex;align-items:flex-start;
+    background:linear-gradient(158deg,var(--sea-deep),var(--sea) 52%,#184a49)}
+  .spot-tag{position:relative;z-index:2;font-family:'Figtree',sans-serif;font-size:12px;font-weight:600;color:var(--dawn-soft);
+    background:rgba(246,200,119,.12);border:1px solid rgba(246,200,119,.32);padding:5px 12px;border-radius:999px}
+  .spot-sun{position:absolute;left:50%;bottom:-96px;width:260px;height:260px;transform:translateX(-50%);border-radius:50%;
+    background:radial-gradient(circle,rgba(246,200,119,.85),rgba(240,166,60,.36) 48%,transparent 70%)}
+  .spot-feature-side.has-photo{background:none;padding:1.5rem}
+  .spot-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .spot-body{padding:2.75rem 3rem;display:flex;flex-direction:column;justify-content:center}
+  .spot-meta{font-family:'Figtree',sans-serif;font-size:13px;font-weight:600;color:var(--tide);margin-bottom:1.25rem}
+  .spot-body h3{font-family:'Fraunces',Georgia,serif;font-optical-sizing:auto;font-weight:500;font-size:clamp(28px,2.8vw,40px);line-height:1.1;color:var(--ink);margin-bottom:1.25rem;letter-spacing:-.015em;}
+  .spot-body p{font-size:15px;line-height:1.8;color:var(--muted);margin-bottom:1.75rem}
+  .spot-byline{font-size:12.5px;color:var(--faint);margin-bottom:1.75rem;padding-top:1.25rem;border-top:1px solid var(--line-soft);}
   @media(max-width:880px){
     .spot{padding:5rem 0}
-    .spot-grid{grid-template-columns:1fr}
-    .spot-image{min-height:340px;border-right:none}
-    .spot-body{padding:2.5rem 1.5rem}
+    .spot-feature{grid-template-columns:1fr}
+    .spot-feature-side{min-height:170px}
+    .spot-body{padding:2rem 1.5rem}
   }
 
   /* ── Info strip ── */
@@ -205,35 +259,40 @@ const CSS = `
     .info-cell:nth-child(-n+3){border-bottom:1px solid var(--line)}
   }
 
-  /* ── About ── */
+  /* ── About (photo-free — campus at a glance) ── */
   .about{background:#fff;padding:7rem 0}
-  .about-grid{display:grid;grid-template-columns:1fr 1.3fr;gap:5rem;align-items:start;}
-  .about-visual{position:relative;aspect-ratio:4/5;max-width:440px}
-  .about-visual img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
-  .about-visual::after{content:"";position:absolute;left:-24px;bottom:-24px;width:140px;height:140px;background:var(--gold);z-index:-1;}
-  .about-badge{position:absolute;left:-16px;top:24px;z-index:3;background:#fff;padding:14px 18px;border:1px solid var(--line);box-shadow:0 4px 16px rgba(10,22,40,.06);}
-  .about-badge .micro{font-size:10px;color:var(--gold);margin-bottom:2px}
-  .about-badge .v{font-family:'Instrument Serif',serif;font-size:18px;color:var(--ink);line-height:1}
+  .about-grid{display:grid;grid-template-columns:.9fr 1.3fr;gap:4.5rem;align-items:start;}
+  .about-panel{position:relative;overflow:hidden;border-radius:6px;padding:2.5rem 2.25rem;color:#fff;
+    background:linear-gradient(160deg,var(--sea-deep),var(--sea) 50%,#184a49);min-height:380px;display:flex;flex-direction:column;justify-content:flex-end;gap:1.5rem}
+  .about-panel-sun{position:absolute;right:-70px;top:-70px;width:240px;height:240px;border-radius:50%;
+    background:radial-gradient(circle,rgba(246,200,119,.8),rgba(240,166,60,.32) 48%,transparent 70%)}
+  .about-panel-title{position:relative;z-index:2;font-family:'Fraunces',Georgia,serif;font-optical-sizing:auto;font-weight:500;font-size:26px;line-height:1.15;letter-spacing:-.01em}
+  .about-facts{position:relative;z-index:2;display:flex;flex-direction:column;gap:0;border-top:1px solid rgba(255,255,255,.14)}
+  .about-fact{display:flex;flex-direction:column;gap:2px;padding:.85rem 0;border-bottom:1px solid rgba(255,255,255,.14)}
+  .about-fact .k{font-family:'Figtree',sans-serif;font-size:12px;font-weight:600;color:var(--dawn-soft)}
+  .about-fact .v{font-size:14.5px;color:rgba(238,244,242,.92);line-height:1.4}
+  .about-photo{position:relative;overflow:hidden;border-radius:6px;min-height:380px}
+  .about-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .about-photo-badge{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;flex-direction:column;gap:2px;
+    background:rgba(7,23,34,.82);color:#fff;padding:10px 14px;border-radius:4px}
+  .about-photo-badge .k{font-family:'Figtree',sans-serif;font-size:11px;font-weight:700;color:var(--dawn-soft)}
+  .about-photo-badge .v{font-family:'Fraunces',Georgia,serif;font-size:16px;line-height:1.1}
   .about-copy .eyebrow{margin-bottom:1.5rem}
   .about-copy h2{margin-bottom:1.5rem}
   .about-copy p{font-size:16px;line-height:1.8;color:var(--muted);margin-bottom:1.25rem;max-width:580px}
-  .pillars{display:grid;grid-template-columns:repeat(2,1fr);gap:0;margin-top:2.5rem;border-top:1px solid var(--line);}
-  .pillar{padding:1.5rem 1.5rem 1.5rem 0;border-bottom:1px solid var(--line);border-right:1px solid var(--line);}
-  .pillar:nth-child(2n){padding-right:0;padding-left:1.5rem;border-right:none}
-  .pillar:nth-last-child(-n+2){border-bottom:none}
-  .pillar .num{font-family:'Instrument Serif',serif;font-size:18px;color:var(--gold);margin-bottom:.5rem;display:block}
-  .pillar .title{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px}
+  .pillars{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;margin-top:2.5rem}
+  .pillar{padding:1.25rem 0 0;border-top:2px solid var(--dawn)}
+  .pillar .title{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:4px}
   .pillar .desc{font-size:13px;color:var(--muted);line-height:1.55}
   @media(max-width:880px){
     .about{padding:5rem 0}
     .about-grid{grid-template-columns:1fr;gap:3rem}
-    .about-visual{max-width:none}
-    .about-visual::after{display:none}
+    .about-panel{min-height:300px}
   }
 
   /* ── Stats ── */
   .stats{background:var(--ink-3);color:#fff;padding:6rem 0;position:relative;overflow:hidden}
-  .stats::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 90% 10%,rgba(184,144,67,.10),transparent 50%);}
+  .stats::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 88% 8%,rgba(240,166,60,.14),transparent 52%);}
   .stats-inner{position:relative;z-index:2;max-width:1280px;margin:0 auto;padding:0 2rem}
   .stats-head{margin-bottom:3rem;max-width:680px}
   .stats-head .eyebrow{margin-bottom:1.25rem}
@@ -241,7 +300,7 @@ const CSS = `
   .stat-cell{padding:2.5rem 2rem 2.5rem 0;border-right:1px solid var(--line-dark);}
   .stat-cell:last-child{border-right:none}
   .stat-cell:not(:first-child){padding-left:2rem}
-  .stat-num{font-family:'Instrument Serif',serif;font-weight:400;font-size:72px;line-height:1;color:#fff;letter-spacing:-.025em;}
+  .stat-num{font-family:'Fraunces',Georgia,serif;font-weight:400;font-size:72px;line-height:1;color:#fff;letter-spacing:-.025em;}
   .stat-num sup{font-size:.4em;color:var(--gold-soft);margin-left:2px;top:-.8em}
   .stat-lbl{margin-top:14px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--on-dark-mute);}
   .stat-desc{margin-top:8px;font-size:13px;color:var(--on-dark-faint);line-height:1.5}
@@ -262,8 +321,9 @@ const CSS = `
   .vm-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;max-width:1120px;margin:0 auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
   .vm-card{padding:3rem 3.5rem}
   .vm-card:first-child{border-right:1px solid var(--line)}
-  .vm-num{font-family:'Instrument Serif',serif;font-size:13px;color:var(--gold);letter-spacing:.16em;text-transform:uppercase;font-weight:400;margin-bottom:1.25rem;display:block;}
-  .vm-card h3{font-family:'Instrument Serif',serif;font-weight:400;font-size:30px;line-height:1.15;color:var(--ink);margin-bottom:1rem;letter-spacing:-.01em;}
+  .vm-num{font-family:'Figtree',sans-serif;font-size:13px;color:var(--tide);letter-spacing:0;text-transform:none;font-weight:700;margin-bottom:1.25rem;display:inline-flex;align-items:center;gap:9px;}
+  .vm-num::before{content:"";width:20px;height:2px;background:var(--dawn);display:inline-block}
+  .vm-card h3{font-family:'Fraunces',Georgia,serif;font-weight:400;font-size:30px;line-height:1.15;color:var(--ink);margin-bottom:1rem;letter-spacing:-.01em;}
   .vm-card h3 em{font-style:italic}
   .vm-card p{font-size:15px;line-height:1.8;color:var(--muted)}
   @media(max-width:760px){
@@ -282,8 +342,7 @@ const CSS = `
   .prog{padding:2.5rem 2rem 2.25rem;border-bottom:1px solid var(--line);border-right:1px solid var(--line);position:relative;transition:background .25s;cursor:pointer;display:flex;flex-direction:column;min-height:300px;}
   .prog:nth-child(3n){border-right:none}
   .prog:hover{background:var(--cool)}
-  .prog-num{font-family:'Instrument Serif',serif;font-size:13px;color:var(--faint);letter-spacing:.1em;font-weight:400;margin-bottom:1.5rem;}
-  .prog h4{font-family:'Instrument Serif',serif;font-weight:400;font-size:26px;line-height:1.15;color:var(--ink);letter-spacing:-.008em;margin-bottom:.75rem;}
+  .prog h4{font-family:'Fraunces',Georgia,serif;font-weight:400;font-size:26px;line-height:1.15;color:var(--ink);letter-spacing:-.008em;margin-bottom:.75rem;}
   .prog .dept{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:1rem;}
   .prog p{font-size:14px;line-height:1.65;color:var(--muted);margin-top:auto;padding-top:1.25rem;border-top:1px solid var(--line-soft);}
   .prog .arrow{position:absolute;top:2.5rem;right:2rem;opacity:0;transform:translateX(-6px);transition:opacity .25s,transform .25s;color:var(--ink);font-size:22px;}
@@ -301,32 +360,35 @@ const CSS = `
     .prog{border-right:none!important}
   }
 
-  /* ── Life ── */
+  /* ── Life (photo-free — typographic panels) ── */
   .life{background:#fff;padding:7rem 0;border-top:1px solid var(--line)}
   .life-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:3rem;gap:2rem;flex-wrap:wrap;}
   .life-head .eyebrow{margin-bottom:1rem}
   .life-head h2{max-width:560px}
-  .life-grid{display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:160px;gap:1.5rem;}
-  .life-item{position:relative;overflow:hidden;display:block;text-decoration:none;color:#fff}
-  .life-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
-  .life-item::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,transparent 40%,rgba(10,22,40,.78) 100%);}
-  .life-item .meta{position:absolute;left:1.25rem;right:1.25rem;bottom:1.25rem;z-index:3;}
-  .life-item .micro{color:var(--gold-soft);margin-bottom:6px;font-size:10px;}
-  .life-item .title{font-family:'Instrument Serif',serif;font-weight:400;font-size:22px;line-height:1.15;color:#fff;letter-spacing:-.01em;}
-  .life-count{position:absolute;top:.9rem;right:.9rem;z-index:3;display:inline-flex;align-items:center;gap:5px;background:rgba(10,22,40,.62);color:#fff;font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;backdrop-filter:blur(4px);}
-  .life-item:hover img{transform:scale(1.04);transition:transform .5s ease}
-  .life-a{grid-column:span 7;grid-row:span 3}
-  .life-b{grid-column:span 5;grid-row:span 2}
-  .life-c{grid-column:span 5;grid-row:span 2}
-  .life-d{grid-column:span 4;grid-row:span 2}
-  .life-e{grid-column:span 4;grid-row:span 2}
-  .life-f{grid-column:span 4;grid-row:span 2}
+  .life-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;}
+  .life-item{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:.6rem;
+    min-height:216px;padding:1.75rem;border:1px solid var(--line);border-radius:6px;background:var(--mist);
+    text-decoration:none;color:var(--ink);text-align:left;width:100%;font-family:inherit;cursor:pointer;
+    transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;}
+  .life-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--dawn)}
+  .life-item::after{content:"";position:absolute;right:-60px;top:-60px;width:150px;height:150px;border-radius:50%;
+    background:radial-gradient(circle,rgba(47,111,104,.12),transparent 70%);transition:background .2s}
+  .life-item:hover{transform:translateY(-4px);box-shadow:0 16px 34px -18px rgba(11,30,45,.32);border-color:var(--tide)}
+  .life-item:hover::after{background:radial-gradient(circle,rgba(240,166,60,.18),transparent 70%)}
+  .life-item .tag{position:relative;z-index:2;font-family:'Figtree',sans-serif;font-size:12px;font-weight:600;color:var(--tide)}
+  .life-item .title{position:relative;z-index:2;font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:20px;line-height:1.18;color:var(--ink);letter-spacing:-.01em;}
+  .life-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:0}
+  .life-item.has-photo{background:var(--sea);border-color:transparent;color:#fff}
+  .life-item.has-photo::before{display:none}
+  .life-item.has-photo::after,.life-item.has-photo:hover::after{inset:0;width:auto;height:auto;right:auto;top:auto;border-radius:0;
+    background:linear-gradient(180deg,rgba(7,23,34,.12),rgba(7,23,34,.85))}
+  .life-item.has-photo .tag{color:var(--dawn-soft)}
+  .life-item.has-photo .title{color:#fff}
   @media(max-width:880px){
     .life{padding:5rem 0}
-    .life-grid{grid-template-columns:1fr 1fr;grid-auto-rows:140px}
-    .life-a,.life-b,.life-c,.life-d,.life-e,.life-f{grid-column:span 1;grid-row:span 2}
-    .life-a{grid-column:span 2}
+    .life-grid{grid-template-columns:1fr 1fr}
   }
+  @media(max-width:560px){ .life-grid{grid-template-columns:1fr} }
 
   /* ── Facilities ── */
   .facs{background:var(--ink);color:#fff;padding:7rem 0}
@@ -341,7 +403,7 @@ const CSS = `
   .fac:nth-child(4n){border-right:none}
   .fac:hover{background:rgba(255,255,255,.03)}
   .fac i{font-size:32px;color:var(--gold-soft);display:block;margin-bottom:1.5rem;}
-  .fac h4{font-family:'Instrument Serif',serif;font-weight:400;font-size:24px;line-height:1.2;color:#fff;margin-bottom:.5rem;}
+  .fac h4{font-family:'Fraunces',Georgia,serif;font-weight:400;font-size:24px;line-height:1.2;color:#fff;margin-bottom:.5rem;}
   .fac p{font-size:13px;line-height:1.6;color:var(--on-dark-mute)}
   @media(max-width:880px){
     .facs{padding:5rem 0}
@@ -354,22 +416,25 @@ const CSS = `
     .fac{border-right:none!important}
   }
 
-  /* ── News ── */
+  /* ── News (photo-free cards) ── */
   .news{background:var(--warm);padding:7rem 0}
   .news-head{display:grid;grid-template-columns:1fr auto;gap:2rem;align-items:end;margin-bottom:3.5rem;}
   .news-head h2{max-width:600px}
   .news-head .eyebrow{margin-bottom:1.25rem}
-  .news-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;}
-  .news-card{background:#fff;border:1px solid var(--line);transition:transform .25s,box-shadow .25s,border-color .25s;display:flex;flex-direction:column;cursor:pointer;text-decoration:none;color:inherit;}
-  .news-card:hover{transform:translateY(-4px);box-shadow:0 12px 28px -12px rgba(10,22,40,.18);border-color:var(--ink-2)}
-  .news-card-image{position:relative;aspect-ratio:16/10;background:var(--cool);overflow:hidden;}
-  .news-card-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
-  .news-card-tag{position:absolute;left:14px;top:14px;z-index:3;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:rgba(10,22,40,.78);backdrop-filter:blur(4px);padding:5px 10px;font-weight:600;}
+  .news-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;}
+  .news-card{background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden;transition:transform .22s,box-shadow .22s,border-color .22s;display:flex;flex-direction:column;cursor:pointer;text-decoration:none;color:inherit;}
+  .news-card::before{content:"";display:block;height:4px;background:var(--dawn)}
+  .news-card.has-photo::before{display:none}
+  .news-card-image{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--mist)}
+  .news-card-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .news-card-tag{position:absolute;left:14px;top:14px;z-index:2;font-family:'Figtree',sans-serif;font-size:11px;font-weight:700;color:#fff;background:rgba(7,23,34,.8);padding:4px 10px;border-radius:999px}
+  .news-card:hover{transform:translateY(-4px);box-shadow:0 14px 30px -16px rgba(11,30,45,.22);border-color:var(--tide)}
   .news-card-body{padding:1.75rem 1.75rem 2rem;display:flex;flex-direction:column;flex:1}
-  .news-card-date{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:.75rem;font-weight:600;}
-  .news-card h3{font-family:'Instrument Serif',serif;font-weight:400;font-size:22px;line-height:1.2;color:var(--ink);margin-bottom:.75rem;letter-spacing:-.008em;}
+  .news-card-chip{align-self:flex-start;font-family:'Figtree',sans-serif;font-size:11px;font-weight:700;color:var(--tide);background:var(--mist);border:1px solid var(--line);padding:4px 10px;border-radius:999px;margin-bottom:1.1rem;}
+  .news-card-date{font-family:'Figtree',sans-serif;font-size:12px;color:var(--faint);margin-bottom:.6rem;font-weight:600;}
+  .news-card h3{font-family:'Fraunces',Georgia,serif;font-optical-sizing:auto;font-weight:500;font-size:22px;line-height:1.2;color:var(--ink);margin-bottom:.75rem;letter-spacing:-.008em;}
   .news-card p{font-size:14px;line-height:1.65;color:var(--muted);margin-bottom:1.25rem}
-  .news-card .read{margin-top:auto;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);font-weight:600;display:inline-flex;align-items:center;gap:6px;}
+  .news-card .read{margin-top:auto;font-family:'Figtree',sans-serif;font-size:13px;color:var(--tide);font-weight:600;display:inline-flex;align-items:center;gap:6px;}
   @media(max-width:880px){
     .news{padding:5rem 0}
     .news-head{grid-template-columns:1fr;margin-bottom:2.5rem}
@@ -391,7 +456,7 @@ const CSS = `
   .footer-grid{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr;gap:4rem;padding-bottom:3rem;border-bottom:1px solid var(--line-dark);}
   .footer-brand{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem}
   .footer-brand img{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.04);padding:3px}
-  .footer-brand-name{font-family:'Instrument Serif',serif;font-size:24px;color:#fff}
+  .footer-brand-name{font-family:'Fraunces',Georgia,serif;font-size:24px;color:#fff}
   .footer-brand-sub{font-size:11px;color:var(--on-dark-faint);letter-spacing:.06em;margin-top:2px}
   .footer-tagline{font-size:14px;color:var(--on-dark-mute);line-height:1.7;max-width:380px;margin-bottom:1.5rem}
   .footer-contact{display:flex;flex-direction:column;gap:8px;font-size:13px}
@@ -451,22 +516,21 @@ const CSS = `
   .lp-gallery-meta{position:absolute;inset:auto 0 0 0;padding:.9rem 1rem;background:linear-gradient(transparent,rgba(10,22,40,.85));color:#fff;}
   .lp-gallery-tag{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-soft);font-weight:600;}
   .lp-gallery-title{font-size:14px;font-weight:500;margin-top:2px;line-height:1.3;}
-  /* Cards that became <button> — keep original look, fix button defaults */
+  /* Cards that became <button> — fix button defaults */
   .news-card{font-family:inherit;text-align:left;width:100%;padding:0;}
-  .life-item{font-family:inherit;text-align:left;width:100%;padding:0;cursor:pointer;}
   @media(max-width:640px){.lp-progmodal-body{grid-template-columns:1fr}}
   .modal--med{max-width:640px}
   .modal-head{padding:1.75rem 2.5rem 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
   .modal-head-brand{display:flex;align-items:center;gap:12px}
   .modal-head-brand img{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--cool);padding:2px}
-  .modal-head-brand .name{font-family:'Instrument Serif',serif;font-size:18px;color:var(--ink);line-height:1}
+  .modal-head-brand .name{font-family:'Fraunces',Georgia,serif;font-size:18px;color:var(--ink);line-height:1}
   .modal-head-brand .sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-top:4px}
   .modal-close{width:36px;height:36px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s,background .15s;}
   .modal-close:hover{border-color:var(--ink);background:var(--ink);color:#fff}
   .modal-close i{font-size:16px}
   .modal-body{padding:2rem 2.5rem 2.25rem;overflow-y:auto;flex:1}
   .modal-body--center{text-align:center}
-  .modal-body h3{font-family:'Instrument Serif',serif;font-weight:400;font-size:30px;color:var(--ink);line-height:1.15;letter-spacing:-.012em;margin-bottom:.5rem;}
+  .modal-body h3{font-family:'Fraunces',Georgia,serif;font-weight:400;font-size:30px;color:var(--ink);line-height:1.15;letter-spacing:-.012em;margin-bottom:.5rem;}
   .modal-body h3 em{font-style:italic;color:var(--ink-2);font-weight:400}
   .modal-body > p.lead{font-size:14px;color:var(--muted);line-height:1.65;margin-bottom:2rem;max-width:480px}
   .modal-body--center > p.lead{margin-left:auto;margin-right:auto}
@@ -501,8 +565,12 @@ const CSS = `
   }
 
   /* ── Reveal ── */
-  .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.4,0,.2,1),transform .8s cubic-bezier(.4,0,.2,1)}
+  .reveal{opacity:0;transform:translateY(10px);transition:opacity .55s ease,transform .55s ease}
   .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){
+    .reveal{opacity:1;transform:none;transition:none}
+    .btn:hover{transform:none}
+  }
 
   /* ── Flow forms ── */
   .flow-form{display:flex;flex-direction:column;gap:1.25rem}
@@ -537,7 +605,7 @@ const CSS = `
   .wiz-side-foot{font-size:11px;color:var(--muted);line-height:1.6;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line)}
   .wiz-side-foot a{color:var(--ink);text-decoration:none;display:block;margin-top:4px;font-weight:500}
   .wiz-main{padding:2rem 2.25rem;display:flex;flex-direction:column;overflow-y:auto}
-  .wiz-main h4{font-family:'Instrument Serif',serif;font-weight:400;font-size:24px;color:var(--ink);letter-spacing:-.01em;margin-bottom:.4rem}
+  .wiz-main h4{font-family:'Fraunces',Georgia,serif;font-weight:400;font-size:24px;color:var(--ink);letter-spacing:-.01em;margin-bottom:.4rem}
   .wiz-main .wiz-sub{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem;max-width:440px}
   .wiz-progress{height:2px;background:var(--line-soft);margin-bottom:1.5rem}
   .wiz-progress > div{height:100%;background:var(--ink);transition:width .35s cubic-bezier(.4,0,.2,1)}
@@ -563,29 +631,18 @@ const CSS = `
     .wiz-side{display:none}
     .modal-head,.modal-body,.modal-foot{padding-left:1.5rem;padding-right:1.5rem}
   }
+  @media(max-width:480px){
+    .flow-field-row{grid-template-columns:1fr}
+    .type-grid{grid-template-columns:1fr}
+    .modal-back{padding:1rem}
+  }
 `;
 
 /* ══════════════════════════════════════════════════════════════
    DATA — Design
+   (Photo-free re-identity: no stock imagery. Sections carry the
+   campus identity through color, type and layout instead.)
 ══════════════════════════════════════════════════════════════ */
-const UNSPLASH = (id, w = 1600) =>
-  `https://images.unsplash.com/${id}?w=${w}&q=80&auto=format&fit=crop`;
-
-const PHOTO = {
-  hero:  '/campus-hero.jpg',
-  spot:  UNSPLASH('photo-1532094349884-543bc11b234d', 1400),
-  about: UNSPLASH('photo-1523580494863-6f3031224c94', 1200),
-  lifeA: UNSPLASH('photo-1541339907198-e08756dedf3f', 1600),
-  lifeB: UNSPLASH('photo-1523240795612-9a054b0db644', 1000),
-  lifeC: UNSPLASH('photo-1571260899304-425eee4c7efc', 1000),
-  lifeD: UNSPLASH('photo-1554475901-4538ddfbccc2', 1000),
-  lifeE: UNSPLASH('photo-1494178270175-e96de2971df9', 1000),
-  lifeF: UNSPLASH('photo-1607237138185-eedd9c632b0b', 1000),
-  news1: UNSPLASH('photo-1434030216411-0b793f4b4173', 1000),
-  news2: UNSPLASH('photo-1456513080510-7bf3a84b82f8', 1000),
-  news3: UNSPLASH('photo-1562774053-701939374585', 1000),
-};
-
 const PROGRAMS_STATIC = [
   { num:'01', name:'BS Computer Science',        dept:'Computer Studies',      desc:'Computing principles, algorithms, software development, and emerging technologies.' },
   { num:'02', name:'BS Information Technology',  dept:'Computer Studies',      desc:'Information systems, networking, database management, and IT infrastructure.' },
@@ -608,11 +665,14 @@ const NEWS = [
   { id:'news-3', day:'10', my:'May 2025', tag:'Accreditation',  photoKey:'news3', title:'NEMSU Cantilan Achieves AACCUP Level II Accreditation',  body:"Several programs in the Cantilan Campus have achieved Level II accreditation, reflecting the campus's commitment to quality." },
 ];
 
+// Defaults are conservative and verifiable — the registrar/admin can set
+// exact figures via site content (Stats). No fabricated head-counts or
+// "years of service" (NEMSU was formed in 2021).
 const STATS = [
-  { num:5000, suffix:'+', lbl:'Students enrolled',  desc:'Active learners across all programs' },
-  { num:20,   suffix:'+', lbl:'Academic programs',   desc:'Undergraduate degrees offered' },
-  { num:6,    suffix:'',  lbl:'Departments',          desc:'Spanning technology to health' },
-  { num:50,   suffix:'+', lbl:'Years of service',    desc:'Serving the Caraga region' },
+  { num:6,   suffix:'',  lbl:'Colleges & departments', desc:'From computing to allied health' },
+  { num:20,  suffix:'+', lbl:'Undergraduate programs',  desc:'Offered across the Cantilan Campus' },
+  { num:5,   suffix:'',  lbl:'Services in one portal',  desc:'Enrollment, grades, schedules, documents, news' },
+  { num:100, suffix:'%', lbl:'Online enrollment',       desc:'Apply and track status without visiting an office' },
 ];
 
 const NAV_LINKS = [
@@ -653,25 +713,23 @@ const SPOTLIGHT_FALLBACK = {
   category: 'Research · Caraga marine biodiversity',
   tag:      'Research spotlight',
   byline:   'Featured · NEMSU Cantilan Research Office',
-  imageUrl: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=1400&q=80&auto=format&fit=crop',
+  imageUrl: '',   // photo-free by default; admin can upload a real photo
   createdAt:'May 2025',
 };
 
 /* ══════════════════════════════════════════════════════════════
    DATA — Enrollment modal (existing, preserved unchanged)
 ══════════════════════════════════════════════════════════════ */
-const TYPE_HINTS = {
-  freshman:   'Freshmen must submit their SHS Form 138, PSA Birth Certificate, and other admission documents.',
-  regular:    'Regular students need their previous COR, student ID, and clearance from the previous semester.',
-  shiftee:    "Shiftees must secure clearance from their current department and the dean's endorsement letter.",
-  transferee: 'Transferees must provide their Transcript of Records (TOR) and Honorable Dismissal from their previous school.',
+const TYPE_LABELS = { new:'New student', transferee:'Transferee', returnee:'Returnee' };
+const TYPE_ICONS  = { new:'ti-school', transferee:'ti-building-community', returnee:'ti-rotate-clockwise-2' };
+const TYPE_DESCS  = {
+  new:        'Incoming first-year student from senior high',
+  transferee: 'Coming from another school or institution',
+  returnee:   'Returning to NEMSU Cantilan after a break',
 };
-const TYPE_LABELS = { freshman:'Freshman', regular:'Regular', shiftee:'Shiftee', transferee:'Transferee' };
-const TYPE_ICONS  = { freshman:'ti-school', regular:'ti-refresh', shiftee:'ti-arrows-exchange', transferee:'ti-building-community' };
-const TYPE_DESCS  = { freshman:'Incoming first-year student from SHS', regular:'Continuing or returning student', shiftee:'Changing program within NEMSU Cantilan', transferee:'Coming from another institution' };
 
 const ALL_REQUIREMENTS = {
-  freshman: [
+  new: [
     { group:'Basic documents', items:[
       { id:'r1', label:'SHS Form 138 / Report Card',              tag:'Required'    },
       { id:'r2', label:'PSA Birth Certificate',                   tag:'Required'    },
@@ -685,19 +743,6 @@ const ALL_REQUIREMENTS = {
       { id:'r8', label:'Accomplished Application Form',           tag:'Required'    },
     ]},
   ],
-  regular: [{ group:'Documents', items:[
-    { id:'r1', label:'Previous Certificate of Registration (COR)', tag:'Required'      },
-    { id:'r2', label:'Student ID (current)',                        tag:'Required'      },
-    { id:'r3', label:'Clearance from previous semester',            tag:'Required'      },
-    { id:'r4', label:'Proof of payment or scholarship form',        tag:'If applicable' },
-  ]}],
-  shiftee: [{ group:'Shifting requirements', items:[
-    { id:'r1', label:'Shifting Application Form',         tag:'Required' },
-    { id:'r2', label:'Clearance from current department', tag:'Required' },
-    { id:'r3', label:"Dean's Endorsement Letter",         tag:'Required' },
-    { id:'r4', label:'Transcript of Records (internal)',  tag:'Required' },
-    { id:'r5', label:'Acceptance from target department', tag:'Required' },
-  ]}],
   transferee: [
     { group:'Admission documents', items:[
       { id:'r1', label:'Transcript of Records (TOR)', tag:'Required'    },
@@ -710,6 +755,15 @@ const ALL_REQUIREMENTS = {
     { group:'Additional', items:[
       { id:'r7', label:'Entrance Exam Result',         tag:'If required' },
       { id:'r8', label:'Application / Admission Form', tag:'Required'    },
+    ]},
+  ],
+  returnee: [
+    { group:'Readmission documents', items:[
+      { id:'r1', label:'Previous Certificate of Registration (COR)', tag:'Required'    },
+      { id:'r2', label:'Readmission / Re-enrollment Form',           tag:'Required'    },
+      { id:'r3', label:'Clearance from last enrollment',             tag:'Required'    },
+      { id:'r4', label:'Good Moral Certificate',                     tag:'If required' },
+      { id:'r5', label:'Updated Medical Certificate',                tag:'Required'    },
     ]},
   ],
 };
@@ -773,10 +827,6 @@ function Reveal({ children, delay = 0, className = '' }) {
       {children}
     </div>
   );
-}
-
-function Img({ src, alt = '' }) {
-  return <img src={src} alt={alt} loading="lazy" />;
 }
 
 function StatCell({ num, suffix, lbl, desc }) {
@@ -874,10 +924,11 @@ export default function LandingPage() {
 
   return (
     <>
+      <ScrollMemory />
       <style>{CSS}</style>
       <Topbar onLogin={openLogin} onSignup={openSignup} />
       <Navbar scrolled={scrolled} onEnroll={openEnroll} onLogin={openLogin} onSignup={openSignup} activeNav={activeNav} onNavClick={setActiveNav} />
-      <Hero onEnroll={openEnroll} term={landingData?.term} />
+      <Hero onEnroll={openEnroll} term={landingData?.term} content={c.hero} />
       <AudiencePortals onLogin={openLogin} onEnroll={openEnroll} />
       <Spotlight content={c.in_focus} />
       <InfoStrip />
@@ -888,7 +939,7 @@ export default function LandingPage() {
       <Life content={c.campus_life} />
       <Facilities content={c.facilities} />
       <News content={c.news} />
-      <CtaBand onEnroll={openEnroll} onLogin={openLogin} />
+      <CtaBand onEnroll={openEnroll} onLogin={openLogin} term={landingData?.term} />
       <Footer onEnroll={openEnroll} onLogin={openLogin} onSignup={openSignup} />
       {screen === 'admission' && (
         <AdmissionIntroModal
@@ -967,7 +1018,7 @@ function Navbar({ scrolled, onEnroll, onLogin, onSignup, activeNav, onNavClick }
           ))}
         </div>
         <button className="btn btn-primary nav-cta" onClick={onEnroll}>
-          Apply now <i className="ti ti-arrow-right" />
+          Apply now
         </button>
         <button className="burger" aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
           <i className={`ti ${menuOpen ? 'ti-x' : 'ti-menu-2'}`} />
@@ -1012,48 +1063,44 @@ function Navbar({ scrolled, onEnroll, onLogin, onSignup, activeNav, onNavClick }
     </nav>
   );
 }
-function Hero({ onEnroll, term }) {
+function Hero({ onEnroll, term, content }) {
   const isOpen = term != null ? term.enrollment_open : null;
-  const year   = term?.year ?? '2025 – 2026';
+  const year   = term?.year ?? '2026 – 2027';
+  const photo  = content?.imageUrl;
   return (
-    <section id="home" className="hero">
-      <div className="hero-photo">
-        <Img src={PHOTO.hero} alt="NEMSU Cantilan Campus" />
+    <section id="home" className={`hero${photo ? ' has-photo' : ''}`}>
+      {photo && (
+        <div className="hero-photo" aria-hidden="true">
+          <img src={photo} alt="" />
+        </div>
+      )}
+      <div className="hero-sky" aria-hidden="true">
+        <span className="hero-sun" />
+        <span className="hero-horizon" />
       </div>
       <div className="hero-content">
-        <div className="hero-eyebrow">
-          A.Y. {year}
-          <span className="hero-status-pill">
-            <span
-              className="dot"
-              style={isOpen === false
-                ? { background:'#f87171', boxShadow:'0 0 0 4px rgba(248,113,113,.18)' }
-                : {}}
-            />
+        <div className="hero-meta">
+          <span className="hero-term">First Sem · A.Y. {year}</span>
+          <span className={`hero-status${isOpen === false ? ' is-closed' : ''}`}>
+            <span className="dot" />
             {isOpen === false ? 'Enrollment closed' : 'Enrollment open'}
           </span>
         </div>
-        <h1>
-          A regional <em>university</em><br />
-          built for the next<br />
-          generation.
+        <h1 className="hero-title">
+          Higher education on Mindanao&rsquo;s eastern seaboard.
         </h1>
         <p className="hero-sub">
-          NEMSU Cantilan Campus delivers quality higher education, applied research,
-          and meaningful community service to northeastern Mindanao.
+          NEMSU Cantilan Campus &mdash; enroll, check grades and schedules, and
+          request documents from one secure portal on the Pacific coast of Caraga.
         </p>
         <div className="hero-actions">
-          <button className="btn btn-onDark" onClick={onEnroll}>
-            Apply for admission <i className="ti ti-arrow-right" />
+          <button className="hero-btn hero-btn-dawn" onClick={onEnroll}>
+            Apply for admission
           </button>
-          <a href="#news" className="btn btn-onDark-ghost">
+          <a href="#news" className="hero-btn hero-btn-ghost">
             Latest news &amp; updates
           </a>
         </div>
-      </div>
-      <div className="hero-scroll">
-        <span>Scroll</span>
-        <i className="ti ti-chevron-down" />
       </div>
     </section>
   );
@@ -1100,31 +1147,31 @@ function Spotlight({ content }) {
             </div>
           </div>
         </Reveal>
-        <div className="spot-grid">
-          <Reveal>
-            <div className="spot-image" data-tag={post.tag}>
-              <Img src={post.imageUrl} alt={post.title} />
+        <Reveal delay={0.05}>
+          <article className="spot-feature">
+            <div className={`spot-feature-side${post.imageUrl ? ' has-photo' : ''}`}>
+              {post.imageUrl && <img className="spot-photo" src={post.imageUrl} alt="" />}
+              {post.tag && <span className="spot-tag">{post.tag}</span>}
+              {!post.imageUrl && <span className="spot-sun" aria-hidden="true" />}
             </div>
-          </Reveal>
-          <Reveal delay={0.1}>
             <div className="spot-body">
               <div className="spot-meta">{post.category}</div>
               <h3>{post.title}</h3>
               <p>{post.body}</p>
               <div className="spot-byline">{post.byline}{dateLabel ? ` · ${dateLabel}` : ''}</div>
               <Link to="/in-focus" className="btn-link" style={{ alignSelf: 'flex-start' }}>
-                Read the full story <i className="ti ti-arrow-right" />
+                Read the full story
               </Link>
             </div>
-          </Reveal>
-        </div>
+          </article>
+        </Reveal>
       </div>
     </section>
   );
 }
 function InfoStrip() {
   const cells = [
-    { icon: 'ti-calendar-event', label: 'Enrollment period', val: 'Jun 2 – Jun 20, 2025' },
+    { icon: 'ti-calendar-event', label: 'Enrollment period', val: 'Announced each semester' },
     { icon: 'ti-building',       label: 'Registrar office',  val: 'Mon – Fri · 8:00 AM – 5:00 PM' },
     { icon: 'ti-map-pin',        label: 'Campus location',   val: 'Cantilan, Surigao del Sur' },
     { icon: 'ti-mail',           label: 'Contact',           val: 'cantilan@nemsu.edu.ph' },
@@ -1157,23 +1204,37 @@ function About({ content }) {
       <div className="lp-wrap">
         <div className="about-grid">
           <Reveal>
-            <div className="about-visual">
-              <Img src={content?.imageUrl || PHOTO.about} alt="About NEMSU Cantilan" />
-              <div className="about-badge">
-                <div className="micro">{content?.badge_label || 'Accredited'}</div>
-                <div className="v">{content?.badge_value || 'AACCUP Level II'}</div>
+            {content?.imageUrl ? (
+              <div className="about-photo">
+                <img src={content.imageUrl} alt="" />
+                {content?.badge_value && (
+                  <div className="about-photo-badge">
+                    <span className="k">{content?.badge_label || 'Accredited'}</span>
+                    <span className="v">{content.badge_value}</span>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="about-panel">
+                <span className="about-panel-sun" aria-hidden="true" />
+                <div className="about-panel-title">Campus at a glance</div>
+                <div className="about-facts">
+                  <div className="about-fact"><span className="k">Location</span><span className="v">Cantilan, Surigao del Sur</span></div>
+                  <div className="about-fact"><span className="k">Region</span><span className="v">Caraga · eastern Mindanao</span></div>
+                  <div className="about-fact"><span className="k">University</span><span className="v">North Eastern Mindanao State University</span></div>
+                  <div className="about-fact"><span className="k">{content?.badge_label || 'Accreditation'}</span><span className="v">{content?.badge_value || 'AACCUP Level II'}</span></div>
+                </div>
+              </div>
+            )}
           </Reveal>
           <Reveal delay={0.1}>
             <div className="about-copy">
               <div className="eyebrow">{content?.eyebrow || 'About the campus'}</div>
-              <h2 className="h-section">{content?.heading || <>A regional institution rooted in <em>community</em>, oriented toward <em>excellence</em>.</>}</h2>
+              <h2 className="h-section">{content?.heading || <>A regional institution rooted in community, oriented toward excellence.</>}</h2>
               {paragraphs.map((para, i) => <p key={i}>{para}</p>)}
               <div className="pillars">
                 {pillars.map(p => (
                   <div key={p.title} className="pillar">
-                    <span className="num">- {p.num}</span>
                     <div className="title">{p.title}</div>
                     <div className="desc">{p.desc}</div>
                   </div>
@@ -1224,14 +1285,14 @@ function VisionMission({ content }) {
         <div className="vm-grid">
           <Reveal>
             <div className="vm-card">
-              <span className="vm-num">- Vision</span>
+              <span className="vm-num">Vision</span>
               <h3>{content?.vision_title || <>A premier state university producing <em>globally competitive</em> graduates.</>}</h3>
               <p>{content?.vision_text || 'To produce morally upright graduates who are agents of change for sustainable national development, equipped with the knowledge and values to serve the community and the country.'}</p>
             </div>
           </Reveal>
           <Reveal delay={0.1}>
             <div className="vm-card">
-              <span className="vm-num">- Mission</span>
+              <span className="vm-num">Mission</span>
               <h3>{content?.mission_title || <>Quality education, advanced research, and <em>community engagement</em>.</>}</h3>
               <p>{content?.mission_text || 'To provide quality higher technological and professional education, advance research and development, and render extension and production services responsive to the needs of the community in northeastern Mindanao.'}</p>
             </div>
@@ -1243,7 +1304,7 @@ function VisionMission({ content }) {
 }
 
 function Programs({ programs, content }) {
-  const PREVIEW_COUNT = 6;
+  const PREVIEW_COUNT = 3;
 
   const list = programs?.length
     ? programs.map((p, i) => ({
@@ -1277,7 +1338,6 @@ function Programs({ programs, content }) {
           {visible.map((p, i) => (
             <Reveal key={p.name} delay={i * 0.04}>
               <article className="prog">
-                <div className="prog-num">- {p.num}</div>
                 <i className="ti ti-arrow-up-right arrow" />
                 <h4>{p.name}</h4>
                 <div className="dept">{p.dept}</div>
@@ -1290,24 +1350,8 @@ function Programs({ programs, content }) {
     </section>
   );
 }
-const LIFE_CLS  = ['life-a', 'life-b', 'life-c', 'life-d', 'life-e', 'life-f'];
-const LIFE_KEYS = ['lifeA', 'lifeB', 'lifeC', 'lifeD', 'lifeE', 'lifeF'];
-function lifeImages(l) {
-  if (Array.isArray(l.images) && l.images.length) return l.images.filter(Boolean);
-  if (l.imageUrl) return [l.imageUrl];
-  return [];
-}
 function Life({ content }) {
-  const [box, setBox] = useState(null); // { images, title }
-  const items = (content?.items ?? LIFE).map((l, i) => {
-    const imgs = lifeImages(l);
-    return {
-      ...l,
-      cls: l.cls || LIFE_CLS[i % 6],
-      images: imgs,
-      src: imgs[0] || PHOTO[l.photoKey] || PHOTO[LIFE_KEYS[i % 6]],
-    };
-  });
+  const items = content?.items ?? LIFE;
   return (
     <section id="life" className="life">
       <div className="lp-wrap">
@@ -1315,26 +1359,26 @@ function Life({ content }) {
           <div className="life-head">
             <div>
               <div className="eyebrow">{content?.eyebrow || 'Campus life'}</div>
-              <h2 className="h-section" style={{ marginTop: '1rem' }}>{content?.heading || <>Life at <em>Cantilan</em>.</>}</h2>
+              <h2 className="h-section" style={{ marginTop: '1rem' }}>{content?.heading || <>Life at Cantilan.</>}</h2>
             </div>
-            <Link to="/campus-life" className="btn-link">Explore campus <i className="ti ti-arrow-right" /></Link>
+            <Link to="/campus-life" className="btn-link">Explore campus</Link>
           </div>
         </Reveal>
         <div className="life-grid">
-          {items.map((l, i) => (
-            <button key={l.id || i} type="button" className={`life-item ${l.cls}`}
-              onClick={() => l.images.length ? setBox({ images: l.images, title: l.title }) : null}>
-              <Img src={l.src} alt={l.title} />
-              {l.images.length > 1 && <span className="life-count"><i className="ti ti-photo" /> {l.images.length}</span>}
-              <div className="meta">
-                <div className="micro">{l.tag}</div>
-                <div className="title">{l.title}</div>
-              </div>
-            </button>
-          ))}
+          {items.map((l, i) => {
+            const cover = Array.isArray(l.images) ? l.images[0] : (l.imageUrl || l.images);
+            return (
+              <Reveal key={l.id || i} delay={i * 0.04}>
+                <Link to="/campus-life" className={`life-item${cover ? ' has-photo' : ''}`}>
+                  {cover && <img className="life-photo" src={cover} alt="" />}
+                  <span className="tag">{l.tag}</span>
+                  <span className="title">{l.title}</span>
+                </Link>
+              </Reveal>
+            );
+          })}
         </div>
       </div>
-      {box && <Lightbox images={box.images} title={box.title} onClose={() => setBox(null)} />}
     </section>
   );
 }
@@ -1371,7 +1415,7 @@ function Facilities({ content }) {
 
 function newsToItem(n) {
   return {
-    image: n.imageUrl || PHOTO[n.photoKey],
+    image: n.imageUrl || null,   // no stock fallback; detail modal hides image when absent
     meta: `${n.tag}${n.my ? ` · ${n.my.split(' ')[0]} ${n.day}, ${n.my.split(' ')[1]}` : ''}`,
     title: n.title,
     body: n.body,
@@ -1398,12 +1442,15 @@ function News({ content }) {
         <div className="news-grid">
           {items.map((n, i) => (
             <Reveal key={n.id || i} delay={i * 0.06}>
-              <button type="button" className="news-card" onClick={() => setActive(n)}>
-                <div className="news-card-image">
-                  <Img src={n.imageUrl || PHOTO[n.photoKey]} alt={n.title} />
-                  <div className="news-card-tag">{n.tag}</div>
-                </div>
+              <button type="button" className={`news-card${n.imageUrl ? ' has-photo' : ''}`} onClick={() => setActive(n)}>
+                {n.imageUrl && (
+                  <div className="news-card-image">
+                    <img src={n.imageUrl} alt="" />
+                    <span className="news-card-tag">{n.tag}</span>
+                  </div>
+                )}
                 <div className="news-card-body">
+                  {!n.imageUrl && <span className="news-card-chip">{n.tag}</span>}
                   <div className="news-card-date">{n.my?.split(' ')[0]} {n.day}, {n.my?.split(' ')[1]}</div>
                   <h3>{n.title}</h3>
                   <p>{n.body}</p>
@@ -1418,17 +1465,18 @@ function News({ content }) {
     </section>
   );
 }
-function CtaBand({ onEnroll, onLogin }) {
+function CtaBand({ onEnroll, onLogin, term }) {
+  const year = term?.year ?? '2026 – 2027';
   return (
     <section className="cta">
       <div className="cta-inner">
         <div>
-          <h2 className="h-section">Ready to begin your <em>journey</em>?</h2>
-          <p>Submit your enrollment online for A.Y. 2025–2026. Whether you're an incoming freshman, transferee, shiftee, or returning student, you can apply in minutes.</p>
+          <h2 className="h-section">Ready to begin your journey?</h2>
+          <p>Submit your enrollment online for A.Y. {year}. Whether you're an incoming freshman, transferee, shiftee, or returning student, you can apply in minutes.</p>
         </div>
         <div className="cta-actions">
           <button className="btn btn-gold" onClick={onEnroll}>
-            Apply for admission <i className="ti ti-arrow-right" />
+            Apply for admission
           </button>
           <button className="btn btn-onDark-ghost" onClick={onLogin}>
             <i className="ti ti-login" /> Student login
@@ -1547,10 +1595,10 @@ function AdmissionIntroModal({ onClose, onStart, onLogin }) {
           </button>
         </div>
         <div className="modal-body">
-          <span className="adm-badge"><i className="ti ti-school" /> For incoming 1st-year college students</span>
+          <span className="adm-badge"><i className="ti ti-school" /> For new, transferee &amp; returning students</span>
           <h3 style={{ marginTop: '.9rem' }}>Apply for <em>admission</em> to NEMSU Cantilan.</h3>
           <p className="lead" style={{ marginBottom: '1.25rem' }}>
-            This is for <strong>incoming first-year college students</strong> who want to enroll at the university.
+            For <strong>new, transferee, and returning students</strong> who want to enroll at the university.
             Here's how it works:
           </p>
           <div className="adm-steps">
@@ -1586,18 +1634,19 @@ function AdmissionIntroModal({ onClose, onStart, onLogin }) {
 function EnrollmentModal({ onClose, term, programs }) {
   const [step, setStep]       = useState(1);
   const [dir, setDir]         = useState('fwd');
-  const type = 'freshman';    // this application is for incoming freshmen only
+  const [type, setType]       = useState('new');   // new | transferee | returnee
   const [done, setDone]       = useState(false);
   const [submitting, setSub]  = useState(false);
   const [refNum, setRefNum]   = useState('');
   const [files, setFiles]     = useState({});   // { itemId: File } — uploaded PDFs
   const [uploadErr, setUpErr] = useState('');
+  const [submitErr, setSubErr] = useState('');
   const [checked, setChecked] = useState({});
   const [selSubj, setSelSubj] = useState(
     () => SUBJECTS.reduce((a, s) => ({ ...a, [s.code]: true }), {})
   );
   const [form, setForm] = useState({
-    first: '', last: '', email: '', contact: '', dob: '', sex: 'Male',
+    first: '', middle: '', last: '', suffix: '', email: '', contact: '', dob: '', sex: 'Male',
     program: PROGRAMS_STATIC[0].name, year: '1st Year',
   });
 
@@ -1606,7 +1655,7 @@ function EnrollmentModal({ onClose, term, programs }) {
     : PROGRAMS_STATIC.map(p => p.name);
 
   // Keep the selected program a valid, real program name so it maps to a
-  // department (and reaches that department's encoder) on submit.
+  // department on submit.
   useEffect(() => {
     if (progList.length && !progList.includes(form.program)) {
       setForm(p => ({ ...p, program: progList[0] }));
@@ -1624,15 +1673,19 @@ function EnrollmentModal({ onClose, term, programs }) {
 
   const handleSubmit = async () => {
     setSub(true);
-    let ref = `NEMSU-${new Date().getFullYear()}-${String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5)}`;
+    setSubErr('');
     try {
+      const progObj = (programs || []).find(p => p.name === form.program);
       const res = await api.post('/enrollment/public/pre-enroll/', {
         student_type: type, first_name: form.first, last_name: form.last,
+        middle_name: form.middle, suffix: form.suffix,
         email: form.email, contact_number: form.contact,
         date_of_birth: form.dob || null, sex: form.sex,
-        program_name: form.program, year_level: YEAR_LEVEL_MAP[form.year] || 1,
+        program_id: progObj?.id, program_name: form.program,
+        year_level: YEAR_LEVEL_MAP[form.year] || 1,
       });
-      if (res.data?.reference_number) ref = res.data.reference_number;
+      const ref = res.data?.reference_number
+        || `NEMSU-${new Date().getFullYear()}-${String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5)}`;
       // Attach the uploaded document PDFs to the new application.
       const pid = res.data?.pending_id;
       if (pid) {
@@ -1644,10 +1697,17 @@ function EnrollmentModal({ onClose, term, programs }) {
           catch (_) {}
         }
       }
-    } catch (_) {}
-    setRefNum(ref);
-    setSub(false);
-    setDone(true);
+      setRefNum(ref);
+      setSub(false);
+      setDone(true);
+    } catch (err) {
+      const data = err.response?.data;
+      const msg = data?.email?.[0] || data?.program_name?.[0] || data?.student_type?.[0]
+        || data?.non_field_errors?.[0] || data?.detail || data?.error
+        || 'We couldn’t submit your application. Please check your details and try again.';
+      setSubErr(msg);
+      setSub(false);
+    }
   };
 
   const reqs = ALL_REQUIREMENTS[type] || [];
@@ -1663,7 +1723,7 @@ function EnrollmentModal({ onClose, term, programs }) {
             <img src="/logo.png" alt="NEMSU" />
             <div>
               <div className="name">NEMSUonePortal</div>
-              <div className="sub">{done ? 'Application received' : 'Freshman admission'}</div>
+              <div className="sub">{done ? 'Application received' : 'Admission application'}</div>
             </div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">
@@ -1678,7 +1738,7 @@ function EnrollmentModal({ onClose, term, programs }) {
             <p className="lead">Thank you for applying to NEMSU Cantilan Campus. The campus will now validate your uploaded documents.</p>
             <div style={{ display:'inline-block', margin:'1rem 0 1.5rem', padding:'1rem 2rem', background:'var(--warm)', border:'1px solid var(--line)' }}>
               <div style={{ fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--gold)', fontWeight:600, marginBottom:4 }}>Reference number</div>
-              <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:22, color:'var(--ink)' }}>{refNum}</div>
+              <div style={{ fontFamily:"'Fraunces',Georgia,serif", fontSize:22, color:'var(--ink)' }}>{refNum}</div>
             </div>
             <p className="lead" style={{ fontSize:12, marginBottom:'1.5rem' }}>
               You'll receive an email at <strong>{form.email || 'your email address'}</strong> letting you know if you qualified for the next step: the college entrance examination. Keep this reference number for your records.
@@ -1720,7 +1780,22 @@ function EnrollmentModal({ onClose, term, programs }) {
                 {step === 1 && (
                   <>
                     <h4>Personal information</h4>
-                    <p className="wiz-sub">Enter your details as they appear on official documents.</p>
+                    <p className="wiz-sub">Tell us who you are. Pick the type that matches you, then enter your details as they appear on official documents.</p>
+                    <div style={{ marginBottom: '1.1rem' }}>
+                      <label style={fLabel}>I am a…</label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '.5rem', marginTop: 6 }}>
+                        {['new', 'transferee', 'returnee'].map(t => (
+                          <button key={t} type="button" onClick={() => setType(t)}
+                            style={{ textAlign: 'left', padding: '.7rem .8rem', border: `1.5px solid ${type === t ? 'var(--ink)' : 'var(--line)'}`, background: type === t ? 'var(--cool)' : '#fff', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                            <i className={`ti ${TYPE_ICONS[t]}`} style={{ fontSize: 18, color: type === t ? 'var(--ink)' : 'var(--muted)', marginTop: 2, flexShrink: 0 }} />
+                            <span>
+                              <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--ink)' }}>{TYPE_LABELS[t]}</span>
+                              <span style={{ display: 'block', fontSize: 11, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{TYPE_DESCS[t]}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="flow-form" style={{ gap: '1rem' }}>
                       <div style={fRow}>
                         <div className="flow-field">
@@ -1728,8 +1803,26 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <input style={fInput} value={form.first} onChange={e => update('first', e.target.value)} placeholder="Juan" />
                         </div>
                         <div className="flow-field">
+                          <label style={fLabel}>Middle name <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(optional)</span></label>
+                          <input style={fInput} value={form.middle} onChange={e => update('middle', e.target.value)} placeholder="Santos" />
+                        </div>
+                      </div>
+                      <div style={fRow}>
+                        <div className="flow-field">
                           <label style={fLabel}>Last name</label>
                           <input style={fInput} value={form.last} onChange={e => update('last', e.target.value)} placeholder="Dela Cruz" />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Suffix <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(optional)</span></label>
+                          <select style={fInput} value={form.suffix} onChange={e => update('suffix', e.target.value)}>
+                            <option value="">None</option>
+                            <option value="Jr.">Jr.</option>
+                            <option value="Sr.">Sr.</option>
+                            <option value="II">II</option>
+                            <option value="III">III</option>
+                            <option value="IV">IV</option>
+                            <option value="V">V</option>
+                          </select>
                         </div>
                       </div>
                       <div className="flow-field">
@@ -1847,6 +1940,13 @@ function EnrollmentModal({ onClose, term, programs }) {
                   </>
                 )}
               </div>
+
+              {submitErr && (
+                <div style={{ background: 'var(--red-tint,#fdecea)', color: 'var(--red,#a8331e)', border: '1px solid #f3c6bd', padding: '.6rem .85rem', fontSize: 12.5, marginTop: '1rem', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <i className="ti ti-alert-circle" style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }} />
+                  <span>{submitErr}</span>
+                </div>
+              )}
 
               <div className="wiz-actions">
                 <button className="wiz-btn" onClick={back}>

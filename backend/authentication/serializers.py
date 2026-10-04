@@ -193,6 +193,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'program_name',
             'year_level',
             'year_level_display',
+            'rank',
         ]
         read_only_fields = [
             'id',
@@ -339,7 +340,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
             'role', 'is_active', 'is_verified', 'is_staff', 'date_joined',
             'failed_login_attempts', 'locked_until', 'is_locked',
             'department_code', 'department_name',
-            'program_id', 'program_name', 'is_gec_faculty', 'faculty_classification',
+            'program_id', 'program_name', 'is_gec_faculty', 'faculty_classification', 'rank',
         ]
         read_only_fields = fields
 
@@ -348,7 +349,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
 
 
 # Roles an admin is allowed to assign/create through the management interface.
-ADMIN_ASSIGNABLE_ROLES = ['student', 'faculty', 'registrar', 'department_encoder', 'admin']
+ADMIN_ASSIGNABLE_ROLES = ['student', 'faculty', 'registrar', 'admin']
 
 
 class AdminUserUpdateSerializer(serializers.Serializer):
@@ -381,7 +382,7 @@ class AdminUserUpdateSerializer(serializers.Serializer):
 
 
 class AdminUserCreateSerializer(serializers.Serializer):
-    """Admin creates a staff account (faculty / registrar / department_encoder / admin)."""
+    """Admin creates a staff account (faculty / registrar / admin)."""
     institutional_email = serializers.EmailField()
     student_id = serializers.CharField(max_length=20)
     full_name = serializers.CharField(max_length=255)
@@ -390,12 +391,19 @@ class AdminUserCreateSerializer(serializers.Serializer):
     department = serializers.CharField(required=False, allow_blank=True)
     program = serializers.IntegerField(required=False, allow_null=True)
     is_gec_faculty = serializers.BooleanField(required=False, default=False)
+    rank = serializers.CharField(required=False, allow_blank=True, default='')
     password = serializers.CharField(write_only=True, min_length=8)
 
     def validate_institutional_email(self, value):
         value = value.strip().lower()
         if User.objects.filter(institutional_email__iexact=value).exists():
             raise serializers.ValidationError('A user with this email already exists.')
+        return value
+
+    def validate_rank(self, value):
+        value = (value or '').strip()
+        if value and value not in User.FACULTY_RANKS:
+            raise serializers.ValidationError('Invalid faculty rank.')
         return value
 
     def validate_student_id(self, value):
@@ -417,11 +425,6 @@ class AdminUserCreateSerializer(serializers.Serializer):
                 dept = Department.objects.get(code__iexact=dept_code)
             except Department.DoesNotExist:
                 raise serializers.ValidationError({'department': f"No department with code '{dept_code}'."})
-        # A department encoder must be bound to exactly one department.
-        if attrs['role'] == 'department_encoder' and dept is None:
-            raise serializers.ValidationError(
-                {'department': 'A department encoder must be assigned to a department.'}
-            )
         attrs['department_obj'] = dept
 
         # Faculty may carry a core program + a GEC flag (ignored for other roles).
@@ -440,7 +443,9 @@ class AdminUserCreateSerializer(serializers.Serializer):
         dept = validated_data.pop('department_obj', None)
         prog = validated_data.pop('program_obj', None)
         is_gec = validated_data.get('role') == 'faculty' and bool(validated_data.get('is_gec_faculty'))
-        for k in ('department', 'program', 'is_gec_faculty'):
+        # Rank applies to faculty only.
+        rank = (validated_data.get('rank') or '').strip() if validated_data.get('role') == 'faculty' else ''
+        for k in ('department', 'program', 'is_gec_faculty', 'rank'):
             validated_data.pop(k, None)
         password = validated_data.pop('password')
         user = User.objects.create_user(
@@ -453,10 +458,69 @@ class AdminUserCreateSerializer(serializers.Serializer):
             department=dept,
             program=prog,
             is_gec_faculty=is_gec,
+            rank=rank,
             is_verified=True,   # staff accounts created by admin are pre-verified
             is_active=True,
         )
         return user
+
+
+class RegistrarFacultyUpdateSerializer(serializers.Serializer):
+    """Registrar (or admin) edits an existing FACULTY account's info.
+    Identity fields (email, faculty ID) are intentionally not editable here."""
+    full_name      = serializers.CharField(max_length=255, required=False)
+    contact_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    department     = serializers.CharField(required=False, allow_blank=True)
+    program        = serializers.IntegerField(required=False, allow_null=True)
+    is_gec_faculty = serializers.BooleanField(required=False)
+    rank           = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_rank(self, value):
+        value = (value or '').strip()
+        if value and value not in User.FACULTY_RANKS:
+            raise serializers.ValidationError('Invalid faculty rank.')
+        return value
+
+    def validate(self, attrs):
+        from enrollment.models import Department, Program
+        if 'department' in attrs:
+            code = (attrs.get('department') or '').strip()
+            if code:
+                try:
+                    attrs['department_obj'] = Department.objects.get(code__iexact=code)
+                except Department.DoesNotExist:
+                    raise serializers.ValidationError({'department': f"No department with code '{code}'."})
+            else:
+                attrs['department_obj'] = None
+        if 'program' in attrs:
+            prog_id = attrs.get('program')
+            if prog_id:
+                try:
+                    attrs['program_obj'] = Program.objects.get(pk=prog_id)
+                except Program.DoesNotExist:
+                    raise serializers.ValidationError({'program': 'Selected program does not exist.'})
+            else:
+                attrs['program_obj'] = None
+        return attrs
+
+    def update(self, instance, validated_data):
+        if 'full_name' in validated_data:
+            instance.full_name = validated_data['full_name'].strip()
+        if 'contact_number' in validated_data:
+            instance.contact_number = (validated_data['contact_number'] or '').strip()
+        if 'rank' in validated_data:
+            instance.rank = (validated_data['rank'] or '').strip()
+        if 'department_obj' in validated_data:
+            instance.department = validated_data['department_obj']
+        if 'is_gec_faculty' in validated_data:
+            instance.is_gec_faculty = bool(validated_data['is_gec_faculty'])
+        # A GEC faculty teaches across programs, so clear any core program.
+        if instance.is_gec_faculty:
+            instance.program = None
+        elif 'program_obj' in validated_data:
+            instance.program = validated_data['program_obj']
+        instance.save()
+        return instance
 
 
 class RegistrationRequestSerializer(serializers.ModelSerializer):

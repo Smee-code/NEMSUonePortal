@@ -1,6 +1,5 @@
 """
-Curriculum management endpoints for the Department Encoder (and Admin).
-An encoder manages the curricula of programs in their own department; Admin sees all.
+Curriculum management endpoints for the Registrar and Admin (all programs).
 """
 import logging
 
@@ -10,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authentication.models import AuditLog
-from authentication.permissions import IsEncoderOrAdmin, IsStudent, get_client_ip
+from authentication.permissions import IsRegistrarOrAdmin, IsStudent, get_client_ip
 
 from .models import Curriculum, Program, Subject
 from .serializers import (
@@ -36,10 +35,8 @@ def _audit(user, role, action, resource, ip, result='success', extra=None):
 
 
 def _scope_ok(user, program):
-    """An encoder may only touch programs in their own department; admin sees all."""
-    if user.role == 'admin':
-        return True
-    return program.department_id == user.department_id
+    """Registrar and admin manage curricula across all programs."""
+    return user.role in ('registrar', 'admin')
 
 
 def _batch_year(student_id):
@@ -71,26 +68,22 @@ def assign_curriculum_for_student(user):
     return chosen
 
 
-class EncoderProgramListView(generics.ListAPIView):
-    """GET /api/enrollment/encoder/programs/ — programs the encoder may manage."""
+class CurriculumProgramListView(generics.ListAPIView):
+    """GET /api/enrollment/curriculum/programs/ — programs available for curriculum management."""
     serializer_class = ProgramSerializer
-    permission_classes = [IsAuthenticated, IsEncoderOrAdmin]
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
 
     def get_queryset(self):
         qs = Program.objects.select_related('department').filter(is_active=True)
-        if self.request.user.role == 'department_encoder':
-            qs = qs.filter(department_id=self.request.user.department_id)
         return qs.order_by('code')
 
 
 class CurriculumListCreateView(APIView):
     """GET (list, ?program=<id>) + POST (create) curricula."""
-    permission_classes = [IsAuthenticated, IsEncoderOrAdmin]
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
 
     def get(self, request):
         qs = Curriculum.objects.select_related('program', 'program__department')
-        if request.user.role == 'department_encoder':
-            qs = qs.filter(program__department_id=request.user.department_id)
         program_id = request.query_params.get('program')
         if program_id and program_id.isdigit():
             qs = qs.filter(program_id=int(program_id))
@@ -123,7 +116,7 @@ class CurriculumListCreateView(APIView):
 
 class CurriculumDetailView(APIView):
     """GET / DELETE a single curriculum (with its courses)."""
-    permission_classes = [IsAuthenticated, IsEncoderOrAdmin]
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
 
     def _get(self, request, pk):
         curriculum = Curriculum.objects.select_related('program', 'program__department').get(pk=pk)
@@ -159,7 +152,7 @@ class CurriculumDetailView(APIView):
 
 class CurriculumSubjectView(APIView):
     """POST add a course / DELETE remove a course from a curriculum."""
-    permission_classes = [IsAuthenticated, IsEncoderOrAdmin]
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
 
     def _get_curriculum(self, request, pk):
         curriculum = Curriculum.objects.select_related('program').get(pk=pk)
@@ -239,7 +232,22 @@ class StudentCurriculumView(APIView):
 
     def get(self, request):
         user = request.user
-        if not user.curriculum_id:
+
+        curriculum = None
+        if user.curriculum_id:
+            curriculum = Curriculum.objects.select_related('program').filter(pk=user.curriculum_id).first()
+
+        # Fall back to the program's current curriculum when the student has no
+        # curriculum explicitly assigned — the program alone already identifies it
+        # (for programs with a single curriculum, unambiguously).
+        if curriculum is None and user.program_id:
+            curriculum = (
+                Curriculum.objects.select_related('program')
+                .filter(program_id=user.program_id, is_active=True)
+                .order_by('-year_effective')
+                .first()
+            )
+
+        if curriculum is None:
             return Response({'curriculum': None, 'subjects': []})
-        curriculum = Curriculum.objects.select_related('program').get(pk=user.curriculum_id)
         return Response(CurriculumDetailSerializer(curriculum).data)

@@ -2,6 +2,11 @@
 hard-coded content). Used to seed SiteContent and as a fallback."""
 
 SITE_CONTENT_DEFAULTS = {
+    "hero": {
+        # Background photo for the landing hero. Empty = show the CSS
+        # first-light gradient. Set via the admin Landing Content tab.
+        "imageUrl": "",
+    },
     "in_focus": {
         "tag": "Research spotlight",
         "title": "Documenting coastal biodiversity along the Surigao del Sur seaboard.",
@@ -9,7 +14,7 @@ SITE_CONTENT_DEFAULTS = {
         "category": "Research · Caraga marine biodiversity",
         "byline": "Featured · NEMSU Cantilan Research Office",
         "date": "May 2025",
-        "imageUrl": "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=1400&q=80&auto=format&fit=crop",
+        "imageUrl": "",
     },
     "about": {
         "eyebrow": "About the campus",

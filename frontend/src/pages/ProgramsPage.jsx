@@ -56,7 +56,7 @@ export default function ProgramsPage() {
 }
 
 const CSS = `
-  .pg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.75rem 2.5rem;}
+  .pg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:1.75rem 2.5rem;}
   .pg-dept-name{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#b89043;font-weight:700;padding-bottom:.6rem;margin-bottom:1rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;}
   .pg-dept-name span{color:#8a93a3;}
   .pg-dept ul{list-style:none;display:flex;flex-direction:column;gap:1rem;}

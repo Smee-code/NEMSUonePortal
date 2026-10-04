@@ -17,7 +17,6 @@ from rest_framework.views import APIView
 from authentication.models import AuditLog
 from authentication.permissions import (
     IsAdmin,
-    IsEncoderRegistrarOrAdmin,
     IsRegistrar,
     IsRegistrarOrAdmin,
     IsStudent,
@@ -27,7 +26,8 @@ from authentication.permissions import (
 
 from announcements.models import Announcement
 
-from .models import AcademicTerm, Block, BlockExpansionRequest, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
+from .academics import eligible_offered
+from .models import AcademicTerm, Block, BlockExpansionRequest, Curriculum, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
 from .serializers import (
     AcademicTermSerializer,
     AdminSubjectSerializer,
@@ -108,10 +108,15 @@ class PublicPreEnrollView(APIView):
         d = serializer.validated_data
 
         program = None
-        if d.get('program_name'):
-            program = Program.objects.filter(
-                name__icontains=d['program_name'], is_active=True
-            ).first()
+        if d.get('program_id'):
+            program = Program.objects.filter(pk=d['program_id'], is_active=True).first()
+        if program is None and d.get('program_name'):
+            name = d['program_name']
+            program = (
+                Program.objects.filter(name__iexact=name, is_active=True).first()
+                or Program.objects.filter(code__iexact=name, is_active=True).first()
+                or Program.objects.filter(name__icontains=name, is_active=True).first()
+            )
 
         pending = PendingEnrollment.objects.create(
             student_type   = d['student_type'],
@@ -390,6 +395,99 @@ class StudentEnrollmentHistoryView(generics.ListAPIView):
         )
 
 
+class StudentOfferedCoursesView(APIView):
+    """GET /api/enrollment/offered/ — for a continuing student: the courses
+    offered for their program + year level in the active term, each marked
+    eligible or blocked (prerequisite not yet passed)."""
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def get(self, request):
+        student = request.user
+        term = AcademicTerm.objects.filter(is_active=True).first()
+        program = student.program
+        year_level = student.year_level
+
+        already = bool(term and EnrollmentRequest.objects.filter(
+            student=student, academic_term=term).exists())
+
+        courses = []
+        if term and program and year_level:
+            for row in eligible_offered(student, program, year_level, term.semester):
+                s = row['subject']
+                courses.append({
+                    'id': s.id, 'code': s.code, 'name': s.name, 'units': s.units,
+                    'subject_type': s.subject_type,
+                    'prerequisite_code': row['prereq'].code if row['prereq'] else '',
+                    'eligible': row['eligible'],
+                    'blocked_reason': row['blocked_reason'],
+                })
+
+        return Response({
+            'term': {
+                'id': term.id, 'label': str(term), 'semester': term.semester,
+                'enrollment_open': term.enrollment_open,
+            } if term else None,
+            'program': {'id': program.id, 'name': program.name, 'code': program.code} if program else None,
+            'year_level': year_level,
+            'already_submitted': already,
+            'courses': courses,
+        })
+
+
+class ContinuingEnrollmentSubmitView(APIView):
+    """POST /api/enrollment/enroll/continuing/ — a continuing student submits
+    their enrollment: all offered courses they're eligible for (any course whose
+    prerequisite is unmet is excluded). The registrar validates and can adjust."""
+    permission_classes = [IsAuthenticated, IsStudent]
+    throttle_classes = [EnrollmentSubmitThrottle]
+
+    def post(self, request):
+        student = request.user
+        ip = get_client_ip(request)
+        term = AcademicTerm.objects.filter(is_active=True).first()
+
+        if not term:
+            return Response({'error': 'There is no active term open for enrollment.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not term.enrollment_open:
+            return Response({'error': 'Enrollment is not open for this term.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not (student.program_id and student.year_level):
+            return Response({'error': 'Your program and year level aren’t set yet — please contact the registrar.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if EnrollmentRequest.objects.filter(student=student, academic_term=term).exists():
+            return Response({'error': 'You have already submitted an enrollment request for this term.'},
+                            status=status.HTTP_409_CONFLICT)
+
+        eligible = [r['subject'] for r in
+                    eligible_offered(student, student.program, student.year_level, term.semester)
+                    if r['eligible']]
+        if not eligible:
+            return Response({'error': 'No eligible courses are available for you this term — please contact the registrar.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                enrollment = EnrollmentRequest.objects.create(
+                    student=student, academic_term=term,
+                    program=student.program, year_level=student.year_level,
+                    student_type='continuing',
+                )
+                EnrollmentSubject.objects.bulk_create([
+                    EnrollmentSubject(enrollment=enrollment, subject=s) for s in eligible
+                ])
+        except IntegrityError:
+            return Response({'error': 'You have already submitted an enrollment request for this term.'},
+                            status=status.HTTP_409_CONFLICT)
+
+        _audit(student, student.role, 'enrollment_submitted', request.path, ip, 'success',
+               {'term': str(term), 'subject_count': len(eligible), 'type': 'continuing'})
+        return Response({
+            'message': 'Enrollment submitted. The registrar will review it.',
+            'id': str(enrollment.id), 'subject_count': len(eligible),
+        }, status=status.HTTP_201_CREATED)
+
+
 # ── Registrar / Admin ──────────────────────────────────────────────────────────
 
 class RegistrarEnrollmentListView(generics.ListAPIView):
@@ -456,6 +554,18 @@ class RegistrarReviewView(APIView):
         new_status = serializer.validated_data['status']
 
         with transaction.atomic():
+            # The registrar may adjust the enrolled courses while reviewing
+            # (validate a continuing student, tailor a transferee/returnee load).
+            raw_ids = request.data.get('subject_ids')
+            if isinstance(raw_ids, list):
+                valid_ids = list(
+                    Subject.objects.filter(id__in=raw_ids).values_list('id', flat=True)
+                )
+                EnrollmentSubject.objects.filter(enrollment=enrollment).delete()
+                EnrollmentSubject.objects.bulk_create([
+                    EnrollmentSubject(enrollment=enrollment, subject_id=sid) for sid in valid_ids
+                ])
+
             enrollment.status = new_status
             enrollment.remarks = serializer.validated_data.get('remarks', '')
             enrollment.processed_at = timezone.now()
@@ -510,20 +620,15 @@ class EnrollmentBlockAssignView(APIView):
 class RegistrarPendingEnrollmentListView(generics.ListAPIView):
     """
     GET /api/enrollment/pending/ — list freshman/transferee admission applications.
-    Reviewed by the Department Encoder (scoped to their department's programs);
-    registrar/admin see all.
+    Reviewed by the registrar/admin.
     """
     serializer_class   = PendingEnrollmentListSerializer
-    permission_classes = [IsAuthenticated, IsEncoderRegistrarOrAdmin]
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
 
     def get_queryset(self):
         qs = (PendingEnrollment.objects
               .select_related('program', 'program__department', 'academic_term', 'reviewed_by')
               .prefetch_related('documents'))
-        # A department encoder only sees applications for programs in their department.
-        user = self.request.user
-        if user.role == 'department_encoder':
-            qs = qs.filter(program__department_id=user.department_id)
         status_filter = self.request.query_params.get('status')
         if status_filter in ('pending', 'approved', 'rejected', 'activated'):
             qs = qs.filter(status=status_filter)
@@ -536,12 +641,12 @@ class RegistrarPendingEnrollmentListView(generics.ListAPIView):
 class RegistrarPendingEnrollmentReviewView(APIView):
     """
     PATCH /api/enrollment/pending/<uuid>/review/ — approve or reject a freshman/
-    transferee admission application. Reviewed by the Department Encoder (scoped to
-    their department); registrar/admin may also review. Approval does NOT create an
-    account or activation link — the applicant is only notified that they qualify for
-    the entrance exam; the student ID and account come later, after they are enrolled.
+    transferee admission application. Reviewed by the registrar/admin. Approval does
+    NOT create an account or activation link — the applicant is only notified that
+    they qualify for the entrance exam; the student ID and account come later, after
+    they are enrolled.
     """
-    permission_classes = [IsAuthenticated, IsEncoderRegistrarOrAdmin]
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
 
     def patch(self, request, pk):
         ip = get_client_ip(request)
@@ -549,16 +654,6 @@ class RegistrarPendingEnrollmentReviewView(APIView):
             pending = PendingEnrollment.objects.select_related('academic_term', 'program', 'program__department').get(pk=pk)
         except PendingEnrollment.DoesNotExist:
             return Response({'error': 'Application not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        # A department encoder may only review applications for their own department.
-        user = request.user
-        if user.role == 'department_encoder':
-            dept_id = pending.program.department_id if pending.program_id else None
-            if dept_id != user.department_id:
-                return Response(
-                    {'error': 'This application belongs to another department.'},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
 
         if pending.status != 'pending':
             return Response(
@@ -686,7 +781,7 @@ class RegistrarPreEnrollFollowupView(APIView):
 
 def _send_admission_decision_email(pending, decision):
     """
-    Notify a freshman/transferee applicant of the Department Encoder's decision.
+    Notify a freshman/transferee applicant of the registrar/admin's decision.
     Approval does NOT create an account — it only invites them to the entrance exam.
     """
     from django.conf import settings as _settings
@@ -754,6 +849,14 @@ class EnrollmentTermStatusView(APIView):
             return Response(
                 {'error': 'Academic term not found.'},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # A term whose end date has passed can no longer accept enrollment — the
+        # admin cannot (re)open a window on it. Closing a stuck-open one is fine.
+        if enrollment_open and term.end_date and term.end_date < timezone.localdate():
+            return Response(
+                {'error': 'This term has already ended; enrollment cannot be opened for a past term.'},
+                status=status.HTTP_409_CONFLICT,
             )
 
         with transaction.atomic():

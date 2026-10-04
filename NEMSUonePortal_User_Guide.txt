@@ -1,0 +1,2066 @@
+================================================================
+  NEMSU ONE PORTAL — COMPLETE USER GUIDE
+  NEMSUonePortal | NEMSU-Cantilan Campus
+  Cantilan, Surigao del Sur, Philippines
+================================================================
+  Version: 1.0   |   AY 2025–2026
+  System: NEMSUonePortal (Django 5 + React)
+================================================================
+
+TABLE OF CONTENTS
+-----------------
+
+PART 0: GETTING STARTED (Public & Authentication)
+  0.1  Visiting the Portal (Landing Page)
+  0.2  Creating Your Account (Sign Up)
+  0.3  Account Activation (via Email Link)
+  0.4  Logging In
+  0.5  Forgot Password
+  0.6  Resetting Your Password
+  0.7  Email Verification
+  0.8  Pre-Enrollment Application (New Students — Landing Page)
+  0.9  Complete Online Enrollment Process (End-to-End)
+
+PART 1: STUDENT GUIDE
+  1.1  Dashboard
+  1.2  Online Enrollment
+  1.3  My Courses
+  1.4  My Grades
+  1.5  Class Schedule
+  1.6  Document Requests
+  1.7  Announcements
+  1.8  My Profile
+
+PART 2: FACULTY GUIDE
+  2.1  Dashboard
+  2.2  Grade Encoding
+  2.3  Teaching Schedule
+  2.4  Announcements
+  2.5  My Profile
+
+PART 3: REGISTRAR GUIDE
+  3.1  Dashboard
+  3.2  Enrollment Requests
+  3.3  List of Students (Grades)
+  3.4  Student Grade History
+  3.5  Faculty Directory
+  3.6  Block Management
+  3.7  Document Requests
+  3.8  Class Schedules
+  3.9  Announcements
+
+PART 4: SYSTEM ADMINISTRATOR GUIDE
+  4.1  Dashboard
+  4.2  User Management
+  4.3  Academic Programs & Curriculum
+  4.4  Academic Terms
+  4.5  Faculty Load Assignment
+  4.6  Block Management
+  4.7  Reports & Export
+  4.8  Audit Log
+  4.9  System Settings
+  4.10 Announcements
+
+
+================================================================
+PART 0: GETTING STARTED
+================================================================
+This section is for everyone — students, faculty, and staff.
+It covers how to access the portal, create an account, and
+log in for the first time.
+================================================================
+
+
+----------------------------------------------------------------
+[PUBLIC] — 0.1  VISITING THE PORTAL (LANDING PAGE)
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  The landing page is the public homepage of the portal. You
+  can browse campus information, view academic programs, read
+  announcements, and find links to sign in or sign up.
+
+HOW TO USE IT
+  Step 1. Open your web browser and go to the portal address
+          provided by the institution.
+  Step 2. Scroll down to explore the following sections:
+          - About the Campus
+          - Vision and Mission
+          - Academic Programs offered
+          - Campus Facilities
+          - Latest Announcements
+  Step 3. To go to the login page, click "Sign In" in the
+          top navigation bar.
+  Step 4. To create a new account, click "Sign Up" or
+          the "Enroll Now" button in the hero section.
+
+NOTES
+  - The landing page is public — no login is required to
+    view it.
+  - Announcements shown here are visible to everyone.
+
+
+----------------------------------------------------------------
+[PUBLIC] — 0.2  CREATING YOUR ACCOUNT (SIGN UP)
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page lets approved applicants create their student
+  account. You will need your pre-enrollment reference number
+  provided by the registrar's office.
+
+HOW TO USE IT
+  Step 1. Click "Sign Up" on the landing page or login page.
+  Step 2. STEP 1 OF 4 — Enter your Reference Number.
+          Type the pre-enrollment ID or reference number
+          given to you by the registrar's office.
+          Click "Look Up".
+  Step 3. STEP 2 OF 4 — Confirm your details.
+          Your name and program will appear on screen.
+          If the information is correct, click "Continue".
+  Step 4. STEP 3 OF 4 — Enter your institutional email.
+          Type the email address where the system will send
+          a 6-digit verification code.
+          Click "Send Code".
+  Step 5. Check your email inbox for the 6-digit OTP code.
+          Enter the code in the six boxes on screen.
+          Click "Verify".
+  Step 6. STEP 4 OF 4 — Set your password.
+          Enter a new password (at least 8 characters).
+          Re-enter the same password to confirm.
+          Click "Create Account".
+  Step 7. You will see a success message. The system will
+          automatically redirect you to your student
+          dashboard.
+
+NOTES
+  - Your reference number is given by the registrar's office
+    after your application has been approved.
+  - If the reference number is not found, contact the
+    registrar's office.
+  - The OTP code expires after a short time. If it does not
+    arrive, check your spam folder or request a new code.
+  - Passwords must be at least 8 characters long.
+
+
+----------------------------------------------------------------
+[PUBLIC] — 0.3  ACCOUNT ACTIVATION (VIA EMAIL LINK)
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  Some accounts are activated by clicking a link sent to your
+  email by the registrar. This page walks you through
+  completing that activation.
+
+HOW TO USE IT
+  Step 1. Open your email inbox and find the activation email
+          from NEMSUonePortal.
+  Step 2. Click the activation link inside the email.
+          Your browser will open the portal and show
+          your name and program.
+  Step 3. STEP 1 OF 3 — Confirm your email address.
+          Type in your institutional email.
+          Click "Send Code".
+  Step 4. Check your email for the 6-digit OTP code.
+          Enter it on screen, then click "Verify".
+  Step 5. STEP 3 OF 3 — Set your password.
+          Enter a new password (at least 8 characters).
+          Re-enter it to confirm.
+          Click "Activate Account".
+  Step 6. A success screen will appear. You will be
+          redirected to your student dashboard automatically.
+
+NOTES
+  - Activation links expire. If your link is expired, contact
+    the registrar's office to request a new one.
+  - If the link shows an error, do not try to reload.
+    Contact the registrar immediately.
+
+
+----------------------------------------------------------------
+[PUBLIC] — 0.4  LOGGING IN
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This is the sign-in page for all users — students, faculty,
+  registrar, and admin. After logging in, you will be taken
+  to your role-specific dashboard automatically.
+
+HOW TO USE IT
+  Step 1. Go to the portal and click "Sign In".
+  Step 2. Enter your institutional email address.
+  Step 3. Enter your password.
+  Step 4. Click "Sign In".
+  Step 5. The system will check your credentials and take
+          you to your dashboard based on your role.
+
+NOTES
+  - If you enter the wrong password several times in a row,
+    your account will be locked for security. Contact the
+    system administrator to unlock it.
+  - If you forgot your password, click "Forgot password?"
+    on the login page.
+  - Do not share your login credentials with anyone.
+
+
+----------------------------------------------------------------
+[PUBLIC] — 0.5  FORGOT PASSWORD
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  Use this page to request a password reset link if you have
+  forgotten your password.
+
+HOW TO USE IT
+  Step 1. On the login page, click "Forgot password?"
+  Step 2. Enter your institutional email address.
+  Step 3. Click "Send Reset Link".
+  Step 4. Check your email inbox for a message from
+          NEMSUonePortal.
+  Step 5. Click the link in the email to open the
+          Reset Password page.
+
+NOTES
+  - For security, the system shows the same message whether
+    or not the email address exists in the system.
+  - If you do not receive an email within a few minutes,
+    check your spam/junk folder.
+  - The reset link expires after a limited time.
+
+
+----------------------------------------------------------------
+[PUBLIC] — 0.6  RESETTING YOUR PASSWORD
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  After clicking the link in the password reset email, this
+  page lets you set a new password for your account.
+
+HOW TO USE IT
+  Step 1. Open the reset password link from your email.
+  Step 2. Enter your new password.
+          It must be at least 12 characters long.
+  Step 3. Re-enter the same password in the "Confirm
+          Password" field.
+  Step 4. Click "Reset Password".
+  Step 5. A success message will appear. Click "Sign In"
+          to log in with your new password.
+
+NOTES
+  - The new password must be at least 12 characters.
+  - If your reset link has expired, go back to the
+    "Forgot Password" page and request a new one.
+
+
+----------------------------------------------------------------
+[PUBLIC] — 0.7  EMAIL VERIFICATION
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  If your account email has not been verified yet, the system
+  will ask you to verify it. This page handles that process.
+
+HOW TO USE IT
+  Step 1. Check your email inbox for a verification email
+          from NEMSUonePortal.
+  Step 2. Click the verification link in the email.
+  Step 3. The page will confirm that your email is verified.
+          Click "Sign In" to log in.
+
+  If the link has expired:
+  Step 4. Enter your institutional email address on the
+          verification page.
+  Step 5. Click "Resend Verification Email".
+  Step 6. Check your inbox for the new verification email
+          and click the new link.
+
+NOTES
+  - Verification links expire. Use the resend option if yours
+    has expired.
+
+
+----------------------------------------------------------------
+[PUBLIC] — 0.8  PRE-ENROLLMENT APPLICATION (NEW STUDENTS)
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  New students (freshmen and transferees) who do not yet have
+  a portal account must submit a pre-enrollment application
+  first. This is done through an online wizard that opens
+  directly on the public landing page — no login needed.
+
+  After submitting the wizard, the Registrar reviews the
+  application. If approved, the student receives an email
+  with a link to create their account and can then proceed
+  with the formal online enrollment inside the portal.
+
+  Regular students and shiftees who already have accounts
+  do NOT need to go through this process — they log in
+  directly and submit their enrollment from their dashboard.
+
+BEFORE YOU START
+  Prepare the following before opening the wizard:
+  - A valid email address (you will receive an activation
+    email at this address if your application is approved).
+  - A Philippine mobile number (09XX format).
+  - PDF copies of your required documents (see Step 3).
+
+HOW TO USE IT
+
+  Opening the Enrollment Wizard
+  Step 1. Go to the portal's landing page.
+  Step 2. Click any of these buttons to open the wizard:
+          - "Enroll Now" (hero section)
+          - "Begin enrollment" (enrollment CTA banner)
+          - "Online enrollment" (footer)
+
+  The enrollment wizard will open as a popup with 5 steps
+  listed in the left panel.
+
+  STEP 1 — Select Student Type
+  Step 3. Read the four student type options and click the
+          one that describes you:
+          - Freshman: incoming first-year from Senior High
+          - Regular: continuing student from last semester
+          - Shiftee: changing programs within NEMSU Cantilan
+          - Transferee: coming from another institution
+  Step 4. Click "Continue".
+
+  STEP 2 — Personal Information
+  Step 5. Fill in all required fields:
+          - Last name, First name, Middle name, Suffix
+          - Date of birth
+          - Sex (Male / Female)
+          - Email address (use an address you check regularly)
+          - Contact number (must be a PH mobile: 09XX XXX XXXX)
+          - Program (select from the dropdown)
+          - Year level (1st, 2nd, 3rd, or 4th Year)
+  Step 6. Click "Continue".
+
+  STEP 3 — Requirements Checklist
+  Step 7. A list of required documents will appear based on
+          your student type. Check the box next to each
+          document you have ready.
+
+          Freshman requirements:
+          - SHS Form 138 / Report Card (Required)
+          - PSA Birth Certificate (Required)
+          - Good Moral Certificate (Required)
+          - SHS Diploma / Certificate of Completion (Required)
+          - 2x2 ID photos, 4 copies (Required)
+          - Medical Certificate (Required)
+          - Entrance Exam Result / Admission Slip (If required)
+          - Accomplished Application Form (Required)
+
+          Regular requirements:
+          - Previous Certificate of Registration / COR (Required)
+          - Student ID, current (Required)
+          - Clearance from previous semester (Required)
+          - Proof of payment or scholarship form (If applicable)
+
+          Shiftee requirements:
+          - Shifting Application Form (Required)
+          - Clearance from current department (Required)
+          - Dean's Endorsement Letter (Required)
+          - Transcript of Records — internal (Required)
+          - Acceptance from target department (Required)
+
+          Transferee requirements:
+          - Transcript of Records / TOR (Required)
+          - Honorable Dismissal (Required)
+          - Good Moral Certificate (Required)
+          - PSA Birth Certificate (Required)
+          - 2x2 ID photos, 4 copies (Required)
+          - Medical Certificate (Required)
+          - Entrance Exam Result (If required)
+          - Application / Admission Form (Required)
+
+  Step 8. To upload a document, click "Browse" next to the
+          requirement and select a PDF file from your device.
+          (Only PDF files are accepted.)
+  Step 9. Click "Continue".
+
+  STEP 4 — Subject Selection
+  Step 10. A list of available subjects will appear.
+           Click on a subject to select it.
+           The total units will update as you select.
+           Maximum is 24 units.
+  Step 11. When done selecting, click "Continue".
+
+  STEP 5 — Review & Confirm
+  Step 12. Review all your information: student type,
+           program, campus, academic year, and subjects.
+  Step 13. If anything is wrong, click "Back" to go back
+           and make corrections.
+  Step 14. Click "Submit enrollment" to send your
+           pre-enrollment application.
+
+  After Submitting
+  Step 15. A confirmation screen will appear.
+           Your REFERENCE NUMBER will be shown
+           (example: NEMSU-CAN-2026-00001).
+           Write this number down or take a screenshot.
+  Step 16. Bring your physical documents to the
+           Registrar's Office for verification.
+  Step 17. The Registrar will review your application.
+           Once approved, you will receive an email
+           with a link to activate your student account.
+  Step 18. Click the activation link in the email
+           and follow the steps to set your password.
+           (See section 0.3 — Account Activation.)
+  Step 19. After your account is created, log in and
+           go to "Enrollment" in your dashboard to
+           complete the formal enrollment process.
+
+  For Regular and Shiftee Students
+  Step 15. After reaching Step 5 and submitting, you will
+           see a message: "Almost there!"
+  Step 16. Click "Log in to my account" if you already
+           have a portal account.
+           Click "Create an account" if you need to
+           register first using your reference number.
+  Step 17. After logging in, go to "Enrollment" in the
+           sidebar to submit your enrollment request
+           for the current term.
+
+NOTES
+  - The pre-enrollment wizard is on the public landing page.
+    You do not need an account or password to fill it out.
+  - After submitting, you CANNOT edit your application online.
+    Contact the Registrar's Office if corrections are needed.
+  - The reference number is unique to your application.
+    Keep it safe — you will need it to create your account.
+  - Uploading documents online does NOT replace the physical
+    submission. Bring the original documents to the Registrar.
+  - Your pre-enrollment status (Pending, Approved, Rejected)
+    is managed by the Registrar. Check your email regularly.
+  - If your application is rejected, contact the Registrar
+    for guidance on next steps.
+
+
+----------------------------------------------------------------
+[ALL ROLES] — 0.9  COMPLETE ONLINE ENROLLMENT PROCESS
+----------------------------------------------------------------
+WHAT THIS SECTION IS FOR
+  This section describes the full enrollment workflow from
+  start to finish, showing what each role does and in what
+  order. Use this as a reference to understand how all the
+  parts of the enrollment process connect.
+
+  Roles involved:
+    - System Administrator (Admin)
+    - Student
+    - Registrar
+
+----------------------------------------------------------------
+PHASE 1 — ADMIN: Set Up the Academic Term
+----------------------------------------------------------------
+  Step 1. The Admin logs in and goes to
+          "Academic Terms" in the sidebar.
+  Step 2. Click "Add Term" (or "New Term").
+  Step 3. Fill in the academic year, semester (First,
+          Second, or Summer), start date, and end date.
+  Step 4. Check "Is Active" to make this the current term.
+  Step 5. Click "Save". The term is now created.
+  Step 6. After the term is ready, click "Toggle Enrollment"
+          next to the term to OPEN the enrollment window.
+          (Students cannot submit requests until this is on.)
+
+  NOTE: Only one term can be active at a time. Enrollment
+  must be explicitly opened — it does not open automatically.
+
+----------------------------------------------------------------
+PHASE 2 — STUDENT: Submit an Enrollment Request
+----------------------------------------------------------------
+  Step 7. The Student logs in and clicks "Enrollment"
+          in the sidebar.
+  Step 8. If enrollment is open, the Online Enrollment
+          Form appears. The form has 5 steps:
+
+    STEP 1 — Academic Term & Student Type
+      a. Select the academic term to enroll in.
+         (Only terms with open enrollment appear.)
+      b. Select your student type:
+           Freshman   — first time at this institution
+           Regular    — continuing from last semester
+           Shiftee    — changing programs within the school
+           Transferee — coming from another institution
+      c. Click "Next: Select Program".
+
+    STEP 2 — Department & Program
+      a. Select your department.
+      b. Select your program from the list that appears.
+      c. Click "Next: Year Level".
+
+    STEP 3 — Year Level
+      a. Select your current year level (1st–4th Year).
+      b. Click "Next: Select Courses".
+
+    STEP 4 — Select Courses
+      a. The subjects for your program, year level, and
+         semester will appear as a checklist.
+      b. Check the box next to each subject you want.
+         The total units will update automatically.
+      c. (Optional) To add back subjects from other year
+         levels, check "Include back courses from other
+         year levels" and select the subjects you need.
+      d. Click "Next: Review".
+
+    STEP 5 — Review & Submit
+      a. Review all your selections carefully:
+         Term, Student Type, Department, Program,
+         Year Level, selected subjects, and total units.
+      b. If anything is wrong, click "Back" to correct it.
+      c. Click "Submit Enrollment Request" to send your
+         request to the registrar.
+
+  Step 9. A success confirmation page will appear.
+          The registrar will be notified of your request.
+
+----------------------------------------------------------------
+PHASE 3 — REGISTRAR: Review the Enrollment Request
+----------------------------------------------------------------
+  Step 10. The Registrar logs in and clicks
+           "Enrollment Requests" in the sidebar.
+  Step 11. Locate the student's request in the list.
+           (Use the Status filter to show "Pending"
+           requests, or search by student name/ID.)
+  Step 12. Click on the request row to expand it and
+           review the student's selected subjects,
+           program, year level, and student type.
+  Step 13. Click the "Review" button.
+  Step 14. Choose a status:
+           - Approved: the enrollment is accepted.
+           - Rejected: the enrollment is denied.
+  Step 15. (Optional) Enter remarks to explain the
+           decision, especially if rejecting.
+  Step 16. Click "Submit Review".
+
+  If Approved:
+  Step 17. Click "Assign Block" on the approved request.
+  Step 18. Select the correct block section (e.g., Block A)
+           for the student's program and year level.
+  Step 19. Click "Assign". The student is now assigned
+           to a block.
+
+  NOTE: A student can only be in one block per term.
+  Block capacity is managed in "Block Management".
+
+----------------------------------------------------------------
+PHASE 4 — STUDENT: Receive the Decision
+----------------------------------------------------------------
+  Step 20. The student receives a notification about the
+           outcome (Approved or Rejected).
+  Step 21. The student opens "Enrollment" in the sidebar.
+           At the top of the page, their enrollment status
+           card shows:
+           - Approved (green): fully enrolled for the term.
+             The assigned block name is shown if applicable.
+           - Pending (yellow): still waiting for review.
+           - Rejected (red): request was denied. Any remarks
+             from the registrar are shown.
+  Step 22. If rejected, the student may correct the issue
+           and resubmit a new request once enrollment
+           is still open, or contact the registrar.
+
+NOTES
+  - A student can only submit one enrollment request
+    per academic term.
+  - If the enrollment window is closed before the student
+    submits, they will see "Enrollment is currently closed."
+    They should contact the registrar's office.
+  - The full enrollment history (all past terms) is
+    visible at the bottom of the student's Enrollment page.
+  - Grades are only recorded after the term ends and
+    faculty encode them — enrollment approval is not
+    the same as having grades.
+
+
+================================================================
+PART 1: STUDENT GUIDE
+================================================================
+This section is for students. After logging in, you will be
+taken to your student dashboard automatically.
+================================================================
+
+
+----------------------------------------------------------------
+[STUDENT] — 1.1  DASHBOARD
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  The dashboard is your home page after logging in. It gives
+  you a quick overview of your enrollment status, grades,
+  and document requests for the current term.
+
+HOW TO USE IT
+  Step 1. Log in to the portal. You will land here
+          automatically.
+  Step 2. Read the summary cards at the top of the page:
+          - Current Term: shows the active academic semester.
+          - Enrollment Status: shows if your enrollment
+            is Approved, Pending, or Rejected.
+          - Enrolled Subjects: number of subjects you
+            are enrolled in and total units.
+          - Grade Average: your average grade so far.
+          - Document Requests: how many requests you have
+            and how many are in progress.
+  Step 3. Look at the charts below the cards:
+          - The bar chart shows your grades for each subject
+            in your most recent term.
+          - The pie chart shows your document requests
+            grouped by status.
+  Step 4. Use the sidebar on the left to navigate to other
+          pages like Enrollment, Grades, Schedule, etc.
+  Step 5. To sign out, click your name in the top right
+          corner and select "Sign Out".
+
+NOTES
+  - The dashboard updates automatically each time you
+    open the page.
+  - If you see "—" in a card, it means data is not
+    available yet (e.g., no grades submitted yet).
+
+
+----------------------------------------------------------------
+[STUDENT] — 1.2  ONLINE ENROLLMENT
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page lets you submit an enrollment request for the
+  current semester. The process follows a 5-step form wizard.
+  Your request will be reviewed and approved by the registrar.
+
+HOW TO USE IT
+
+  Checking Your Current Enrollment Status
+  Step 1. Open "Enrollment" from the sidebar.
+  Step 2. If you are already enrolled for the current term,
+          your enrollment details and status will appear
+          at the top of the page (Approved, Pending, or
+          Rejected).
+
+  Submitting a New Enrollment Request
+  Step 3. If enrollment is open and you have not yet
+          enrolled for this term, the enrollment form
+          will appear. Click through the 5 steps:
+
+  STEP 1 — Academic Term & Student Type
+    a. Select the academic term you are enrolling for.
+       (Only open terms are shown.)
+    b. Select your student type:
+       - Freshman: first time enrolling at this institution.
+       - Regular: continuing from a previous semester.
+       - Shiftee: changing programs within the same school.
+       - Transferee: coming from another institution.
+    c. Click "Next: Select Program".
+
+  STEP 2 — Department & Program
+    a. Select your department from the list.
+    b. After selecting a department, select your program
+       from the programs that appear below.
+    c. Click "Next: Year Level".
+
+  STEP 3 — Year Level
+    a. Select your current year level (1st, 2nd, 3rd,
+       or 4th Year).
+    b. Click "Next: Select Courses".
+
+  STEP 4 — Select Courses
+    a. The courses available for your program, year level,
+       and semester will appear in a list.
+    b. Check the box next to each subject you want to
+       enroll in. The total units will update as you
+       select subjects.
+    c. (Optional) To add back subjects from other year
+       levels, check "Include back courses from other
+       year levels". Additional subjects will appear.
+       Select any you need.
+    d. Click "Next: Review".
+
+  STEP 5 — Review & Submit
+    a. Review all your selections: term, student type,
+       program, year level, subjects, and total units.
+    b. If anything is wrong, click "Back" to go back
+       and make changes.
+    c. When everything is correct, click
+       "Submit Enrollment Request".
+
+  Step 4. A success message will appear confirming your
+          request has been submitted.
+  Step 5. The registrar will review your request. You will
+          be notified of the outcome.
+
+  Viewing Your Enrollment History
+  Step 6. Scroll down below the enrollment form to see
+          your past enrollment requests, their statuses,
+          and enrolled subjects.
+
+NOTES
+  - If enrollment is closed, you will see a message saying
+    "Enrollment is currently closed." Check back later or
+    contact the registrar's office.
+  - You can only submit one enrollment per term.
+  - If your request is rejected, you may see remarks from
+    the registrar explaining why.
+  - Once your enrollment is approved, you cannot change
+    your subjects through this page.
+
+
+----------------------------------------------------------------
+[STUDENT] — 1.3  MY COURSES
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows all the subjects you are enrolled in for
+  your current approved enrollment. It also shows your full
+  enrollment history.
+
+HOW TO USE IT
+  Step 1. Click "My Courses" in the sidebar.
+  Step 2. At the top, you will see badges showing your
+          current term, program, year level, and student
+          type.
+  Step 3. The table below shows your enrolled subjects:
+          - Course Code: the subject's code (e.g., CS101)
+          - Course Title: full name of the subject
+          - Units: number of units for that subject
+          - Type: whether it is Lecture, Lab, PE, or NSTP
+  Step 4. The last row of the table shows your total units.
+  Step 5. Scroll down to see your Enrollment History,
+          which lists all your past enrollments with their
+          statuses, programs, and subject codes.
+
+NOTES
+  - This page only shows subjects from your most recent
+    approved enrollment.
+  - If you have no approved enrollment, the table will
+    be empty. Submit an enrollment request first.
+
+
+----------------------------------------------------------------
+[STUDENT] — 1.4  MY GRADES
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows your official grades for every subject
+  across all academic terms. Grades are grouped by semester.
+
+HOW TO USE IT
+  Step 1. Click "My Grades" in the sidebar.
+  Step 2. Your grades are displayed in sections, one per
+          academic term, with the most recent term shown
+          first.
+  Step 3. For each term, you will see:
+          - The term name (e.g., "2nd Semester 2024–2025")
+          - Your Grade Weighted Average (GWA) for that term
+  Step 4. The table for each term shows:
+          - Subject Code
+          - Subject Name
+          - Units
+          - Grade (numeric, e.g., 1.00 to 5.00, or special
+            codes like INC for Incomplete or DRP for Dropped)
+          - Remarks
+  Step 5. Scroll down to see older terms.
+
+NOTES
+  - Grades only appear after your faculty has encoded and
+    submitted them to the registrar.
+  - If a grade shows "—", it has not been submitted yet.
+  - A lower numeric grade is better (1.00 is the highest).
+  - Green grades mean passing; red grades may indicate
+    a failing mark (5.00) or other concern.
+
+
+----------------------------------------------------------------
+[STUDENT] — 1.5  CLASS SCHEDULE
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows your weekly class schedule for the selected
+  term, organized by day of the week.
+
+HOW TO USE IT
+  Step 1. Click "Class Schedule" in the sidebar.
+  Step 2. Use the term dropdown at the top to select the
+          academic term you want to view.
+  Step 3. If a schedule has been posted by the registrar,
+          it will appear organized by day (Monday to
+          Saturday).
+  Step 4. For each time slot, you will see:
+          - Subject Code
+          - Start time and end time (in 12-hour format)
+          - Faculty name
+          - Room and building
+  Step 5. If no schedule has been posted yet, the page
+          will instead show a table of your enrolled
+          subjects with faculty names and units.
+
+NOTES
+  - Class schedules are managed by the registrar.
+    If your schedule is missing or incorrect, contact
+    the registrar's office.
+  - The schedule only shows subjects from your approved
+    enrollment for the selected term.
+
+
+----------------------------------------------------------------
+[STUDENT] — 1.6  DOCUMENT REQUESTS
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page lets you request official school documents, such
+  as a Certificate of Enrollment, Transcript of Records, or
+  Certificate of Grades. You can also track the status of
+  your requests here.
+
+HOW TO USE IT
+
+  Submitting a New Document Request
+  Step 1. Click "Document Requests" in the sidebar.
+  Step 2. Click the "New Document Request" button.
+  Step 3. A form will appear. Fill in the following:
+          - Document Type: choose from
+            * Certificate of Enrollment
+            * Transcript of Records
+            * Certificate of Grades
+          - Purpose: briefly explain why you need it
+            (e.g., "For scholarship application").
+          - Number of Copies: enter how many copies you
+            need (default is 1).
+  Step 4. Click "Submit Request".
+  Step 5. A success message will confirm your request
+          has been received.
+
+  Tracking Your Requests
+  Step 6. All your requests appear in a list on this page.
+  Step 7. Each request shows a status badge:
+          - Submitted: your request has been received.
+          - Processing: the registrar is working on it.
+          - Ready: your document is ready for pick-up.
+          - Released: the document has been released to you.
+          - Rejected: the request was not approved.
+  Step 8. A progress tracker under each request shows
+          which stage it is currently at.
+  Step 9. Click on a request to expand it and see
+          more details.
+
+NOTES
+  - Physical documents are released at the registrar's
+    office. You must go in person to pick them up.
+  - Processing times may vary. Contact the registrar
+    if your request has been in "Processing" for a
+    long time.
+  - Rejected requests will show a reason if provided
+    by the registrar.
+
+
+----------------------------------------------------------------
+[STUDENT] — 1.7  ANNOUNCEMENTS
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows all official announcements posted by the
+  school. You can read school-wide notices and updates here.
+
+HOW TO USE IT
+  Step 1. Click "Announcements" in the sidebar.
+  Step 2. You will see a list of announcements, with the
+          most recent (and pinned) ones at the top.
+  Step 3. Each announcement card shows:
+          - Title
+          - Posted by (faculty/admin name)
+          - Date posted
+          - Audience badge (e.g., "All", "Students")
+          - A "NEW" badge if recently posted
+          - A pin icon if the announcement is pinned
+  Step 4. Click on an announcement title or the expand
+          button (chevron) to read the full message.
+  Step 5. Use the search bar at the top to find
+          announcements by keyword.
+  Step 6. Use the audience filter to show only
+          announcements meant for specific groups.
+
+NOTES
+  - Students can only view announcements, not create them.
+  - Pinned announcements stay at the top of the list.
+
+
+----------------------------------------------------------------
+[STUDENT] — 1.8  MY PROFILE
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows your account and academic information.
+  You can update your program, department, and year level here.
+
+HOW TO USE IT
+
+  Viewing Your Account Information (Read-Only)
+  Step 1. Click "My Profile" in the sidebar.
+  Step 2. The "Account Information" section shows:
+          - Full Name
+          - Student ID
+          - Institutional Email
+          - Role (Student)
+          - Email Verification Status
+
+  Updating Your Academic Information
+  Step 3. In the "Academic Information" section, you will
+          see your current department, program, year level,
+          and block (if assigned).
+  Step 4. To make changes, use the dropdown menus to
+          select a different Department, Program, or
+          Year Level.
+  Step 5. Click "Save Changes".
+  Step 6. A success message will confirm your update.
+
+NOTES
+  - Your name, student ID, and email cannot be changed
+    here. Contact the registrar if there is an error
+    in your name or ID.
+  - Changing your profile information here does not
+    automatically update your enrollment. Submit a new
+    enrollment request for any changes to take effect.
+
+
+================================================================
+PART 2: FACULTY GUIDE
+================================================================
+This section is for faculty members. After logging in, you
+will be taken to your faculty dashboard automatically.
+================================================================
+
+
+----------------------------------------------------------------
+[FACULTY] — 2.1  DASHBOARD
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  The dashboard is your home page. It shows a summary of
+  your current teaching load, number of subjects and units
+  this term, and your teaching history.
+
+HOW TO USE IT
+  Step 1. Log in to the portal. You will land on your
+          dashboard automatically.
+  Step 2. Read the summary cards at the top:
+          - Current Term: the active semester.
+          - Subjects This Term: number of subjects you
+            are teaching this semester.
+          - Units This Term: total units of your load.
+          - All-Time Subjects: total subjects across all
+            terms you have taught.
+  Step 3. Look at the charts below:
+          - The bar chart shows each subject you teach
+            this term with the number of units.
+          - The history chart shows your subject count
+            and units across past terms.
+  Step 4. Scroll down to see a list of all your current
+          term assignments with subject codes and names.
+  Step 5. Use the sidebar to go to Grade Encoding,
+          Schedule, Announcements, or your Profile.
+
+NOTES
+  - If no teaching assignments appear, contact the
+    registrar's office or system administrator.
+
+
+----------------------------------------------------------------
+[FACULTY] — 2.2  GRADE ENCODING
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This is where you enter and submit grades for the students
+  in your classes. You enter midterm and final grades for each
+  student, and the system calculates the final grade.
+
+HOW TO USE IT
+
+  Selecting a Class
+  Step 1. Click "Grade Encoding" in the sidebar.
+  Step 2. Click the dropdown that says "Select assignment"
+          and choose the class you want to encode grades for.
+          The dropdown shows: Term — Subject Code: Name (Units)
+  Step 3. The list of enrolled students for that class
+          will appear in a table.
+
+  Entering Grades
+  Step 4. For each student, you will see two input boxes:
+          - Midterm: enter the midterm grade (1.00 to 5.00)
+          - Final: enter the final grade (1.00 to 5.00)
+  Step 5. As you type both grades, the "Final Grade"
+          column will automatically calculate and show
+          the average of midterm and final.
+  Step 6. (Optional) Enter a remark in the "Remarks"
+          column (e.g., "Passed", "Incomplete").
+  Step 7. Click "Save" at the end of each student's row
+          to save that student's grades individually.
+  Step 8. Repeat for all students in the list.
+
+  Submitting All Grades
+  Step 9. Once you have entered and saved grades for all
+          students, click the "Submit All Grades" button
+          at the top right of the student table.
+  Step 10. If some students have no grades entered, the
+           system will show a warning and a
+           "Submit Anyway" button.
+           - Click "Submit Anyway" only if you intend
+             to submit grades for the students that
+             have grades and skip the rest.
+           - Otherwise, go back and enter the missing
+             grades first.
+  Step 11. A green success message will confirm that
+           grades have been submitted.
+
+NOTES
+  - Grades use a 1.00 to 5.00 scale. 1.00 is the highest
+    and 5.00 is failing.
+  - Once a student's grade row shows "Submitted", it
+    cannot be edited. Contact the registrar if a
+    correction is needed.
+  - You must click "Save" for each student row before
+    clicking "Submit All Grades". Unsaved changes are
+    not included in the submission.
+  - The "Final Grade" column is calculated automatically
+    as the average of midterm and final grades.
+
+
+----------------------------------------------------------------
+[FACULTY] — 2.3  TEACHING SCHEDULE
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows your current teaching assignments and class
+  schedule. You can view your assigned subjects and see their
+  time slots.
+
+HOW TO USE IT
+
+  Viewing Your Teaching Load
+  Step 1. Click "Teaching Schedule" (or "Schedule") in
+          the sidebar.
+  Step 2. Use the term selector dropdown to choose the
+          academic term you want to view.
+  Step 3. Your teaching assignments for the selected term
+          will appear, showing:
+          - Subject code and name
+          - Year level and semester
+          - Block assignment
+          - Number of units
+
+  Viewing Class Time Slots
+  Step 4. For each assignment, the scheduled class times
+          are listed below it, showing:
+          - Day of the week
+          - Start time and end time
+          - Room and building
+
+  Adding a Class Time Slot
+  Step 5. Click "Add Time Slot" or "Add Schedule" next
+          to an assignment.
+  Step 6. A form will appear. Fill in:
+          - Day: select the day of the week
+          - Start Time: enter the class start time
+          - End Time: enter the class end time
+          - Room: enter the room number
+          - Building: enter the building name
+  Step 7. Click "Save" to add the slot.
+
+  Editing or Deleting a Time Slot
+  Step 8. Next to each time slot, click the "Edit"
+          button to change the time or room.
+          Make your changes and click "Save".
+  Step 9. Click the "Delete" button to remove a
+          time slot. Confirm when prompted.
+
+NOTES
+  - Schedule slots may also be managed by the registrar.
+    Coordinate with the registrar's office for any
+    major changes.
+
+
+----------------------------------------------------------------
+[FACULTY] — 2.4  ANNOUNCEMENTS
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  Faculty can view all announcements and post their own
+  announcements to students or all portal users.
+
+HOW TO USE IT
+
+  Viewing Announcements
+  Step 1. Click "Announcements" in the sidebar.
+  Step 2. Browse the list of announcements. Click the
+          chevron or title to expand and read the full
+          text of any announcement.
+
+  Posting a New Announcement
+  Step 3. Click the "Post Announcement" button.
+  Step 4. A form will appear. Fill in:
+          - Title: the announcement headline
+            (maximum 200 characters).
+          - Body: the full text of the announcement.
+          - Audience: choose who can see it:
+            * All: visible to everyone
+            * Students: visible to students only
+            * Faculty: visible to faculty only
+            * Public: visible on the landing page
+          - Pin to top: check this if you want the
+            announcement to stay at the top of the list.
+  Step 5. Click "Post" to publish the announcement.
+  Step 6. A success message will confirm it was posted.
+
+  Editing Your Announcement
+  Step 7. Find your announcement in the list.
+  Step 8. Click the "Edit" button on your announcement.
+  Step 9. Change the title, body, audience, or pin
+          status as needed.
+  Step 10. Click "Save".
+
+  Deleting Your Announcement
+  Step 11. Click the "Delete" button on your announcement.
+  Step 12. Confirm the deletion when prompted.
+
+NOTES
+  - You can only edit or delete announcements that you
+    posted. You cannot modify announcements made by others.
+  - Pinned announcements appear at the top of the list
+    for everyone.
+
+
+----------------------------------------------------------------
+[FACULTY] — 2.5  MY PROFILE
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows your account information and lets you
+  update your department.
+
+HOW TO USE IT
+
+  Viewing Your Account Information (Read-Only)
+  Step 1. Click "My Profile" in the sidebar.
+  Step 2. The "Account Information" section shows:
+          - Full Name
+          - Faculty ID
+          - Institutional Email
+          - Role (Faculty)
+          - Email Verification Status
+
+  Updating Your Department
+  Step 3. In the "Academic Information" section, find
+          the Department dropdown.
+  Step 4. Select the correct department from the list.
+  Step 5. Click "Save Changes".
+  Step 6. A success message will confirm the update.
+
+NOTES
+  - Your name, faculty ID, and email cannot be changed
+    here. Contact the system administrator if there is
+    an error in your account information.
+
+
+================================================================
+PART 3: REGISTRAR GUIDE
+================================================================
+This section is for the Campus Registrar and registrar staff.
+After logging in, you will be taken to your registrar
+dashboard automatically.
+================================================================
+
+
+----------------------------------------------------------------
+[REGISTRAR] — 3.1  DASHBOARD
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  The dashboard gives you a quick overview of enrollment
+  statistics, grade submission progress, and document request
+  status for the current term.
+
+HOW TO USE IT
+  Step 1. Log in. You will land on your dashboard.
+  Step 2. Read the summary cards at the top:
+          - Total Enrollments: all requests this term.
+          - Approved: number of approved enrollments.
+          - Pending Review: enrollments awaiting action.
+          - Grade Assignments: total and submitted.
+          - Document Requests: total and ready for release.
+  Step 3. Look at the charts:
+          - Enrollment Status donut chart: breakdown of
+            approved, pending, and rejected requests.
+          - Document Request Pipeline: bar chart showing
+            documents by status stage.
+          - Enrollment by Program: horizontal bar chart
+            showing approved enrollments per program.
+          - Grade Submission donut: how many assignments
+            have been submitted vs. pending.
+          - Block Capacity: how full each block is.
+  Step 4. Use the sidebar to navigate to other pages.
+
+NOTES
+  - The dashboard data reflects the current active term.
+  - The timestamp at the bottom shows when data was
+    last refreshed.
+
+
+----------------------------------------------------------------
+[REGISTRAR] — 3.2  ENROLLMENT REQUESTS
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page manages two related processes in two separate tabs:
+  1. Pre-Enrollment Applications — applications submitted by
+     new students (freshmen/transferees) through the landing
+     page, before they have a portal account.
+  2. Enrollment Requests — requests submitted by existing
+     students through their portal accounts.
+
+  This page also has a third tab for Landing Page Settings.
+
+HOW TO USE IT
+
+  --- Tab 1: Pre-Enrollment Applications ---
+
+  This is where you review new applicants who filled out
+  the pre-enrollment wizard on the landing page.
+
+  Step 1. Click "Enrollment Requests" in the sidebar.
+  Step 2. Click the "Pre-Enrollment Applications" tab.
+  Step 3. Use the Status filter to show:
+          - Pending: not yet reviewed
+          - Approved: application accepted
+          - Rejected: application denied
+  Step 4. The list shows each applicant's name, student type,
+          program, year level, submission date, and status.
+
+  Reviewing a Pre-Enrollment Application
+  Step 5. Click on an applicant's row to expand it and see
+          their full personal information and documents.
+  Step 6. Review the uploaded documents if any were attached.
+  Step 7. Click "Approve" or "Reject".
+  Step 8. (Optional) Enter remarks explaining your decision.
+  Step 9. Click "Submit Review".
+
+  What happens after approval:
+  - For Freshman and Transferee applicants: the system
+    automatically sends an activation email to the
+    student's email address. The student clicks the link
+    to create their account and can then proceed with
+    the formal online enrollment.
+  - The application moves to "Approved" status.
+
+  What happens after rejection:
+  - The student is not sent an activation email.
+  - The application moves to "Rejected" status.
+  - Contact the student separately to inform them of
+    the next steps.
+
+  --- Tab 2: Enrollment Requests ---
+
+  This tab is for students who already have portal accounts
+  and submitted enrollment requests for the current term.
+
+  Viewing Enrollment Requests
+  Step 10. Click the "Enrollment Requests" tab.
+  Step 11. The list shows all enrollment requests.
+           Each row shows the student's name, ID, program,
+           year level, number of subjects, and total units.
+
+  Filtering and Searching
+  Step 12. Use the Status filter to show only Pending,
+           Approved, or Rejected requests.
+  Step 13. Use the Term filter to switch between terms.
+  Step 14. Use the Search bar to find a specific student
+           by name or student ID.
+
+  Reviewing a Request
+  Step 15. Click on a request row to expand it and see
+           the full details, including the list of
+           subjects the student selected.
+  Step 16. Click the "Review" button on the expanded row.
+  Step 17. A form will appear:
+           - Status: choose "Approved" or "Rejected".
+           - Remarks: (optional) write a note to explain
+             your decision, especially for rejections.
+  Step 18. Click "Submit Review".
+  Step 19. The student will be notified of the decision.
+
+  Assigning a Block
+  Step 20. After approving an enrollment, you can assign
+           the student to a block section.
+  Step 21. Click the "Assign Block" button on the
+           approved request.
+  Step 22. A window will appear showing available blocks
+           for the student's program and year level.
+           Each block shows its current enrollment count
+           and capacity.
+  Step 23. Select the correct block from the dropdown.
+  Step 24. Click "Assign".
+
+NOTES
+  - A student can only be assigned to one block per term.
+  - A block is a specific section (e.g., Block A, Block B)
+    within a program and year level.
+  - Approving an enrollment locks the student's subjects
+    for that term.
+  - If a student's enrollment request is rejected, they may
+    resubmit a corrected request if enrollment is still open.
+  - Pre-enrollment applications that are approved for
+    freshmen/transferees automatically trigger the account
+    activation email — no manual action needed.
+  - If a Pending pre-enrollment application notification
+    appears in the Enrollment Requests tab, switch to the
+    Pre-Enrollment Applications tab to review it there.
+
+
+----------------------------------------------------------------
+[REGISTRAR] — 3.3  LIST OF STUDENTS (GRADES)
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows all students registered in the system. You
+  can search and filter students, then click on a student to
+  view their grade history.
+
+HOW TO USE IT
+  Step 1. Click "List of Students" (or "Grades") in the
+          sidebar.
+  Step 2. The table shows all students with their name,
+          student ID, program, year level, and email.
+  Step 3. To find a student, type their name or ID in
+          the Search bar.
+  Step 4. To narrow the list, use the Program filter
+          or Year Level filter.
+  Step 5. Click anywhere on a student's row to open
+          that student's grade history page.
+  Step 6. Use the pagination controls at the bottom
+          to move between pages (20 students per page).
+
+NOTES
+  - This page does not allow editing grades.
+    Grades are entered by faculty in the Grade Encoding
+    page.
+
+
+----------------------------------------------------------------
+[REGISTRAR] — 3.4  STUDENT GRADE HISTORY
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows the complete official grade history of a
+  specific student, organized by year level and semester.
+
+HOW TO USE IT
+  Step 1. Get here by clicking on a student from the
+          List of Students page.
+  Step 2. At the top, you will see the student's:
+          - Full Name and Student ID
+          - Program
+          - Overall GPA (Grade Point Average)
+          - Total units completed
+  Step 3. Below the summary, grades are grouped by
+          year level (1st Year, 2nd Year, etc.).
+  Step 4. Within each year level, grades are organized
+          by semester.
+  Step 5. Each semester table shows:
+          - Subject Code and Name
+          - Units
+          - Grade (color-coded: green = passing)
+          - Status (Passed, Failed, INC, Dropped)
+          - Remarks
+  Step 6. The year's GPA is shown at the end of each
+          year level section.
+  Step 7. Click "Back" to return to the student list.
+
+NOTES
+  - Only submitted grades from faculty appear here.
+  - Grades shown in red may indicate a failing mark or
+    a grade that needs attention.
+
+
+----------------------------------------------------------------
+[REGISTRAR] — 3.5  FACULTY DIRECTORY
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows all faculty members and their teaching
+  assignments. Use it to find faculty information and review
+  teaching loads.
+
+HOW TO USE IT
+  Step 1. Click "Faculty" in the sidebar.
+  Step 2. The list shows all faculty members with their
+          name, faculty ID, email, and department.
+  Step 3. To find a specific faculty, type their name,
+          ID, or email in the Search bar.
+  Step 4. To filter by department, use the Department
+          filter dropdown.
+  Step 5. Click on a faculty member's row to view their
+          detailed teaching assignment information.
+  Step 6. The detail view shows all their assigned
+          subjects, grouped by term, with subject codes,
+          names, year levels, and units.
+
+NOTES
+  - Faculty information is managed by the system
+    administrator (User Management).
+  - Teaching assignments are set in Academic Data
+    or Admin Faculty Load.
+
+
+----------------------------------------------------------------
+[REGISTRAR] — 3.6  BLOCK MANAGEMENT
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows all blocks (sections) for each program and
+  year level. You can see how many students are in each block,
+  view the enrolled students, and request a capacity increase.
+
+HOW TO USE IT
+
+  Viewing Blocks
+  Step 1. Click "Block Management" in the sidebar.
+  Step 2. Use the Academic Term dropdown to select the
+          term you want to view.
+  Step 3. Blocks are shown in a table, grouped by program.
+          Each row shows:
+          - Year Level
+          - Block Name (e.g., Block A)
+          - Enrollment fill bar and count (e.g., 3/30)
+          - Percentage full
+          - Available slots
+          - Status (Open or Full)
+  Step 4. The program header shows the total number of
+          blocks, total enrolled, and how many are full.
+
+  Viewing Students in a Block
+  Step 5. On any block row, click "View Students".
+  Step 6. A panel will appear showing the list of students
+          enrolled in that block, with their student ID,
+          name, and year level.
+  Step 7. Click "Close" to dismiss the panel.
+
+  Requesting a Block Expansion
+  Step 8. If a block is near capacity and needs more slots,
+          click "+ Expand" on that block's row.
+  Step 9. A form will appear showing the current capacity
+          and enrolled count.
+  Step 10. Enter the New Capacity (must be higher than
+           the current capacity).
+  Step 11. Enter a Reason explaining why the expansion
+           is needed.
+  Step 12. Click "Submit Request".
+  Step 13. The system administrator will review your
+           request and approve or reject it.
+
+  Viewing Your Expansion Requests
+  Step 14. Scroll down to see the "My Expansion Requests"
+           table showing all the expansion requests you
+           have submitted with their current status
+           (Pending, Approved, or Rejected).
+
+NOTES
+  - Blocks are created automatically when students are
+    approved and assigned by the registrar.
+  - If no blocks appear, there may be no approved
+    enrollments for that term yet.
+
+
+----------------------------------------------------------------
+[REGISTRAR] — 3.7  DOCUMENT REQUESTS
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows all document requests submitted by students.
+  You can update the status of each request as you process it.
+
+HOW TO USE IT
+
+  Viewing Document Requests
+  Step 1. Click "Document Requests" in the sidebar.
+  Step 2. The list shows all document requests with:
+          - Student name and ID
+          - Document type
+          - Number of copies
+          - Purpose
+          - Current status badge
+          - Date submitted
+  Step 3. Use the Status filter to view requests by
+          stage (Submitted, Processing, Ready, Released,
+          or Rejected).
+  Step 4. Use the Document Type filter to narrow the
+          list by type.
+  Step 5. Use the Search bar to find a specific student.
+
+  Updating a Request's Status
+  Step 6. Click on a request row to expand it.
+  Step 7. In the expanded view, you will see a status
+          update form:
+          - New Status: choose the next stage:
+            * Processing: you have started working on it.
+            * Ready: the document is ready for pick-up.
+            * Released: the student has received it.
+            * Rejected: the request cannot be fulfilled.
+          - Admin Remarks: write a note if needed (e.g.,
+            reason for rejection or pick-up instructions).
+  Step 8. Click "Update" to save the new status.
+  Step 9. The student will be able to see the updated
+          status on their Document Requests page.
+  Step 10. Use the pagination controls to navigate
+           through multiple pages of requests.
+
+NOTES
+  - Move requests through statuses in order:
+    Submitted → Processing → Ready → Released.
+  - Provide clear remarks when rejecting a request so
+    the student knows what to do next.
+  - Physical documents are still handled and released
+    by the registrar's office in person.
+
+
+----------------------------------------------------------------
+[REGISTRAR] — 3.8  CLASS SCHEDULES
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page lets you view, add, and manage class schedule
+  time slots for teaching assignments across all faculty.
+
+HOW TO USE IT
+
+  Viewing Schedules
+  Step 1. Click "Class Schedules" in the sidebar.
+  Step 2. Use the Term selector to choose the academic
+          term.
+  Step 3. All schedule entries are shown in a table with:
+          - Subject code and name
+          - Faculty name
+          - Year level
+          - Day and time
+          - Room and building
+
+  Adding a Schedule Slot
+  Step 4. Click "Add Schedule Slot" or "Add".
+  Step 5. Fill in the form:
+          - Teaching Assignment: select the faculty and
+            subject from the dropdown.
+          - Day: select the day of the week.
+          - Start Time: enter when the class begins.
+          - End Time: enter when the class ends.
+          - Room: enter the room number or name.
+          - Building: enter the building name.
+  Step 6. Click "Save" to add the slot.
+
+  Editing a Schedule Slot
+  Step 7. Find the slot in the list and click "Edit".
+  Step 8. Update the day, time, room, or building.
+  Step 9. Click "Save".
+
+  Deleting a Schedule Slot
+  Step 10. Click "Delete" next to the slot you want
+           to remove. Confirm when prompted.
+
+NOTES
+  - Students and faculty can view schedules once they
+    are entered here.
+  - Avoid scheduling the same room at overlapping times.
+
+
+----------------------------------------------------------------
+[REGISTRAR] — 3.9  ANNOUNCEMENTS
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  The registrar can view, post, edit, and delete official
+  announcements for students, faculty, or all users.
+
+HOW TO USE IT
+  (Follow the same steps as Faculty — Section 2.4.)
+  Registrar staff have the same announcement capabilities
+  as faculty.
+
+NOTES
+  - Registrar announcements are typically school-wide or
+    targeted at students (e.g., enrollment reminders,
+    schedule updates).
+
+
+================================================================
+PART 4: SYSTEM ADMINISTRATOR GUIDE
+================================================================
+This section is for the System Administrator. The admin has
+full access to all system functions, including user accounts,
+academic data, and system configuration.
+================================================================
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.1  DASHBOARD
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  The admin dashboard gives a complete system-wide overview:
+  user counts, enrollment data, grade submission progress,
+  document requests, and system metrics — all in one view.
+
+HOW TO USE IT
+  Step 1. Log in. You will land on your admin dashboard.
+  Step 2. Read the summary cards at the top. These include:
+          - Total registered users (students, faculty,
+            registrar, admin)
+          - Active and inactive accounts
+          - Verified and unverified accounts
+          - Pending and approved enrollments
+          - Grade submission counts
+          - Document request counts
+  Step 3. Scroll down to see charts:
+          - User Distribution by Role (radial chart)
+          - Enrollment Status breakdown (pie chart)
+          - Document Request Pipeline (bar chart)
+          - Account Health (progress bars for active,
+            verified, and locked accounts)
+          - Enrollment by Program (treemap)
+  Step 4. Use the sidebar to navigate to all admin pages.
+
+NOTES
+  - Dashboard data is fetched fresh each time you open
+    the page.
+  - The timestamp at the bottom shows when the data
+    was last generated.
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.2  USER MANAGEMENT
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page lets you view, search, filter, and manage all
+  user accounts in the system. You can change roles, activate
+  or deactivate accounts, and unlock locked accounts.
+
+HOW TO USE IT
+
+  Browsing Users
+  Step 1. Click "User Management" in the sidebar.
+  Step 2. The table shows all registered users with their
+          name, role, email, active status, and
+          verification status.
+
+  Filtering and Searching
+  Step 3. Use the Role filter to show only Students,
+          Faculty, Registrar, or Admin users.
+  Step 4. Use the Active Status filter to show
+          Active or Inactive accounts.
+  Step 5. Use the Verified Status filter to show
+          Verified or Unverified accounts.
+  Step 6. Type in the Search bar to find a user by
+          name, email, or ID.
+  Step 7. Use the pagination controls to navigate between
+          pages (20 users per page).
+
+  Editing a User Account
+  Step 8. Click on a user's row to expand their details.
+  Step 9. You can change:
+          - Role: select a new role from the dropdown
+            (student, faculty, registrar, admin).
+          - Active Status: toggle the account on or off.
+          - Unlock Account: check this box if the account
+            has been locked due to too many failed logins.
+  Step 10. Click "Save" to apply the changes.
+
+NOTES
+  - Deactivating an account prevents the user from
+    logging in without deleting their data.
+  - Changing a user's role takes effect immediately.
+    The user will be redirected to a new dashboard
+    the next time they log in.
+  - Only use the unlock function when you are sure
+    the account belongs to a legitimate user.
+  - Do not change your own role or deactivate your own
+    account through this page.
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.3  ACADEMIC PROGRAMS & CURRICULUM
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page lets you manage academic programs and their
+  subjects (curriculum). You can add subjects manually or
+  upload them in bulk using a CSV file.
+
+HOW TO USE IT
+
+  Viewing Programs
+  Step 1. Click "Academic Programs" (or "Programs") in
+          the sidebar.
+  Step 2. The Programs tab shows all academic programs
+          with their code and full name.
+
+  Adding a New Subject Manually
+  Step 3. Click on the "Subjects" tab.
+  Step 4. Fill in the "Add Subject" form on the page:
+          - Program: select the program this subject
+            belongs to.
+          - Year Level: select 1st, 2nd, 3rd, or 4th Year.
+          - Semester: select First, Second, or Summer.
+          - Subject Code: enter the subject code
+            (e.g., CS101).
+          - Subject Name: enter the full subject name.
+          - Units: enter the number of units (0.5–12).
+          - Subject Type: choose Major or Minor.
+          - Prerequisite: (optional) select a prerequisite
+            subject from the dropdown.
+          - Description: (optional) brief description.
+  Step 5. Click "Add" to save the subject.
+
+  Uploading Subjects in Bulk (CSV)
+  Step 6. Click "Download CSV Template" to get the
+          correct format for bulk upload.
+  Step 7. Open the template in a spreadsheet program
+          (Excel, Google Sheets) and fill in all the
+          subject data.
+  Step 8. Save the file as CSV format.
+  Step 9. Click "Upload CSV" or drag and drop your file
+          into the upload area.
+  Step 10. The system will process the file and show
+           a success or error message.
+           - If errors are found, review the file and
+             fix the issues before re-uploading.
+
+  Editing a Subject
+  Step 11. Find the subject in the subjects list.
+  Step 12. Click the "Edit" button next to it.
+  Step 13. Update the fields as needed.
+  Step 14. Click "Save".
+
+  Deleting a Subject
+  Step 15. Click the "Delete" button next to the subject.
+  Step 16. Confirm the deletion when prompted.
+
+NOTES
+  - Deleting a subject may affect existing grade records
+    and enrollments that reference it. Be careful.
+  - The CSV file must follow the exact template format.
+    Files larger than 10 MB cannot be uploaded.
+  - Prerequisites must already exist in the system
+    before you can assign them.
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.4  ACADEMIC TERMS
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page lets you create and manage academic terms
+  (semesters). You control which term is active and whether
+  enrollment is open or closed.
+
+HOW TO USE IT
+
+  Viewing Terms
+  Step 1. Click "Academic Terms" (or "Terms") in the
+          sidebar.
+  Step 2. The list shows all academic terms with their
+          year, semester, dates, active status, and
+          enrollment open status.
+
+  Adding a New Term
+  Step 3. Click "Add Term" or "New Term".
+  Step 4. Fill in the form:
+          - Academic Year: enter the year (e.g., 2025).
+          - Semester: select First, Second, or Summer.
+          - Start Date: the term start date.
+          - End Date: the term end date.
+          - Is Active: check this to mark this as the
+            current active term (only one can be active).
+          - Enrollment Open: check this to allow students
+            to submit enrollment requests.
+  Step 5. Click "Save".
+
+  Setting a Term as Active
+  Step 6. Find the term in the list.
+  Step 7. Click the "Set Active" button next to it.
+  Step 8. Only one term can be active at a time.
+          The previous active term will be deactivated.
+
+  Opening or Closing Enrollment
+  Step 9. Click the "Toggle Enrollment" button next to
+          a term to open or close its enrollment window.
+  Step 10. When enrollment is open, students can submit
+           enrollment requests for that term.
+
+  Editing a Term
+  Step 11. Click "Edit" next to the term.
+  Step 12. Update the fields as needed.
+  Step 13. Click "Save".
+
+  Deleting a Term
+  Step 14. Click "Delete" next to the term.
+  Step 15. Confirm the deletion.
+
+NOTES
+  - Only one term can be active at a time.
+  - Closing enrollment prevents new enrollment requests
+    from being submitted, but existing requests are
+    not affected.
+  - Do not delete a term that has existing enrollments
+    or grades linked to it.
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.5  FACULTY LOAD ASSIGNMENT
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page lets you assign faculty members to subjects for a
+  specific term. Faculty need to be assigned to a subject
+  before they can encode grades for it.
+
+HOW TO USE IT
+
+  Viewing Assignments
+  Step 1. Click "Faculty Load" in the sidebar.
+  Step 2. Use the Term selector to choose the term.
+  Step 3. The page shows:
+          - Unassigned Subjects: subjects with no
+            faculty assigned yet.
+          - Assigned Subjects: subjects already
+            linked to a faculty member.
+
+  Assigning Faculty to a Subject
+  Step 4. In the "Unassigned Subjects" section, find
+          the subject you want to assign.
+  Step 5. Use the Faculty dropdown next to that subject
+          to select a faculty member.
+  Step 6. Click "Assign".
+  Step 7. The subject will move from the "Unassigned"
+          section to the "Assigned" section.
+
+  Removing an Assignment
+  Step 8. In the "Assigned Subjects" section, find
+          the assignment you want to remove.
+  Step 9. Click "Remove" or "Delete" next to it.
+  Step 10. Confirm the removal.
+
+  Viewing a Faculty Member's Full Load
+  Step 11. Click on a faculty name in the Assigned
+           section to open their load detail panel.
+  Step 12. The panel shows all their assignments
+           across terms with subject info.
+
+NOTES
+  - Faculty cannot encode grades for a subject unless
+    they are assigned to it first.
+  - Each subject should be assigned to one faculty
+    member per block per term.
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.6  BLOCK MANAGEMENT
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  The admin has full control over blocks and handles expansion
+  request approvals sent by the registrar.
+
+HOW TO USE IT
+
+  Viewing Blocks
+  Step 1. Click "Block Management" in the sidebar.
+  Step 2. Select the Academic Term.
+  Step 3. The blocks tab shows all blocks grouped by
+          program with capacity fill bars, enrolled
+          counts, and status (Open or Full).
+
+  Viewing Students in a Block
+  Step 4. Click the "View Students" button on any block
+          row to see the list of enrolled students.
+
+  Reviewing Block Expansion Requests
+  Step 5. Click the "Expansion Requests" tab.
+  Step 6. You will see all expansion requests submitted
+          by the registrar, showing:
+          - Block name and program
+          - Current capacity
+          - Requested capacity
+          - Reason given by the registrar
+          - Current status
+  Step 7. To review a request, click on it to expand it.
+  Step 8. Fill in the review form:
+          - Decision: select "Approved" or "Rejected".
+          - Admin Note: write a note explaining your
+            decision (optional but recommended).
+  Step 9. Click "Submit Review".
+  Step 10. The registrar will see the updated status
+           on their Block Management page.
+
+NOTES
+  - Approving an expansion increases the block's
+    maximum capacity.
+  - The registrar cannot increase capacity directly;
+    all expansion requests go through admin approval.
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.7  REPORTS & EXPORT
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page lets you generate and download reports on
+  enrollment, grade submission, documents, and user accounts.
+  Reports can be exported as CSV files.
+
+HOW TO USE IT
+
+  Step 1. Click "Reports" in the sidebar.
+  Step 2. Click on one of the four tabs to select the
+          report type:
+          - Enrollment Summary
+          - Grade Submission
+          - Document Requests
+          - User Accounts
+
+  Enrollment Summary Report
+  Step 3. Select the Term from the dropdown.
+  Step 4. The page shows enrollment counts by status
+          (Approved, Pending, Rejected) and a breakdown
+          by program.
+  Step 5. Click "Download CSV" to export the data.
+
+  Grade Submission Report
+  Step 6. Select the Term.
+  Step 7. The report shows how many grade assignments
+          have been submitted vs. pending, by subject
+          and faculty.
+  Step 8. Click "Download CSV" to export.
+
+  Document Requests Report
+  Step 9. The page shows all document requests grouped
+          by status and document type.
+  Step 10. Click "Download CSV" to export.
+
+  User Accounts Report
+  Step 11. The page shows all user counts by role,
+           verification status, and active status.
+  Step 12. Click "Download CSV" to export.
+
+NOTES
+  - CSV files can be opened in Microsoft Excel or
+    Google Sheets for further analysis.
+  - Reports reflect the current data in the system
+    at the time of download.
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.8  AUDIT LOG
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  The audit log records every significant action performed
+  in the system — who did what, when, and from which IP
+  address. Use this page for security monitoring and
+  compliance checks.
+
+HOW TO USE IT
+
+  Viewing Audit Log Entries
+  Step 1. Click "Audit Log" in the sidebar.
+  Step 2. The log table shows entries with:
+          - Timestamp: exact date and time of the action.
+          - User: the name and role of the user.
+          - Action: what was done (e.g., "login",
+            "enrollment approved").
+          - IP Address: the device's IP address.
+          - Result: Success (green) or Failure (red).
+
+  Filtering the Log
+  Step 3. Use the Role filter to show actions by a
+          specific role (e.g., only Student actions).
+  Step 4. Use the Result filter to show only successful
+          or failed actions.
+  Step 5. Use the Date Range fields (From and To) to
+          filter entries within a specific time period.
+  Step 6. Type in the Action Search bar to find entries
+          matching a specific action keyword.
+
+  Expanding an Entry
+  Step 7. Click on a log entry to expand it and see
+          the full details and context of the action.
+
+  Navigating Pages
+  Step 8. Use the pagination controls to move between
+          pages (20 entries per page).
+
+NOTES
+  - Audit logs are read-only. They cannot be edited
+    or deleted by anyone.
+  - Repeated failed login attempts may indicate an
+    unauthorized access attempt. Investigate and lock
+    the account if needed.
+  - Registrar users have limited access to the audit
+    log (their own actions only). The admin sees all.
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.9  SYSTEM SETTINGS
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  This page shows the system configuration, live system state,
+  and security settings. It is informational — most settings
+  are configured at the server level in the .env file.
+
+HOW TO USE IT
+  Step 1. Click "System Settings" in the sidebar.
+  Step 2. Read the sections:
+
+  Application Info
+    - System name: NEMSUonePortal
+    - Institution: NEMSU-Cantilan Campus
+    - Version and technology stack (Django 5, React)
+    - Database: PostgreSQL
+    - Authentication: JWT (JSON Web Tokens)
+
+  Live System State
+    - Current server date and time
+    - Total registered users
+    - Number of locked, unverified, and inactive accounts
+    - Pending enrollment requests count
+    - Open document requests count
+  Step 3. Click the link to "Academic Terms" to adjust
+          the enrollment window if needed.
+
+  Security Configuration (Read-Only Display)
+    - Password hashing algorithm in use
+    - Access token lifetime (30 minutes)
+    - Refresh token lifetime (7 days)
+    - Login lockout policy (failed attempt limit)
+    - CORS and security header settings
+    - Compliance standards: OWASP Top 10, RA 10173
+
+NOTES
+  - This page does not have an "Edit" form. To change
+    security or server settings, update the .env
+    configuration file on the server.
+  - If locked accounts or unverified accounts are a
+    concern, use User Management to address them
+    individually.
+
+
+----------------------------------------------------------------
+[ADMIN] — 4.10  ANNOUNCEMENTS
+----------------------------------------------------------------
+WHAT THIS PAGE IS FOR
+  Admin users have full control over all announcements in the
+  system. You can create, edit, pin, and delete any
+  announcement regardless of who posted it.
+
+HOW TO USE IT
+  Step 1. Click "Announcements" in the sidebar.
+  Step 2. Browse, search, and filter announcements
+          the same way as other roles.
+
+  Posting a New Announcement
+  Step 3. Click "Post Announcement".
+  Step 4. Fill in:
+          - Title (max 200 characters)
+          - Body (full announcement text)
+          - Audience (All / Students / Faculty / Public)
+          - Pin to top (optional)
+  Step 5. Click "Post".
+
+  Editing Any Announcement
+  Step 6. Find the announcement in the list.
+  Step 7. Click "Edit" (you can edit any announcement,
+          not just your own).
+  Step 8. Make changes and click "Save".
+
+  Deleting Any Announcement
+  Step 9. Click "Delete" on any announcement.
+  Step 10. Confirm the deletion.
+
+NOTES
+  - Admins can delete any announcement from any user.
+    Use this only when necessary (e.g., removing
+    incorrect or inappropriate content).
+  - Pinned announcements appear at the very top of
+    the list for all users who can see that audience.
+
+
+================================================================
+END OF USER GUIDE
+================================================================
+  NEMSUonePortal — NEMSU-Cantilan Campus
+  College of Information Technology Education
+  Department of Computer Studies
+  Cantilan, Surigao del Sur, Philippines
+
+  For technical support, contact the system administrator.
+  For academic concerns, contact the registrar's office.
+================================================================

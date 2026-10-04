@@ -4,6 +4,9 @@ import { useToast } from '../../components/Toast';
 
 /* Schema describing each editable section and its fields. */
 const SECTIONS = [
+  { key: 'hero', label: 'Hero (top banner)', fields: [
+    { name: 'imageUrl', type: 'image', label: 'Background image (optional — leave empty for the gradient)' },
+  ] },
   { key: 'in_focus', label: 'In Focus (Spotlight)', fields: [
     { name: 'tag', type: 'text', label: 'Tag' },
     { name: 'title', type: 'text', label: 'Title' },
@@ -200,7 +203,7 @@ function Field({ def, value, onChange }) {
 export default function AdminSiteContent() {
   const toast = useToast();
   const [content, setContent] = useState(null);
-  const [open, setOpen] = useState('in_focus');
+  const [open, setOpen] = useState('hero');
   const [saving, setSaving] = useState(null);
 
   useEffect(() => {

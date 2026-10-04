@@ -391,6 +391,41 @@ class PasswordResetConfirmView(APIView):
         return Response({'message': 'Password reset successfully. You can now log in.'})
 
 
+class PasswordResetSelfView(APIView):
+    """POST /api/auth/password-reset/self/ — a signed-in user requests a reset
+    link to their OWN registered email. The identity comes from the session, so
+    no email is accepted in the body. Backs the in-app 'Change password' action."""
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [PasswordResetRateThrottle]
+
+    def post(self, request):
+        user = request.user
+        email = (getattr(user, 'institutional_email', '') or '').strip()
+        if not email:
+            return Response(
+                {'error': 'No email is on file for your account. Please contact the registrar.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+        token_obj = PasswordResetToken.objects.create(user=user)
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token_obj.token}"
+        _send_email(
+            subject='Reset your NEMSUonePortal password',
+            body=(
+                f"Hello {user.full_name},\n\n"
+                f"You requested to change your NEMSUonePortal password. Click the link "
+                f"below to set a new one:\n{reset_url}\n\n"
+                "This link expires in 2 hours.\n\n"
+                "If you did not request this, you can safely ignore this email."
+            ),
+            recipient=email,
+        )
+        _audit(user, user.role, 'password_reset_self_requested', request.path,
+               get_client_ip(request), 'success')
+        return Response({'message': 'A password reset link has been sent to your email.', 'email': email})
+
+
 # ── Password change (authenticated) ──────────────────────────────────────────
 
 class PasswordChangeView(APIView):
@@ -612,27 +647,33 @@ class ActivateCompleteView(APIView):
             pending.status = 'activated'
             pending.save(update_fields=['status'])
 
-            # Auto-create an approved enrollment so courses page is populated on first login
+            # Create the student's first-term enrollment.
+            #  • New students are fully admitted → auto-enroll all offered
+            #    courses for their program's 1st year / current semester.
+            #  • Transferees / returnees → a PENDING request with no courses, so
+            #    the registrar can validate their history and set the courses.
             from enrollment.models import AcademicTerm as _AT, EnrollmentRequest as _ER, Subject as _Subj
             term = pending.academic_term or _AT.objects.filter(is_active=True).order_by('-id').first()
             if term and pending.program:
-                subjects = list(_Subj.objects.filter(
-                    program=pending.program,
-                    year_level=pending.year_level,
-                    semester=term.semester,
-                    is_active=True,
-                ))
+                is_new = pending.student_type == 'new'
                 auto_enrollment = _ER.objects.create(
                     student=user,
                     academic_term=term,
                     program=pending.program,
                     year_level=pending.year_level,
                     student_type=pending.student_type,
-                    status='approved',
-                    processed_at=_tz.now(),
+                    status='approved' if is_new else 'pending',
+                    processed_at=_tz.now() if is_new else None,
                 )
-                if subjects:
-                    auto_enrollment.subjects.set(subjects)
+                if is_new:
+                    subjects = list(_Subj.objects.filter(
+                        program=pending.program,
+                        year_level=pending.year_level,
+                        semester=term.semester,
+                        is_active=True,
+                    ))
+                    if subjects:
+                        auto_enrollment.subjects.set(subjects)
 
         from .serializers import CustomTokenObtainPairSerializer as _CTS
         refresh = _CTS.get_token(user)

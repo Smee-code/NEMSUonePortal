@@ -13,7 +13,6 @@ const ROLE_OPTIONS = [
   { value: 'student',            label: 'Student'            },
   { value: 'faculty',            label: 'Faculty'            },
   { value: 'registrar',          label: 'Registrar'          },
-  { value: 'department_encoder', label: 'Department Encoder' },
   { value: 'admin',              label: 'Admin'              },
 ];
 
@@ -24,7 +23,7 @@ const ROLE_LABEL = Object.fromEntries(ROLE_OPTIONS.map(o => [o.value, o.label]))
 
 const ROLE_TAG = {
   student: 'role-student', faculty: 'role-faculty',
-  registrar: 'role-registrar', department_encoder: 'role-registrar', admin: 'role-admin',
+  registrar: 'role-registrar', admin: 'role-admin',
 };
 
 const PAGE_LIMIT = 20;
@@ -119,7 +118,7 @@ export default function AdminUserManagement() {
         role:                createForm.role,
         password:            createForm.password,
       };
-      if (createForm.role === 'department_encoder' || createForm.role === 'faculty') payload.department = createForm.department;
+      if (createForm.role === 'faculty') payload.department = createForm.department;
       if (createForm.role === 'faculty') {
         payload.is_gec_faculty = createForm.is_gec_faculty;
         if (!createForm.is_gec_faculty && createForm.program) payload.program = Number(createForm.program);
@@ -189,10 +188,10 @@ export default function AdminUserManagement() {
       if (form.role !== u.role)           payload.role      = form.role;
       if (form.is_active !== u.is_active) payload.is_active = form.is_active;
       if (form.unlock)                    payload.unlock    = true;
-      // Department applies to encoders and faculty; send when it changed.
+      // Department applies to faculty; send when it changed.
       const effRoleD = form.role ?? u.role;
       const curDept = u.department_code || '';
-      const newDept = (effRoleD === 'department_encoder' || effRoleD === 'faculty') ? (form.department ?? curDept) : '';
+      const newDept = (effRoleD === 'faculty') ? (form.department ?? curDept) : '';
       if (newDept !== curDept) payload.department = newDept;
       // Faculty classification (program + GEC).
       const effRole = form.role ?? u.role;
@@ -351,9 +350,6 @@ export default function AdminUserManagement() {
                       <span className={`tag ${ROLE_TAG[u.role] || 'role-system'}`}>
                         {ROLE_LABEL[u.role] || u.role}
                       </span>
-                      {u.role === 'department_encoder' && u.department_code && (
-                        <div className="um-dept-line">{u.department_code}</div>
-                      )}
                       {u.role === 'faculty' && u.faculty_classification && u.faculty_classification !== 'Unclassified' && (
                         <div className="um-dept-line">{u.faculty_classification}</div>
                       )}
@@ -404,7 +400,7 @@ export default function AdminUserManagement() {
                                   ))}
                                 </select>
                               </div>
-                              {((form.role || u.role) === 'department_encoder' || (form.role || u.role) === 'faculty') && (
+                              {(form.role || u.role) === 'faculty' && (
                                 <div className="um-edit-field">
                                   <label className="um-edit-label">Department</label>
                                   <select
@@ -534,7 +530,7 @@ export default function AdminUserManagement() {
             <div className="um-modal-head">
               <div>
                 <h3>Add <em>user</em></h3>
-                <div className="um-modal-sub">Create a staff account (faculty, registrar, department encoder, or admin).</div>
+                <div className="um-modal-sub">Create a staff account (faculty, registrar, or admin).</div>
               </div>
               <button className="adm-icon-btn" onClick={() => setShowCreate(false)} disabled={creating}>
                 <i className="ti ti-x" />
@@ -588,13 +584,13 @@ export default function AdminUserManagement() {
                   </select>
                 </div>
 
-                {(createForm.role === 'department_encoder' || createForm.role === 'faculty') && (
+                {createForm.role === 'faculty' && (
                   <div className="um-modal-field">
                     <label className="um-edit-label">
-                      Department{createForm.role === 'faculty' ? ' (optional)' : ''}
+                      Department (optional)
                     </label>
                     <select
-                      className="um-modal-input" required={createForm.role === 'department_encoder'}
+                      className="um-modal-input"
                       value={createForm.department}
                       onChange={e => setCreateField('department', e.target.value)}
                     >

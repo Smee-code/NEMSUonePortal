@@ -9,7 +9,6 @@ const ROLE_HOME = {
   student: '/student/dashboard',
   faculty: '/faculty/dashboard',
   registrar: '/registrar/dashboard',
-  department_encoder: '/encoder/applications',
   admin: '/admin/dashboard',
 };
 

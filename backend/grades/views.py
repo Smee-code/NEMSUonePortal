@@ -1,6 +1,8 @@
 import logging
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from django.conf import settings
+from django.core.mail import send_mass_mail
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import generics, status
@@ -12,18 +14,21 @@ from rest_framework.views import APIView
 
 from authentication.models import AuditLog, User
 from authentication.permissions import (
+    IsAdmin,
     IsFaculty,
     IsRegistrarOrAdmin,
     IsStudent,
     get_client_ip,
 )
-from enrollment.models import AcademicTerm, EnrollmentSubject
+from enrollment.models import AcademicTerm, Block, EnrollmentSubject, Program, Subject
 from enrollment.terms import current_academic_year, regular_term_date_range
-from .models import GradeRecord, TeachingAssignment
+from .models import GradeRecord, MidtermReopenRequest, TeachingAssignment
 from .serializers import (
     FacultyAssignmentCreateSerializer,
     GradeEncodeSerializer,
     GradeSubmitSerializer,
+    MidtermReopenRequestSerializer,
+    MidtermReopenReviewSerializer,
     RegistrarGradeSerializer,
     StudentGradeSerializer,
     TeachingAssignmentSerializer,
@@ -159,6 +164,11 @@ class FacultyStudentGradeListView(APIView):
                 'grade': record.grade,
                 'remarks': record.remarks,
                 'is_submitted': record.is_submitted,
+                'is_dropped': record.is_dropped,
+                'midterm_is_inc': record.midterm_is_inc,
+                'final_is_inc': record.final_is_inc,
+                'midterm_submitted': record.midterm_submitted,
+                'final_submitted': record.final_submitted,
                 'encoded_at': record.encoded_at.isoformat() if record.encoded_at else None,
             })
 
@@ -189,70 +199,108 @@ class GradeEncodeView(APIView):
 
         data = serializer.validated_data
         assignment = data['assignment']
+        stage = data['stage']          # 'midterm' | 'final'
+        st = data['status']            # 'grade' | 'inc' | 'drp'
+        value = data.get('value')
+        has_remarks = 'remarks' in data
         ip = get_client_ip(request)
 
-        # G-01: select_for_update() prevents race condition where a concurrent submit
-        # flips is_submitted=True between the serializer check and the write
+        # G-01: select_for_update() prevents the concurrent-submit race where a stage
+        # flips *_submitted=True between the lock check and the write.
         with transaction.atomic():
-            existing = GradeRecord.objects.select_for_update().filter(
+            record = GradeRecord.objects.select_for_update().filter(
                 student_id=data['student_id'],
-                subject=assignment.subject,
-                academic_term=assignment.academic_term,
+                teaching_assignment=assignment,
             ).first()
-
-            if existing and existing.is_submitted:
+            if record is None:
                 return Response(
-                    {'error': 'Grades have already been submitted for this student in this subject.'},
+                    {'error': 'This student is not in your class roster for this course.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Finals gate: no final entry until every non-dropped student's midterm is in.
+            if stage == 'final':
+                midterms_pending = GradeRecord.objects.filter(
+                    teaching_assignment=assignment, is_dropped=False, midterm_submitted=False,
+                ).exists()
+                if midterms_pending:
+                    return Response(
+                        {'error': 'Submit all midterm grades before entering final grades.'},
+                        status=status.HTTP_409_CONFLICT,
+                    )
+
+            # Stage locks: a submitted NUMERIC grade is locked (needs an admin reopen for
+            # the midterm). INC stays editable so it can be completed later.
+            if stage == 'midterm' and record.midterm_submitted and not record.midterm_is_inc:
+                return Response(
+                    {'error': 'This midterm grade is locked. Request an admin reopen to change it.'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            if stage == 'final' and record.final_submitted and not record.final_is_inc:
+                return Response(
+                    {'error': 'This final grade is locked and can no longer be changed.'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            # Changing a dropped student back requires the midterm stage to be open,
+            # since DRP is captured with the midterm submission.
+            if st == 'drp' and record.midterm_submitted and not record.midterm_is_inc:
+                return Response(
+                    {'error': 'Midterms are locked. Request an admin reopen to change this student.'},
                     status=status.HTTP_409_CONFLICT,
                 )
 
-            if existing:
-                existing.midterm_grade = data['midterm_grade']
-                existing.final_grade = data['final_grade']
-                existing.grade = str(data['grade'])
-                existing.remarks = data.get('remarks', '')
-                existing.encoded_by = request.user
-                existing.teaching_assignment = assignment
-                existing.save()
-                created = False
-                record = existing
+            if st == 'drp':
+                record.is_dropped = True
+                record.midterm_grade = None
+                record.final_grade = None
+                record.midterm_is_inc = False
+                record.final_is_inc = False
             else:
-                record = GradeRecord.objects.create(
-                    student_id=data['student_id'],
-                    subject=assignment.subject,
-                    academic_term=assignment.academic_term,
-                    midterm_grade=data['midterm_grade'],
-                    final_grade=data['final_grade'],
-                    grade=str(data['grade']),
-                    remarks=data.get('remarks', ''),
-                    encoded_by=request.user,
-                    teaching_assignment=assignment,
-                )
-                created = True
+                record.is_dropped = False
+                if stage == 'midterm':
+                    record.midterm_is_inc = (st == 'inc')
+                    record.midterm_grade = None if st == 'inc' else value
+                else:
+                    record.final_is_inc = (st == 'inc')
+                    record.final_grade = None if st == 'inc' else value
 
-        action = 'grade_encoded' if created else 'grade_updated'
+            if has_remarks:
+                record.remarks = data.get('remarks', '')
+
+            record.recompute_grade()
+            record.encoded_by = request.user
+            record.teaching_assignment = assignment
+            record.save()
+
+        mid_str = str(record.midterm_grade) if record.midterm_grade is not None else ''
+        fin_str = str(record.final_grade) if record.final_grade is not None else ''
         _audit(
-            request.user, request.user.role, action, request.path, ip, 'success',
+            request.user, request.user.role, 'grade_encoded', request.path, ip, 'success',
             {
                 'student': str(data['student_id']),
                 'subject': assignment.subject.code,
                 'term': str(assignment.academic_term),
-                'midterm_grade': str(data['midterm_grade']),
-                'final_grade': str(data['final_grade']),
-                'grade': str(data['grade']),
+                'stage': stage,
+                'status': st,
+                'grade': record.grade,
             },
         )
 
-        return Response(
-            {'message': 'Grade saved.', 'id': str(record.id), 'created': created},
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
-        )
+        return Response({
+            'message': 'Grade saved.', 'id': str(record.id),
+            'midterm_grade': mid_str, 'final_grade': fin_str, 'grade': record.grade,
+            'is_dropped': record.is_dropped,
+            'midterm_is_inc': record.midterm_is_inc,
+            'final_is_inc': record.final_is_inc,
+            'midterm_submitted': record.midterm_submitted,
+            'final_submitted': record.final_submitted,
+        })
 
 
 class GradeSubmitView(APIView):
-    """POST /api/grades/faculty/submit/ — submit all encoded grades for an assignment.
-    G-02: count() and exists() are inside transaction.atomic() with select_for_update().
-    G-03: blocks submission if any enrolled student is missing a grade (use force=true to override)."""
+    """POST /api/grades/faculty/submit/ — submit one stage (midterm|final) of the roster.
+    Midterms must be fully submitted before finals may be submitted. INC/DRP count as
+    settled; DRP students are skipped. G-02: everything inside atomic + select_for_update."""
     permission_classes = [IsAuthenticated, IsFaculty]
     throttle_classes = [GradeSubmitThrottle]
 
@@ -261,67 +309,247 @@ class GradeSubmitView(APIView):
         serializer.is_valid(raise_exception=True)
 
         assignment = serializer.validated_data['teaching_assignment_id']
+        stage = serializer.validated_data['stage']
         force = serializer.validated_data.get('force', False)
         ip = get_client_ip(request)
         now = timezone.now()
 
-        # G-02: everything inside atomic + select_for_update to prevent stale count and TOCTOU
-        with transaction.atomic():
-            records = GradeRecord.objects.select_for_update().filter(
-                teaching_assignment=assignment,
-                is_submitted=False,
-            ).exclude(grade='')
+        def stage_ready(r):
+            # A non-dropped record is ready for its stage once it has a number or INC.
+            if stage == 'midterm':
+                return r.midterm_grade is not None or r.midterm_is_inc
+            return r.final_grade is not None or r.final_is_inc
 
-            count = records.count()
-            if count == 0:
+        with transaction.atomic():
+            # Finals can only be submitted once every non-dropped midterm is submitted.
+            if stage == 'final' and GradeRecord.objects.filter(
+                teaching_assignment=assignment, is_dropped=False, midterm_submitted=False,
+            ).exists():
                 return Response(
-                    {'error': 'No encoded grades to submit for this assignment.'},
+                    {'error': 'Submit all midterm grades before submitting final grades.'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            roster = list(
+                GradeRecord.objects.select_for_update().select_related('student').filter(
+                    teaching_assignment=assignment,
+                )
+            )
+            if not roster:
+                return Response(
+                    {'error': 'No students on this course roster.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # G-03: enforce complete gradesheet before submission unless force=true
-            enrolled_ids = set(
-                EnrollmentSubject.objects.filter(
-                    enrollment__academic_term=assignment.academic_term,
-                    enrollment__status='approved',
-                    subject=assignment.subject,
-                ).values_list('enrollment__student_id', flat=True)
-            )
-            graded_ids = set(
-                GradeRecord.objects.filter(
-                    teaching_assignment=assignment,
-                ).exclude(grade='').values_list('student_id', flat=True)
-            )
-            missing_count = len(enrolled_ids - graded_ids)
+            already = 'midterm_submitted' if stage == 'midterm' else 'final_submitted'
+            missing = [r for r in roster if not r.is_dropped and not stage_ready(r)]
+            missing_count = len(missing)
 
             if missing_count > 0 and not force:
                 return Response(
                     {
                         'error': (
-                            f'{missing_count} enrolled student(s) have no grade encoded. '
-                            'Encode a grade (including INC or DRP) for all students, '
-                            'or resubmit with force=true to submit only the encoded grades.'
+                            f'{missing_count} student(s) have no {stage} grade. '
+                            'Enter a grade, INC, or DRP for everyone, '
+                            'or use "Submit anyway" to submit only the completed ones.'
                         ),
                         'missing_count': missing_count,
                     },
                     status=status.HTTP_409_CONFLICT,
                 )
 
-            records.update(is_submitted=True, submitted_at=now)
+            # Records to mark for this stage: dropped students are settled by the midterm
+            # submission; everyone else who is ready and not already submitted.
+            to_mark, notify = [], []
+            for r in roster:
+                if getattr(r, already):
+                    continue
+                submit_this = (stage == 'midterm' and r.is_dropped) or stage_ready(r)
+                if not submit_this:
+                    continue
+                if stage == 'midterm':
+                    r.midterm_submitted = True
+                    r.midterm_submitted_at = now
+                else:
+                    r.final_submitted = True
+                    r.final_submitted_at = now
+                    r.is_submitted = True
+                    r.submitted_at = now
+                r.recompute_grade()
+                to_mark.append(r)
+                # Notify registered, non-dropped students (dropped students aren't emailed).
+                s = r.student
+                email = (getattr(s, 'institutional_email', '') or '').strip()
+                if (not r.is_dropped and s and not getattr(s, 'is_placeholder', False)
+                        and email and 'placeholder' not in email.lower()):
+                    notify.append((email, s.full_name or 'Student'))
+
+            count = len(to_mark)
+            if count == 0:
+                return Response(
+                    {'error': f'No {stage} grades ready to submit for this assignment.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            fields = (
+                ['midterm_submitted', 'midterm_submitted_at', 'grade']
+                if stage == 'midterm'
+                else ['final_submitted', 'final_submitted_at', 'is_submitted', 'submitted_at', 'grade']
+            )
+            GradeRecord.objects.bulk_update(to_mark, fields)
 
         _audit(
             request.user, request.user.role,
-            'grades_submitted', request.path, ip, 'success',
+            f'grades_submitted_{stage}', request.path, ip, 'success',
             {
                 'assignment_id': assignment.id,
                 'subject': assignment.subject.code,
                 'term': str(assignment.academic_term),
+                'stage': stage,
                 'count': count,
                 'forced': force,
+                'notified': len(notify),
             },
         )
 
-        return Response({'message': f'{count} grade(s) submitted successfully.'})
+        # Notify each student that their grade is posted (best-effort; grades stay
+        # in-app for privacy — the email only says a grade is available to view).
+        try:
+            if notify:
+                subj_code = assignment.subject.code
+                subj_name = assignment.subject.name
+                term = str(assignment.academic_term)
+                stage_word = 'midterm' if stage == 'midterm' else 'final'
+                messages = [(
+                    f'Your {stage_word} grade for {subj_code} has been posted',
+                    (
+                        f'Hi {name},\n\n'
+                        f'Your {stage_word} grade for {subj_code} - {subj_name} ({term}) has been '
+                        f'submitted by your instructor and is now available in your NEMSUonePortal '
+                        f'account. Log in and open "My Grades" to view it.\n\n'
+                        f'— NEMSU Cantilan Campus'
+                    ),
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                ) for (email, name) in notify]
+                send_mass_mail(messages, fail_silently=True)
+        except Exception:
+            logger.warning('Failed to send grade-posted notification emails', exc_info=True)
+
+        return Response({'message': f'{count} {stage} grade(s) submitted successfully.'})
+
+
+# ── Midterm reopen requests ─────────────────────────────────────────────────────
+
+class FacultyMidtermReopenView(generics.ListCreateAPIView):
+    """GET  /api/grades/faculty/midterm-reopen/  — faculty's own requests
+    POST /api/grades/faculty/midterm-reopen/  — request an admin reopen a subject's midterms."""
+    serializer_class = MidtermReopenRequestSerializer
+    permission_classes = [IsAuthenticated, IsFaculty]
+
+    def get_queryset(self):
+        return MidtermReopenRequest.objects.select_related(
+            'teaching_assignment__subject', 'teaching_assignment__academic_term',
+            'requested_by', 'reviewed_by',
+        ).filter(requested_by=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        assignment = serializer.validated_data['teaching_assignment']
+
+        if assignment.faculty_id != request.user.id:
+            return Response(
+                {'error': 'That course is not one of your teaching assignments.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        # Nothing to reopen unless at least one midterm has actually been submitted.
+        if not GradeRecord.objects.filter(
+            teaching_assignment=assignment, midterm_submitted=True,
+        ).exists():
+            return Response(
+                {'error': 'This subject has no submitted midterm grades to reopen.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if MidtermReopenRequest.objects.filter(
+            teaching_assignment=assignment, status='pending',
+        ).exists():
+            return Response(
+                {'error': 'A reopen request for this subject is already pending.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        self.perform_create(serializer)
+        _audit(
+            request.user, request.user.role, 'midterm_reopen_requested',
+            request.path, get_client_ip(request), 'success',
+            {'assignment_id': assignment.id, 'subject': assignment.subject.code},
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_create(self, serializer):
+        serializer.save(requested_by=self.request.user)
+
+
+class AdminMidtermReopenListView(generics.ListAPIView):
+    """GET /api/grades/admin/midterm-reopen/ — admin reviews reopen requests."""
+    serializer_class = MidtermReopenRequestSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_queryset(self):
+        qs = MidtermReopenRequest.objects.select_related(
+            'teaching_assignment__subject', 'teaching_assignment__academic_term',
+            'requested_by', 'reviewed_by',
+        )
+        s = self.request.query_params.get('status')
+        if s:
+            qs = qs.filter(status=s)
+        return qs
+
+
+class AdminMidtermReopenReviewView(APIView):
+    """PATCH /api/grades/admin/midterm-reopen/<pk>/ — approve or reject.
+    Approval reopens the whole subject's midterms (only where finals aren't in yet)."""
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def patch(self, request, pk):
+        serializer = MidtermReopenReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        new_status = serializer.validated_data['status']
+        note = serializer.validated_data.get('admin_note', '')
+
+        try:
+            req = MidtermReopenRequest.objects.select_related('teaching_assignment__subject').get(pk=pk)
+        except MidtermReopenRequest.DoesNotExist:
+            return Response({'error': 'Request not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if req.status != 'pending':
+            return Response(
+                {'error': 'This request has already been reviewed.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        reopened = 0
+        with transaction.atomic():
+            if new_status == 'approved':
+                # Unlock midterms for the class — but never for students whose finals
+                # are already submitted (their grade is fully settled).
+                reopened = GradeRecord.objects.select_for_update().filter(
+                    teaching_assignment=req.teaching_assignment,
+                    midterm_submitted=True,
+                    final_submitted=False,
+                ).update(midterm_submitted=False, midterm_submitted_at=None)
+            req.status = new_status
+            req.admin_note = note
+            req.reviewed_by = request.user
+            req.reviewed_at = timezone.now()
+            req.save(update_fields=['status', 'admin_note', 'reviewed_by', 'reviewed_at'])
+
+        _audit(
+            request.user, request.user.role, f'midterm_reopen_{new_status}',
+            request.path, get_client_ip(request), 'success',
+            {'request_id': req.pk, 'subject': req.teaching_assignment.subject.code, 'reopened': reopened},
+        )
+        return Response(MidtermReopenRequestSerializer(req).data)
 
 
 # ── Registrar / Admin ──────────────────────────────────────────────────────────
@@ -394,11 +622,14 @@ class RegistrarFacultyListView(APIView):
                 'faculty_id': f.student_id,
                 'full_name': f.full_name,
                 'email': f.institutional_email,
+                'contact_number': f.contact_number,
                 'department_code': f.department.code if f.department else None,
                 'department_name': f.department.name if f.department else None,
+                'program_id': f.program_id,
                 'program_name': f.program.name if f.program_id else None,
                 'is_gec_faculty': f.is_gec_faculty,
                 'classification': f.faculty_classification,
+                'rank': f.rank,
                 'current_term_load': current_load,
                 'total_assignments': f.teaching_assignments.count(),
             })
@@ -671,6 +902,71 @@ class AdminTeachingAssignmentListCreateView(generics.ListCreateAPIView):
             'teaching_assignment_created', self.request.path,
             get_client_ip(self.request), 'success',
         )
+
+
+class AdminTeachingAssignmentResolveView(APIView):
+    """POST /api/grades/admin/assignments/resolve/
+
+    Find (or create) the teaching assignment for a (subject, faculty, term,
+    section) combination and return it. Lets the Class Schedules screen assign
+    an instructor to a class in one step — if that subject+faculty+section
+    class doesn't exist yet for the term, it's created here."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+
+    def post(self, request):
+        subject_id = request.data.get('subject_id')
+        faculty_id = request.data.get('faculty_id')
+        term_id    = request.data.get('academic_term_id')
+        program_id = request.data.get('program_id')
+        year_level = request.data.get('year_level')
+        block_name = (request.data.get('block_name') or '').strip()
+
+        if not (subject_id and faculty_id and term_id):
+            return Response({'error': 'Subject, faculty, and term are required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not (program_id and year_level and block_name):
+            return Response({'error': 'Program, year level and block are required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            subject = Subject.objects.get(pk=subject_id, is_active=True)
+        except (Subject.DoesNotExist, ValueError, TypeError):
+            return Response({'error': 'Subject not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            faculty = User.objects.get(pk=faculty_id, role='faculty')
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response({'error': 'Faculty member not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            term = AcademicTerm.objects.get(pk=term_id)
+        except (AcademicTerm.DoesNotExist, ValueError, TypeError):
+            return Response({'error': 'Academic term not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            program = Program.objects.get(pk=program_id)
+        except (Program.DoesNotExist, ValueError, TypeError):
+            return Response({'error': 'Program not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            year_level = int(year_level)
+        except (ValueError, TypeError):
+            return Response({'error': 'Invalid year level.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Find (or create) the block — this is the student cohort the class is for.
+        block, _ = Block.objects.get_or_create(
+            program=program, academic_term=term, year_level=year_level, name=block_name,
+        )
+        # The block's name doubles as the section label on the assignment.
+        section = block.name
+        ta, created = TeachingAssignment.objects.get_or_create(
+            faculty=faculty, subject=subject, academic_term=term, section=section,
+            defaults={'assigned_by': request.user, 'block': block},
+        )
+        if ta.block_id != block.id:
+            ta.block = block
+            ta.save(update_fields=['block'])
+        if created:
+            _audit(request.user, request.user.role, 'teaching_assignment_created',
+                   request.path, get_client_ip(request), 'success',
+                   {'subject': subject.code, 'faculty': faculty.full_name, 'block': str(block)})
+        data = TeachingAssignmentSerializer(ta, context={'request': request}).data
+        return Response(data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
 class AdminTeachingAssignmentDetailView(generics.DestroyAPIView):

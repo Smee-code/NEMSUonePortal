@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import ScrollMemory from '../ScrollMemory';
+import { useSupport, requestSelfPasswordReset } from '../SupportModal';
 import { useAuth } from '../../context/AuthContext';
 import { RegistrarShellCtx } from '../../context/RegistrarShellContext';
 import api from '../../api/axios';
@@ -15,7 +17,7 @@ const SB_ITEMS = [
   { key:'students',     icon:'ti-users',            label:'List of Students',    section:'records',   to:'/registrar/students' },
   { key:'faculty',      icon:'ti-user-edit',        label:'Faculty',             section:'records',   to:'/registrar/faculty' },
   { key:'schedule',     icon:'ti-calendar-event',   label:'Class Schedules',     section:'records',   to:'/registrar/schedule' },
-  { key:'blocks',       icon:'ti-grid-dots',        label:'Block Management',    section:'records',   to:'/registrar/blocks' },
+  { key:'facilities',   icon:'ti-building-community',label:'Rooms & Buildings',   section:'records',   to:'/registrar/facilities' },
   { key:'academic-data',icon:'ti-database',         label:'Academic Data',       section:'records',   to:'/registrar/academic-data' },
   { key:'announcements',icon:'ti-bell',             label:'Announcements',       section:'records',   to:'/registrar/announcements' },
 ];
@@ -84,6 +86,12 @@ function RegTopbar({ currentTerm, toast, badges, openNav, notifs = [], unread = 
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [acctOpen,  setAcctOpen]  = useState(false);
+  const openSupport = useSupport();
+  const changePassword = async () => {
+    const r = await requestSelfPasswordReset();
+    if (r.ok) toast('Password reset link sent to your email.', 'success', r.email);
+    else toast(r.error, 'error');
+  };
 
   useEffect(() => {
     if (!notifOpen && !acctOpen) return;
@@ -100,11 +108,6 @@ function RegTopbar({ currentTerm, toast, badges, openNav, notifs = [], unread = 
         <span>Registrar</span>
         <i className="ti ti-chevron-right" />
         <span className="here">{label}</span>
-      </div>
-      <div className="reg-topbar-search">
-        <i className="ti ti-search" />
-        <input placeholder="Search students, requests, schedules…" />
-        <span className="reg-kbd">⌘K</span>
       </div>
       <div className="reg-topbar-actions">
         {currentTerm && (
@@ -136,17 +139,20 @@ function RegTopbar({ currentTerm, toast, badges, openNav, notifs = [], unread = 
 
       {/* Notifications drawer */}
       {notifOpen && (
-        <div className="reg-topbar-drawer" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
-          <div className="reg-drawer-head-sm">
-            <span>Notifications</span>
-            <button className="reg-icon-btn" onClick={() => setNotifOpen(false)}><i className="ti ti-x" /></button>
+        <div className="reg-topbar-drawer reg-notif-drawer" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+          <div className="reg-notif-head">
+            <div className="reg-notif-head-l">
+              <span className="reg-notif-title">Notifications</span>
+              {unread > 0 && <span className="reg-notif-badge">{unread} new</span>}
+            </div>
+            <button className="reg-icon-btn" aria-label="Close" onClick={() => setNotifOpen(false)}><i className="ti ti-x" /></button>
           </div>
-          <div className="reg-drawer-notif-list">
+          <div className="reg-notif-body">
             <NotificationList items={notifs} unreadCount={unread} />
           </div>
-          <div className="reg-drawer-foot-sm">
-            <button className="btn-sec" onClick={() => setNotifOpen(false)}>Close</button>
-          </div>
+          <button className="reg-notif-foot" onClick={() => { setNotifOpen(false); navigate('/registrar/announcements'); }}>
+            View all announcements <i className="ti ti-arrow-right" />
+          </button>
         </div>
       )}
 
@@ -165,9 +171,8 @@ function RegTopbar({ currentTerm, toast, badges, openNav, notifs = [], unread = 
           </div>
           <div className="reg-drawer-menu">
             {[
-              { icon: 'ti-user',    label: 'My profile',      act: () => toast('Profile settings coming soon') },
-              { icon: 'ti-key',     label: 'Change password', act: () => toast('Password reset email sent', 'success') },
-              { icon: 'ti-help',    label: 'Help & support',  act: () => toast('Opening help center…') },
+              { icon: 'ti-key',     label: 'Change password', act: changePassword },
+              { icon: 'ti-help',    label: 'Help & support',  act: () => openSupport() },
             ].map(it => (
               <button key={it.label} className="reg-menu-item" onClick={() => { it.act(); setAcctOpen(false); }}>
                 <i className={`ti ${it.icon}`} />{it.label}
@@ -221,11 +226,11 @@ export default function RegistrarShell() {
     api.get('/enrollment/current-term/').then(r => setCurrentTerm(r.data)).catch(() => {});
     Promise.allSettled([
       api.get('/enrollment/requests/?status=pending&page_size=1'),
-      api.get('/documents/requests/?status=submitted&page_size=1'),
+      api.get('/documents/counts/'),
     ]).then(([enrRes, docRes]) => {
       setBadges({
         enrollment: enrRes.status === 'fulfilled' ? (enrRes.value.data?.count ?? 0) : 0,
-        documents:  docRes.status === 'fulfilled' ? (docRes.value.data?.count ?? 0) : 0,
+        documents:  docRes.status === 'fulfilled' ? (docRes.value.data?.submitted ?? 0) : 0,
       });
     });
   }, []);
@@ -246,6 +251,7 @@ export default function RegistrarShell() {
           <RegTopbar currentTerm={currentTerm} toast={toast} badges={badges} openNav={() => setNavOpen(true)}
             notifs={notifs} unread={unreadCount} markSeen={markSeen} />
           <div className="reg-body">
+            <ScrollMemory />
             <Outlet />
           </div>
         </div>
@@ -414,20 +420,29 @@ const CSS = `
     display:flex;justify-content:space-between;align-items:center;
     font-size:13px;font-weight:600;color:var(--reg-ink);
   }
-  .reg-drawer-notif-list{max-height:280px;overflow-y:auto}
-  .reg-drawer-notif-row{
-    display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:flex-start;
-    padding:12px 1.25rem;border-bottom:1px solid var(--reg-line-soft);
-  }
-  .reg-drawer-notif-row:last-child{border-bottom:none}
-  .reg-notif-dot{width:7px;height:7px;background:var(--reg-gold);border-radius:50%;margin-top:5px;flex-shrink:0}
-  .reg-notif-msg{font-size:13px;color:var(--reg-ink);line-height:1.4}
-  .reg-notif-sub{font-size:11px;color:var(--reg-muted);margin-top:2px}
-  .reg-notif-time{font-size:11px;color:var(--reg-faint);white-space:nowrap}
   .reg-drawer-foot-sm{
     padding:.75rem 1.25rem;border-top:1px solid var(--reg-line);
     display:flex;justify-content:flex-end;gap:8px;
   }
+  /* Notifications drawer */
+  .reg-notif-drawer{width:380px;max-width:calc(100vw - 3rem);}
+  .reg-notif-head{
+    padding:.9rem 1.1rem;border-bottom:1px solid var(--reg-line);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .reg-notif-head-l{display:flex;align-items:center;gap:9px;}
+  .reg-notif-title{font:600 14px 'Inter',sans-serif;color:var(--reg-ink);}
+  .reg-notif-badge{font:700 11px 'Inter',sans-serif;background:var(--reg-gold);color:#3a2c07;padding:1px 8px;border-radius:999px;font-variant-numeric:tabular-nums;}
+  .reg-notif-body{max-height:360px;overflow-y:auto;padding:.35rem 1.1rem;}
+  .reg-notif-foot{
+    width:100%;border:none;border-top:1px solid var(--reg-line);background:#fff;
+    padding:.8rem 1.1rem;display:flex;align-items:center;justify-content:center;gap:6px;
+    font:600 12.5px 'Inter',sans-serif;color:var(--reg-ink);cursor:pointer;transition:background .14s;
+  }
+  .reg-notif-foot:hover{background:var(--reg-warm);}
+  .reg-notif-foot i{font-size:14px;transition:transform .14s;}
+  .reg-notif-foot:hover i{transform:translateX(3px);}
+  @media (prefers-reduced-motion: reduce){ .reg-notif-foot, .reg-notif-foot i{transition:none;} }
   .reg-drawer-menu{display:flex;flex-direction:column}
   .reg-menu-item{
     display:flex;align-items:center;gap:12px;padding:12px 1.25rem;
@@ -684,7 +699,7 @@ const CSS = `
 
   /* Grid cards */
   .grid-cards{
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));
     gap:0;border:1px solid var(--reg-line);background:var(--reg-line);
   }
   .grid-cards > *{background:#fff;padding:1.5rem;display:flex;flex-direction:column;gap:.75rem;cursor:pointer;transition:background .15s}

@@ -1,86 +1,109 @@
-﻿import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
 import api from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/Toast';
 
 const DOC_TYPE_OPTIONS = [
-  { value: '', label: 'All Types' },
+  { value: '', label: 'All document types' },
   { value: 'certificate_of_enrollment', label: 'Certificate of Enrollment' },
   { value: 'transcript_of_records',     label: 'Transcript of Records' },
   { value: 'certificate_of_grades',     label: 'Certificate of Grades' },
 ];
 
-const STATUS_OPTIONS = [
-  { value: '',           label: 'All Statuses' },
-  { value: 'submitted',  label: 'Submitted' },
-  { value: 'processing', label: 'Processing' },
-  { value: 'ready',      label: 'Ready for Release' },
-  { value: 'released',   label: 'Released' },
-  { value: 'rejected',   label: 'Rejected' },
-];
-
-const STATUS_META = {
-  submitted:  { bg: '#f3f4f6', color: '#374151' },
-  processing: { bg: '#dbeafe', color: '#1e40af' },
-  ready:      { bg: '#d1fae5', color: '#065f46' },
-  released:   { bg: '#ecfdf5', color: '#047857' },
-  rejected:   { bg: '#fee2e2', color: '#991b1b' },
-};
-
 const STATUS_LABELS = {
   submitted:  'Submitted',
   processing: 'Processing',
-  ready:      'Ready for Release',
+  ready:      'Ready for release',
   released:   'Released',
   rejected:   'Rejected',
 };
 
+// Pill colours per stage (the exact stage); the left rule (below) encodes whether
+// the request needs an action from the registrar.
+const STATUS_PILL = {
+  submitted:  { bg: 'var(--reg-cool-2)',     color: 'var(--reg-muted)' },
+  processing: { bg: '#e8eef8',               color: 'var(--reg-ink-2)' },
+  ready:      { bg: 'var(--reg-gold-tint)',  color: '#8a6a12' },
+  released:   { bg: 'var(--reg-green-tint)', color: 'var(--reg-green)' },
+  rejected:   { bg: 'var(--reg-red-tint)',   color: 'var(--reg-red)' },
+};
+
+// The verb for advancing to the next stage.
+const ADVANCE_VERB = {
+  processing: 'Start processing',
+  ready:      'Mark ready',
+  released:   'Release',
+  rejected:   'Reject',
+};
+
 const PAGE_LIMIT = 20;
 
-function StatusBadge({ status }) {
-  const m = STATUS_META[status] || STATUS_META.submitted;
-  return (
-    <span style={{ background: m.bg, color: m.color, borderRadius: 12,
-      padding: '0.2rem 0.65rem', fontSize: '0.78rem', fontWeight: 700 }}>
-      {STATUS_LABELS[status] || status}
-    </span>
-  );
+function initials(name) {
+  if (!name) return '?';
+  const p = name.trim().split(/\s+/);
+  return p.length === 1 ? (p[0][0] || '?').toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
+}
+function fmtDate(s) {
+  return s ? new Date(s).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 }
 
 export default function RegistrarDocuments() {
-  const { user, logout } = useAuth();
+  const toast = useToast();
+  const [requests, setRequests]     = useState([]);
+  const [total, setTotal]           = useState(0);
+  const [offset, setOffset]         = useState(0);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
 
-  const [requests, setRequests]       = useState([]);
-  const [total, setTotal]             = useState(0);
-  const [offset, setOffset]           = useState(0);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
-  const [successMsg, setSuccessMsg]   = useState('');
+  const [filterStatus,  setFilterStatus]  = useState('');
+  const [filterDocType, setFilterDocType] = useState('');
+  const [searchInput,   setSearchInput]   = useState('');
+  const [searchQuery,   setSearchQuery]   = useState('');
 
-  const [filterStatus, setFilterStatus]     = useState('');
-  const [filterDocType, setFilterDocType]   = useState('');
-  const [searchInput, setSearchInput]       = useState('');
-  const [searchQuery, setSearchQuery]       = useState('');
+  const [expandedId, setExpandedId] = useState(null);
+  const [updateForm, setUpdateForm] = useState({});
+  const [saving,     setSaving]     = useState(null);
 
-  const [expandedId, setExpandedId]   = useState(null);
-  const [updateForm, setUpdateForm]   = useState({});  // { [id]: { status, remarks } }
-  const [saving, setSaving]           = useState(null); // id being saved
+  const [docCounts, setDocCounts] = useState({
+    submitted: 0, processing: 0, ready: 0, released: 0, rejected: 0,
+  });
+
+  function fetchDocCounts() {
+    api.get('/documents/counts/')
+      .then(res => {
+        const d = res.data || {};
+        setDocCounts({
+          submitted:  d.submitted  ?? 0,
+          processing: d.processing ?? 0,
+          ready:      d.ready      ?? 0,
+          released:   d.released   ?? 0,
+          rejected:   d.rejected   ?? 0,
+        });
+      })
+      .catch(() => {});
+  }
 
   const fetchRequests = useCallback((newOffset = offset) => {
     setLoading(true);
     setError('');
     const params = new URLSearchParams({ limit: PAGE_LIMIT, offset: newOffset });
-    if (filterStatus)  params.append('status', filterStatus);
+    if (filterStatus)  params.append('status',        filterStatus);
     if (filterDocType) params.append('document_type', filterDocType);
-    if (searchQuery)   params.append('student', searchQuery);
+    if (searchQuery)   params.append('student',       searchQuery);
     api.get(`/documents/all/?${params.toString()}`)
       .then(res => {
         setRequests(res.data.results ?? res.data);
         setTotal(res.data.count ?? (res.data.results ?? res.data).length);
       })
-      .catch(() => setError('Failed to load document requests.'))
+      .catch(err => {
+        const msg = err.response?.status === 429
+          ? 'Too many requests just now. Wait a moment and try again.'
+          : 'Couldn’t load document requests. Refresh to try again.';
+        toast(msg, { type: 'error' });
+      })
       .finally(() => setLoading(false));
-  }, [filterStatus, filterDocType, searchQuery, offset]);
+  }, [filterStatus, filterDocType, searchQuery, offset, toast]);
+
+  useEffect(() => { fetchDocCounts(); }, []);
 
   useEffect(() => {
     setOffset(0);
@@ -91,15 +114,8 @@ export default function RegistrarDocuments() {
     fetchRequests(offset);
   }, [offset]); // eslint-disable-line
 
-  function handleSearch(e) {
-    e.preventDefault();
-    setSearchQuery(searchInput.trim());
-  }
-
-  function clearSearch() {
-    setSearchInput('');
-    setSearchQuery('');
-  }
+  function handleSearch(e) { e.preventDefault(); setSearchQuery(searchInput.trim()); }
+  function clearSearch() { setSearchInput(''); setSearchQuery(''); }
 
   function openExpand(req) {
     const id = req.id;
@@ -112,319 +128,368 @@ export default function RegistrarDocuments() {
       }));
     }
   }
-
   function setField(id, field, value) {
-    setUpdateForm(prev => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: value },
-    }));
+    setUpdateForm(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
   }
 
   async function handleUpdate(req) {
     const form = updateForm[req.id];
-    if (!form?.status) { setError('Please select a new status.'); return; }
+    if (!form?.status) { setError('Choose a new status first.'); return; }
     if (form.status === 'rejected' && !form.remarks?.trim()) {
-      setError('A reason is required when rejecting a request.');
+      setError('Add a reason so the student knows why it was rejected.');
       return;
     }
     setError('');
-    setSuccessMsg('');
     setSaving(req.id);
     try {
       await api.patch(`/documents/all/${req.id}/status/`, {
-        status: form.status,
-        remarks: form.remarks?.trim() || '',
+        status: form.status, remarks: form.remarks?.trim() || '',
       });
-      setSuccessMsg(`Status updated to "${STATUS_LABELS[form.status]}" for ${req.student_name}.`);
+      toast(`${req.student_name}: ${STATUS_LABELS[form.status]}.`, { type: 'success' });
       setExpandedId(null);
       fetchRequests(offset);
+      fetchDocCounts();
     } catch (err) {
       const data = err.response?.data;
-      if (data?.status) {
-        setError(Array.isArray(data.status) ? data.status.join(' ') : data.status);
-      } else if (data?.remarks) {
-        setError(Array.isArray(data.remarks) ? data.remarks.join(' ') : data.remarks);
-      } else if (data?.non_field_errors) {
-        setError(data.non_field_errors.join(' '));
-      } else {
-        setError('Failed to update status. Please try again.');
-      }
-    } finally {
-      setSaving(null);
-    }
+      let msg;
+      if (data?.status)                msg = Array.isArray(data.status)  ? data.status.join(' ')  : data.status;
+      else if (data?.remarks)          msg = Array.isArray(data.remarks) ? data.remarks.join(' ') : data.remarks;
+      else if (data?.non_field_errors) msg = data.non_field_errors.join(' ');
+      else                             msg = 'Couldn’t update the status. Try again.';
+      toast(msg, { type: 'error' });
+    } finally { setSaving(null); }
   }
 
-  const totalPages = Math.ceil(total / PAGE_LIMIT);
+  async function handleAdvance(req) {
+    const nextStatus = req.next_statuses?.[0];
+    if (!nextStatus) return;
+    setError('');
+    setSaving(req.id);
+    try {
+      await api.patch(`/documents/all/${req.id}/status/`, { status: nextStatus, remarks: '' });
+      toast(`${req.student_name}: ${STATUS_LABELS[nextStatus]}.`, { type: 'success' });
+      fetchRequests(offset);
+      fetchDocCounts();
+    } catch {
+      toast('Couldn’t advance the status. Try again.', { type: 'error' });
+    } finally { setSaving(null); }
+  }
+
+  const totalAll    = Object.values(docCounts).reduce((s, v) => s + v, 0);
+  const totalPages  = Math.ceil(total / PAGE_LIMIT);
   const currentPage = Math.floor(offset / PAGE_LIMIT) + 1;
 
+  // The pipeline doubles as the status filter. Submitted + ready are the stages
+  // that need the registrar to act, so their counts flag in gold.
+  const PIPE = [
+    { id: '',           label: 'All',        count: totalAll,           act: false },
+    { id: 'submitted',  label: 'Submitted',  count: docCounts.submitted, act: true  },
+    { id: 'processing', label: 'Processing', count: docCounts.processing, act: false },
+    { id: 'ready',      label: 'Ready',      count: docCounts.ready,     act: true  },
+    { id: 'released',   label: 'Released',   count: docCounts.released,  act: false },
+    { id: 'rejected',   label: 'Rejected',   count: docCounts.rejected,  act: false },
+  ];
+
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><img src="/logo.png" alt="NEMSU" className="sidebar-logo" />NEMSUonePortal</div>
-        <Link className="sidebar-link" to="/registrar/dashboard">Dashboard</Link>
-        <Link className="sidebar-link" to="/registrar/enrollment">Enrollment Requests</Link>
-        <Link className="sidebar-link" to="/registrar/grades">List of Students</Link>
-        <Link className="sidebar-link" to="/registrar/faculty">Faculty</Link>
-        <Link className="sidebar-link" to="/registrar/schedule">Class Schedules</Link>
-        <Link className="sidebar-link active" to="/registrar/documents">Document Requests</Link>
-        <Link className="sidebar-link" to="/registrar/academic-data">Academic Data</Link>
-        <Link className="sidebar-link" to="/registrar/announcements">Announcements</Link>
-      </aside>
+    <>
+      <style>{CSS}</style>
 
-      <main className="dashboard-content">
-        <div className="dashboard-header">
-          <div>
-            <h1>Document Requests</h1>
-            <span className="badge">{user?.role}</span>
-          </div>
-          <button className="btn-logout" onClick={logout}>Sign Out</button>
-        </div>
+      <header className="dr-head">
+        <div className="dr-eyebrow">Registrar · Document services</div>
+        <h1>Document requests</h1>
+        <p className="dr-lede">
+          Move each request through the pipeline — start processing, mark it ready, then release it at the counter.
+        </p>
+      </header>
 
-        {/* â”€â”€ Filters â”€â”€ */}
-        <div style={styles.filterBar}>
-          <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            style={styles.filterSelect}
+      {/* Pipeline: per-stage counts that also filter the list */}
+      <div className="dr-pipe" role="tablist" aria-label="Filter by status">
+        {PIPE.map(p => (
+          <button
+            key={p.id || 'all'}
+            role="tab"
+            aria-selected={filterStatus === p.id}
+            className={`dr-pipe-btn${filterStatus === p.id ? ' active' : ''}`}
+            onClick={() => setFilterStatus(p.id)}
           >
-            {STATUS_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            <span className={`dr-pipe-num${p.act && p.count > 0 ? ' act' : ''}`}>{p.count}</span>
+            <span className="dr-pipe-lbl">{p.label}</span>
+          </button>
+        ))}
+      </div>
 
-          <select
-            value={filterDocType}
-            onChange={e => setFilterDocType(e.target.value)}
-            style={styles.filterSelect}
-          >
-            {DOC_TYPE_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+      {/* Toolbar */}
+      <div className="dr-toolbar">
+        <form className="dr-search" onSubmit={handleSearch}>
+          <i className="ti ti-search" />
+          <input placeholder="Search by student name or ID…" value={searchInput}
+            onChange={e => setSearchInput(e.target.value)} />
+          {searchQuery && <button type="button" className="dr-clear" onClick={clearSearch}>Clear</button>}
+        </form>
+        <select className="dr-select" value={filterDocType} onChange={e => setFilterDocType(e.target.value)}>
+          {DOC_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
 
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.4rem', flex: 1 }}>
-            <input
-              type="text"
-              placeholder="Search by student name or ID..."
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              style={{ ...styles.filterInput, flex: 1 }}
-            />
-            <button type="submit" style={styles.btnSearch}>Search</button>
-            {searchQuery && (
-              <button type="button" onClick={clearSearch} style={styles.btnClear}>Clear</button>
-            )}
-          </form>
+      {error && <div className="dr-alert">{error}</div>}
+
+      {!loading && total > 0 && (
+        <p className="dr-count">
+          Showing {offset + 1}–{Math.min(offset + PAGE_LIMIT, total)} of {total} request{total !== 1 ? 's' : ''}
+        </p>
+      )}
+
+      {/* List */}
+      {loading ? (
+        <div className="dr-empty">Loading requests…</div>
+      ) : requests.length === 0 ? (
+        <div className="dr-empty">
+          <i className="ti ti-file-off" />
+          <div className="dr-empty-t">No requests here</div>
+          <div className="dr-empty-d">Nothing matches your current filters.</div>
         </div>
-
-        {error      && <div style={styles.alertError}>{error}</div>}
-        {successMsg && <div style={styles.alertSuccess}>{successMsg}</div>}
-
-        {/* â”€â”€ Count â”€â”€ */}
-        {!loading && (
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-            {total === 0
-              ? 'No requests found.'
-              : `Showing ${offset + 1} - ${Math.min(offset + PAGE_LIMIT, total)} of ${total} request${total !== 1 ? 's' : ''}`}
-          </p>
-        )}
-
-        {/* â”€â”€ List â”€â”€ */}
-        {loading ? (
-          <p style={{ color: '#6b7280' }}>Loading...</p>
-        ) : requests.length === 0 ? (
-          <div style={styles.emptyState}>
-            <p style={{ fontWeight: 600 }}>No document requests match your filters.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+      ) : (
+        <>
+          <div className="dr-list">
             {requests.map(req => {
               const expanded = expandedId === req.id;
-              const form = updateForm[req.id] || {};
+              const form     = updateForm[req.id] || {};
               const isSaving = saving === req.id;
-              const hasNextStatuses = req.next_statuses && req.next_statuses.length > 0;
+              const next     = req.next_statuses?.[0];
+              const hasNext  = !!next;
+              const pill     = STATUS_PILL[req.status] || STATUS_PILL.submitted;
 
               return (
-                <div key={req.id} style={styles.card}>
-                  {/* Card header  -  click to expand */}
-                  <div
-                    style={styles.cardHeader}
-                    onClick={() => openExpand(req)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => e.key === 'Enter' && openExpand(req)}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                        <span style={styles.studentName}>{req.student_name}</span>
-                        <span style={styles.studentId}>{req.student_id_no}</span>
-                        <StatusBadge status={req.status} />
-                      </div>
-                      <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-                        <span style={styles.meta}>{req.document_type_display}</span>
-                        <span style={styles.meta}>{req.copies} cop{req.copies !== 1 ? 'ies' : 'y'}</span>
-                        <span style={styles.meta}>
-                          Submitted {new Date(req.submitted_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
-                        </span>
+                <article key={req.id} className={`dr-item dr-st-${req.status}${expanded ? ' expanded' : ''}`}>
+                  <div className="dr-row" onClick={() => openExpand(req)}>
+                    <div className="dr-avatar">{initials(req.student_name)}</div>
+                    <div className="dr-who">
+                      <div className="dr-name">{req.student_name}</div>
+                      <div className="dr-id">{req.student_id_no}</div>
+                    </div>
+                    <div className="dr-doc">
+                      <div className="dr-doc-type">{req.document_type_display}</div>
+                      <div className="dr-doc-meta">
+                        {req.copies} cop{req.copies > 1 ? 'ies' : 'y'} · requested {fmtDate(req.submitted_at)}
                       </div>
                     </div>
-                    <span style={{ color: '#9ca3af', fontSize: '0.75rem', userSelect: 'none' }}>
-                      {expanded ? '^' : 'v'}
+                    <span className="dr-status" style={{ background: pill.bg, color: pill.color }}>
+                      {STATUS_LABELS[req.status] || req.status}
                     </span>
+                    <div className="dr-actions" onClick={e => e.stopPropagation()}>
+                      {hasNext && (
+                        <button className="dr-advance" onClick={() => handleAdvance(req)} disabled={isSaving}>
+                          {ADVANCE_VERB[next] || 'Advance'}
+                        </button>
+                      )}
+                      <button className="dr-caret" aria-label="Details" onClick={() => openExpand(req)}>
+                        <i className={`ti ti-chevron-${expanded ? 'up' : 'down'}`} />
+                      </button>
+                    </div>
                   </div>
 
                   {expanded && (
-                    <div style={styles.cardBody}>
-                      {/* Details row */}
-                      <div style={styles.detailGrid}>
-                        <div style={styles.detailCell}>
-                          <span style={styles.detailLabel}>Email</span>
-                          <span style={styles.detailValue}>{req.student_email}</span>
+                    <div className="dr-panel">
+                      <div className="dr-detail">
+                        <div className="dr-cell">
+                          <span className="dr-cell-lbl">Email</span>
+                          <span className="dr-cell-val">{req.student_email || '—'}</span>
                         </div>
                         {req.purpose && (
-                          <div style={styles.detailCell}>
-                            <span style={styles.detailLabel}>Purpose</span>
-                            <span style={styles.detailValue}>{req.purpose}</span>
+                          <div className="dr-cell">
+                            <span className="dr-cell-lbl">Purpose</span>
+                            <span className="dr-cell-val">{req.purpose}</span>
                           </div>
                         )}
                         {req.processed_by_name && (
-                          <div style={styles.detailCell}>
-                            <span style={styles.detailLabel}>Last processed by</span>
-                            <span style={styles.detailValue}>
-                              {req.processed_by_name}
-                              {req.processed_at && <> &middot; {new Date(req.processed_at).toLocaleString('en-PH')}</>}
+                          <div className="dr-cell">
+                            <span className="dr-cell-lbl">Last handled by</span>
+                            <span className="dr-cell-val">
+                              {req.processed_by_name}{req.processed_at ? ` on ${fmtDate(req.processed_at)}` : ''}
                             </span>
                           </div>
                         )}
                         {req.remarks && (
-                          <div style={{ ...styles.detailCell, gridColumn: '1 / -1' }}>
-                            <span style={styles.detailLabel}>Current remarks</span>
-                            <span style={{
-                              ...styles.detailValue,
-                              color: req.status === 'rejected' ? '#991b1b' : '#065f46',
-                            }}>
+                          <div className="dr-cell" style={{ gridColumn: '1 / -1' }}>
+                            <span className="dr-cell-lbl">Current remarks</span>
+                            <span className="dr-cell-val" style={{ color: req.status === 'rejected' ? 'var(--reg-red)' : 'var(--reg-ink)' }}>
                               {req.remarks}
                             </span>
                           </div>
                         )}
                       </div>
 
-                      {/* Update status panel */}
-                      {hasNextStatuses ? (
-                        <div style={styles.updatePanel}>
-                          <p style={styles.updateTitle}>Update Status</p>
-                          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                            <div>
-                              <label style={styles.updateLabel}>New Status</label>
-                              <select
-                                value={form.status || ''}
-                                onChange={e => setField(req.id, 'status', e.target.value)}
-                                style={styles.updateSelect}
-                              >
-                                <option value=""> -  select  - </option>
-                                {req.next_statuses.map(s => (
-                                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                                ))}
+                      {hasNext ? (
+                        <div className="dr-form">
+                          <div className="dr-form-row">
+                            <div className="dr-field">
+                              <label className="dr-flabel">Move to</label>
+                              <select className="dr-select" value={form.status || ''}
+                                onChange={e => setField(req.id, 'status', e.target.value)}>
+                                <option value="">Select stage…</option>
+                                {req.next_statuses.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                               </select>
                             </div>
-                            <div style={{ flex: 1, minWidth: 200 }}>
-                              <label style={styles.updateLabel}>
+                            <div className="dr-field dr-field-grow">
+                              <label className="dr-flabel">
                                 Remarks
-                                {form.status === 'rejected'
-                                  ? <span style={{ color: '#991b1b' }}> (required for rejection)</span>
-                                  : <span style={{ color: '#9ca3af' }}> (optional)</span>}
+                                <span className={form.status === 'rejected' ? 'dr-req' : 'dr-opt'}>
+                                  {form.status === 'rejected' ? ' (required)' : ' (optional)'}
+                                </span>
                               </label>
-                              <textarea
-                                value={form.remarks || ''}
-                                onChange={e => setField(req.id, 'remarks', e.target.value)}
-                                rows={2}
-                                maxLength={1000}
-                                placeholder="Add remarks for the student..."
-                                style={{ ...styles.updateInput, resize: 'vertical' }}
-                              />
+                              <textarea className="dr-textarea" rows={2} maxLength={1000}
+                                placeholder="Add a note for the student…"
+                                value={form.remarks || ''} onChange={e => setField(req.id, 'remarks', e.target.value)} />
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleUpdate(req)}
-                            disabled={isSaving || !form.status}
-                            style={styles.btnUpdate(isSaving || !form.status)}
-                          >
-                            {isSaving ? 'Saving...' : 'Save Status'}
+                          <button className="dr-save" onClick={() => handleUpdate(req)} disabled={isSaving || !form.status}>
+                            {isSaving ? 'Saving…' : 'Save status'}
                           </button>
                         </div>
                       ) : (
-                        <p style={styles.terminalNote}>
+                        <p className="dr-closed">
                           {req.status === 'released'
-                            ? 'This request has been released. No further action needed.'
-                            : 'This request has been rejected. No further status changes allowed.'}
+                            ? 'Released — this request is complete.'
+                            : 'Rejected — no further changes.'}
                         </p>
                       )}
-
-                      <p style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.75rem' }}>
-                        Last updated: {new Date(req.updated_at).toLocaleString('en-PH')}
-                      </p>
+                      <p className="dr-updated">Last updated {new Date(req.updated_at).toLocaleString('en-PH')}</p>
                     </div>
                   )}
-                </div>
+                </article>
               );
             })}
           </div>
-        )}
 
-        {/* â”€â”€ Pagination â”€â”€ */}
-        {totalPages > 1 && (
-          <div style={styles.pagination}>
-            <button
-              onClick={() => setOffset(Math.max(0, offset - PAGE_LIMIT))}
-              disabled={offset === 0}
-              style={styles.pageBtn(offset === 0)}
-            >
-              â† Previous
-            </button>
-            <span style={{ fontSize: '0.85rem', color: '#374151' }}>
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setOffset(offset + PAGE_LIMIT)}
-              disabled={offset + PAGE_LIMIT >= total}
-              style={styles.pageBtn(offset + PAGE_LIMIT >= total)}
-            >
-              Next â†’
-            </button>
-          </div>
-        )}
-      </main>
-    </div>
+          {totalPages > 1 && (
+            <div className="dr-pager">
+              <span className="dr-pager-count">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="dr-pager-ctrl">
+                <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_LIMIT))}>
+                  <i className="ti ti-chevron-left" /> Prev
+                </button>
+                <button disabled={offset + PAGE_LIMIT >= total} onClick={() => setOffset(offset + PAGE_LIMIT)}>
+                  Next <i className="ti ti-chevron-right" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </>
   );
 }
 
-const styles = {
-  filterBar:     { display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' },
-  filterSelect:  { padding: '0.45rem 0.6rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.875rem', background: '#fff', minWidth: 160 },
-  filterInput:   { padding: '0.45rem 0.6rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.875rem' },
-  btnSearch:     { background: '#1e3a5f', color: '#fff', border: 'none', padding: '0.45rem 1rem', borderRadius: 6, fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' },
-  btnClear:      { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', padding: '0.45rem 0.75rem', borderRadius: 6, fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' },
-  alertError:    { background: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem' },
-  alertSuccess:  { background: '#d1fae5', color: '#065f46', padding: '0.75rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem' },
-  emptyState:    { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem', textAlign: 'center', color: '#6b7280' },
-  card:          { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
-  cardHeader:    { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1.1rem', cursor: 'pointer', userSelect: 'none' },
-  cardBody:      { padding: '0.75rem 1.1rem 1rem', borderTop: '1px solid #f3f4f6' },
-  studentName:   { fontWeight: 700, color: '#1e3a5f', fontSize: '0.95rem' },
-  studentId:     { fontSize: '0.78rem', color: '#6b7280', background: '#f3f4f6', borderRadius: 10, padding: '0.1rem 0.5rem' },
-  meta:          { fontSize: '0.78rem', color: '#9ca3af' },
-  detailGrid:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.5rem 1.5rem', marginBottom: '1rem' },
-  detailCell:    { display: 'flex', flexDirection: 'column', gap: '0.1rem' },
-  detailLabel:   { fontSize: '0.72rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' },
-  detailValue:   { fontSize: '0.85rem', color: '#374151' },
-  updatePanel:   { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.9rem 1rem', marginTop: '0.5rem' },
-  updateTitle:   { fontWeight: 700, color: '#1e3a5f', fontSize: '0.88rem', marginBottom: '0.6rem' },
-  updateLabel:   { display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' },
-  updateSelect:  { padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.875rem', background: '#fff', minWidth: 180 },
-  updateInput:   { width: '100%', padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' },
-  btnUpdate:     (d) => ({ marginTop: '0.6rem', background: '#059669', color: '#fff', border: 'none', padding: '0.45rem 1.1rem', borderRadius: 6, fontWeight: 600, fontSize: '0.875rem', cursor: d ? 'not-allowed' : 'pointer', opacity: d ? 0.65 : 1 }),
-  terminalNote:  { fontSize: '0.85rem', color: '#6b7280', fontStyle: 'italic', marginTop: '0.5rem' },
-  pagination:    { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginTop: '1.5rem' },
-  pageBtn:       (d) => ({ background: d ? '#f3f4f6' : '#1e3a5f', color: d ? '#9ca3af' : '#fff', border: 'none', padding: '0.45rem 1rem', borderRadius: 6, fontWeight: 600, fontSize: '0.875rem', cursor: d ? 'default' : 'pointer' }),
-};
+const CSS = `
+  /* ── Header ── */
+  .dr-head{ padding-bottom:1.1rem; margin-bottom:1.3rem; border-bottom:1px solid var(--reg-line); }
+  .dr-eyebrow{ display:inline-flex; align-items:center; gap:10px; font-size:10px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--reg-gold); font-weight:700; margin-bottom:.5rem; }
+  .dr-eyebrow::before{ content:''; width:22px; height:1px; background:var(--reg-gold); }
+  .dr-head h1{ margin:0; font:600 24px/1.15 'Inter',sans-serif; color:var(--reg-ink); letter-spacing:-.015em; }
+  .dr-lede{ margin:.4rem 0 0; font-size:13.5px; color:var(--reg-muted); max-width:66ch; line-height:1.5; }
 
+  /* ── Pipeline filter (counts + filter) ── */
+  .dr-pipe{ display:grid; grid-template-columns:repeat(6,1fr); border:1px solid var(--reg-line); background:#fff; margin-bottom:1.25rem; }
+  .dr-pipe-btn{ display:flex; flex-direction:column; gap:3px; align-items:flex-start; padding:14px 16px;
+    border:none; border-right:1px solid var(--reg-line-soft); background:none; cursor:pointer; text-align:left;
+    transition:background .14s; }
+  .dr-pipe-btn:last-child{ border-right:none; }
+  .dr-pipe-btn:hover{ background:var(--reg-warm); }
+  .dr-pipe-btn.active{ background:var(--reg-ink); }
+  .dr-pipe-num{ font:600 25px/1 'Inter',sans-serif; color:var(--reg-ink); font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  .dr-pipe-num.act{ color:var(--reg-gold); }
+  .dr-pipe-lbl{ font-size:11.5px; color:var(--reg-muted); }
+  .dr-pipe-btn.active .dr-pipe-num, .dr-pipe-btn.active .dr-pipe-lbl{ color:#fff; }
+
+  /* ── Toolbar ── */
+  .dr-toolbar{ display:flex; align-items:center; gap:.75rem; margin-bottom:1.1rem; flex-wrap:wrap; }
+  .dr-search{ flex:1; min-width:240px; display:flex; align-items:center; gap:8px; border:1px solid var(--reg-line); background:#fff; padding:0 12px; }
+  .dr-search:focus-within{ border-color:var(--reg-ink); }
+  .dr-search i{ color:var(--reg-faint); font-size:16px; }
+  .dr-search input{ flex:1; border:none; outline:none; padding:9px 0; font:13px 'Inter',sans-serif; background:none; color:var(--reg-ink); }
+  .dr-clear{ border:none; background:none; color:var(--reg-muted); font:600 12px 'Inter',sans-serif; cursor:pointer; padding:4px 6px; }
+  .dr-clear:hover{ color:var(--reg-ink); }
+  .dr-select{ border:1px solid var(--reg-line); background:#fff; padding:9px 12px; font:13px 'Inter',sans-serif; color:var(--reg-ink); outline:none; }
+  .dr-select:focus{ border-color:var(--reg-ink); }
+
+  .dr-alert{ background:var(--reg-red-tint); color:var(--reg-red); padding:.7rem 1rem; font-size:13px; margin-bottom:1rem; }
+  .dr-count{ font-size:12px; color:var(--reg-muted); margin:0 0 .75rem; }
+  .dr-empty{ border:1px solid var(--reg-line); background:#fff; padding:3rem 1.5rem; text-align:center; color:var(--reg-muted); font-size:13px; }
+  .dr-empty i{ font-size:34px; color:var(--reg-faint); display:block; margin-bottom:.6rem; }
+  .dr-empty-t{ font-weight:600; color:var(--reg-ink); font-size:15px; }
+  .dr-empty-d{ margin-top:4px; }
+
+  /* ── Request cards ── */
+  .dr-list{ display:flex; flex-direction:column; gap:9px; }
+  .dr-item{ background:#fff; border:1px solid var(--reg-line); border-left-width:4px; border-left-color:var(--reg-line); }
+  .dr-st-submitted{ border-left-color:var(--reg-gold); }
+  .dr-st-processing{ border-left-color:var(--reg-ink-2); }
+  .dr-st-ready{ border-left-color:var(--reg-gold); }
+  .dr-st-released{ border-left-color:var(--reg-green); }
+  .dr-st-rejected{ border-left-color:var(--reg-red); }
+  .dr-item.expanded{ box-shadow:0 10px 26px -18px rgba(10,22,40,.5); }
+
+  .dr-row{ display:flex; align-items:center; gap:14px; padding:13px 16px; cursor:pointer; }
+  .dr-avatar{ width:38px; height:38px; border-radius:50%; background:var(--reg-ink); color:#fff;
+    display:flex; align-items:center; justify-content:center; font:600 12.5px 'Inter',sans-serif; flex-shrink:0; }
+  .dr-who{ min-width:0; width:190px; flex-shrink:0; }
+  .dr-name{ font:600 14px 'Inter',sans-serif; color:var(--reg-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dr-id{ font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--reg-muted); margin-top:1px; }
+  .dr-doc{ flex:1; min-width:0; }
+  .dr-doc-type{ font-size:13.5px; color:var(--reg-ink); }
+  .dr-doc-meta{ font-size:11.5px; color:var(--reg-muted); margin-top:2px; }
+  .dr-status{ font:600 11px 'Inter',sans-serif; padding:4px 10px; white-space:nowrap; flex-shrink:0; }
+  .dr-actions{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .dr-advance{ display:inline-flex; align-items:center; gap:5px; padding:8px 13px; border:1px solid var(--reg-ink);
+    background:var(--reg-ink); color:#fff; font:600 12px 'Inter',sans-serif; cursor:pointer; white-space:nowrap; transition:filter .14s; }
+  .dr-advance:hover:not(:disabled){ filter:brightness(1.15); }
+  .dr-advance:disabled{ opacity:.55; cursor:not-allowed; }
+  .dr-caret{ border:1px solid var(--reg-line); background:#fff; color:var(--reg-muted); cursor:pointer; padding:7px 9px; display:inline-flex; }
+  .dr-caret:hover{ border-color:var(--reg-ink); color:var(--reg-ink); }
+
+  /* ── Expand panel ── */
+  .dr-panel{ border-top:1px solid var(--reg-line-soft); background:var(--reg-warm); padding:16px; }
+  .dr-detail{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.75rem 1.5rem; margin-bottom:1rem; }
+  .dr-cell{ display:flex; flex-direction:column; gap:2px; }
+  .dr-cell-lbl{ font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--reg-faint); font-weight:600; }
+  .dr-cell-val{ font-size:13px; color:var(--reg-ink); }
+  .dr-form{ background:#fff; border:1px solid var(--reg-line); padding:14px; }
+  .dr-form-row{ display:flex; gap:.75rem; flex-wrap:wrap; align-items:flex-start; }
+  .dr-field{ display:flex; flex-direction:column; gap:5px; }
+  .dr-field-grow{ flex:1; min-width:200px; }
+  .dr-flabel{ font-size:11px; font-weight:600; color:var(--reg-ink); }
+  .dr-req{ color:var(--reg-red); font-weight:500; }
+  .dr-opt{ color:var(--reg-faint); font-weight:400; }
+  .dr-textarea{ width:100%; box-sizing:border-box; border:1px solid var(--reg-line); padding:8px 10px;
+    font:13px/1.5 'Inter',sans-serif; resize:vertical; outline:none; color:var(--reg-ink); }
+  .dr-textarea:focus{ border-color:var(--reg-ink); }
+  .dr-save{ margin-top:.75rem; padding:9px 18px; border:1px solid var(--reg-ink); background:var(--reg-ink); color:#fff;
+    font:600 12.5px 'Inter',sans-serif; cursor:pointer; transition:filter .14s; }
+  .dr-save:hover:not(:disabled){ filter:brightness(1.15); }
+  .dr-save:disabled{ opacity:.55; cursor:not-allowed; }
+  .dr-closed{ font-size:13px; color:var(--reg-muted); margin:0; }
+  .dr-updated{ font-size:11px; color:var(--reg-faint); margin:.75rem 0 0; }
+
+  /* ── Pager ── */
+  .dr-pager{ display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-top:1.25rem; flex-wrap:wrap; }
+  .dr-pager-count{ font-size:12px; color:var(--reg-muted); }
+  .dr-pager-ctrl{ display:flex; gap:8px; }
+  .dr-pager-ctrl button{ display:inline-flex; align-items:center; gap:5px; padding:8px 13px; border:1px solid var(--reg-line);
+    background:#fff; color:var(--reg-ink); font:600 12.5px 'Inter',sans-serif; cursor:pointer; }
+  .dr-pager-ctrl button:hover:not(:disabled){ border-color:var(--reg-ink); }
+  .dr-pager-ctrl button:disabled{ opacity:.45; cursor:not-allowed; }
+
+  /* ── Responsive ── */
+  @media (max-width:820px){
+    .dr-pipe{ grid-template-columns:repeat(3,1fr); }
+    .dr-pipe-btn:nth-child(3){ border-right:none; }
+    .dr-who{ width:auto; }
+    .dr-row{ flex-wrap:wrap; }
+    .dr-doc{ flex-basis:100%; order:5; }
+  }
+  @media (max-width:520px){ .dr-pipe{ grid-template-columns:repeat(2,1fr); } .dr-pipe-btn:nth-child(2){ border-right:none; } }
+  @media (prefers-reduced-motion: reduce){ .dr-pipe-btn, .dr-advance, .dr-save, .dr-caret{ transition:none; } }
+`;

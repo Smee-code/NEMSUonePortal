@@ -293,7 +293,7 @@ export default function FacultyRoster() {
         <div className="ro-modal-overlay" onMouseDown={() => !addBusy && setShowAdd(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(10,22,40,.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}>
           <div onMouseDown={e => e.stopPropagation()}
-            style={{ background: '#fff', width: '100%', maxWidth: 420, border: '1px solid var(--line,#e2e8f0)', padding: '1.5rem', boxShadow: '0 24px 60px -20px rgba(10,22,40,.4)' }}>
+            style={{ background: '#fff', width: '100%', maxWidth: 420, boxSizing: 'border-box', border: '1px solid var(--line,#e2e8f0)', padding: '1.5rem', boxShadow: '0 24px 60px -20px rgba(10,22,40,.4)' }}>
             <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink,#0a1628)', margin: '0 0 .35rem' }}>Add a student</h3>
             <p style={{ fontSize: 13, color: 'var(--muted,#64748b)', margin: '0 0 1rem', lineHeight: 1.5 }}>
               Add one student to {selected?.subject_code}{selected?.section ? ` [${selected.section}]` : ''} by ID. If they haven't registered a portal account yet, a placeholder is created and links automatically when they do.

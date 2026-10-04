@@ -36,6 +36,22 @@ const CSS = `
   .db-trend.up{color:var(--adm-green)}.db-trend.down{color:var(--adm-red)}
   .db-trend i{font-size:12px}
 
+  /* Attention band — the day's work, led with */
+  .db-attn{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+  .db-attn-tile{position:relative;display:flex;flex-direction:column;gap:3px;padding:1.3rem 1.3rem 1.15rem;background:#fff;border:1px solid var(--adm-line);text-decoration:none;color:var(--adm-ink);transition:border-color .15s,transform .15s,box-shadow .15s}
+  .db-attn-tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent}
+  .db-attn-tile:hover{border-color:var(--adm-ink);transform:translateY(-2px);box-shadow:0 8px 20px -12px rgba(10,22,40,.22)}
+  .db-attn-tile.active::before{background:var(--adm-gold)}
+  .db-attn-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
+  .db-attn-ic{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--adm-line);color:var(--adm-muted)}
+  .db-attn-ic i{font-size:18px}
+  .db-attn-tile.active .db-attn-ic{color:var(--adm-gold);border-color:#e7dcc0;background:#fbf7ec}
+  .db-attn-n{font-family:'Inter',sans-serif;font-size:36px;font-weight:500;letter-spacing:-.02em;line-height:1;color:var(--adm-ink)}
+  .db-attn-tile:not(.active) .db-attn-n{color:var(--adm-faint)}
+  .db-attn-label{font-size:14px;font-weight:600;color:var(--adm-ink)}
+  .db-attn-sub{font-size:11.5px;color:var(--adm-muted)}
+  @media(max-width:820px){.db-attn{grid-template-columns:1fr}}
+
   /* Section heading */
   .db-sec{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:1rem}
   .db-sec h3{font-family:'Inter',sans-serif;font-weight:500;font-size:22px;color:var(--adm-ink);letter-spacing:-.008em;line-height:1.1}
@@ -179,6 +195,7 @@ const CSS = `
   /* Responsive */
   @media(max-width:1280px){.db-kpis{grid-template-columns:repeat(3,1fr)}.db-kpi:nth-child(-n+3){border-bottom:1px solid var(--adm-line)}.db-kpi:nth-child(3){border-right:none}}
   @media(max-width:980px){.db-row2,.db-row21{grid-template-columns:1fr}.db-quick{grid-template-columns:1fr 1fr}.db-trends{grid-template-columns:1fr}}
+  @media(max-width:560px){.db-kpis{grid-template-columns:repeat(2,1fr)}.db-grade-stats{grid-template-columns:1fr}.db-quick{grid-template-columns:1fr}}
 `;
 
 /* ── Static data for Enrollment Trends (no historical API) ──────────────── */
@@ -488,6 +505,34 @@ function QuickActions({ toast, openDrawer }) {
   );
 }
 
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+/* The admin opens the dashboard to see what needs doing — lead with it. */
+function AttentionBand({ u, d }) {
+  const items = [
+    { n: d?.submitted ?? 0,  label: 'Document requests',   sub: 'New requests to move along',       icon: 'ti-file-text',        to: '/admin/reports' },
+    { n: u?.unverified ?? 0, label: 'Unverified accounts', sub: 'Waiting on email verification',    icon: 'ti-mail-exclamation', to: '/admin/users'   },
+    { n: u?.locked ?? 0,     label: 'Locked accounts',     sub: 'Unlock to restore access',         icon: 'ti-lock',             to: '/admin/users'   },
+  ];
+  return (
+    <div className="db-attn">
+      {items.map(i => (
+        <Link key={i.label} to={i.to} className={`db-attn-tile${i.n > 0 ? ' active' : ''}`}>
+          <div className="db-attn-top">
+            <span className="db-attn-ic"><i className={`ti ${i.icon}`} /></span>
+            <span className="db-attn-n">{(i.n ?? 0).toLocaleString()}</span>
+          </div>
+          <div className="db-attn-label">{i.label}</div>
+          <div className="db-attn-sub">{i.n > 0 ? i.sub : 'Nothing waiting'}</div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { toast, openDrawer } = useAdminShell();
@@ -517,6 +562,7 @@ export default function AdminDashboard() {
   const u  = stats?.users;
   const d  = stats?.documents;
   const g  = stats?.grade_submission;
+  const needsCount = (d?.submitted ?? 0) + (u?.unverified ?? 0) + (u?.locked ?? 0);
   const termLabel = currentTerm
     ? `${currentTerm.semester_display} ${currentTerm.year}`
     : (stats?.active_term_label ?? '-');
@@ -531,13 +577,16 @@ export default function AdminDashboard() {
         <div className="db-welcome">
           <div>
             <div className="db-w-eyebrow">Overview · {termLabel}</div>
-            <h1 className="db-w-title">Good morning, <em>{firstName(user?.full_name)}</em>.</h1>
+            <h1 className="db-w-title">{greeting()}, <em>{firstName(user?.full_name)}</em>.</h1>
             <p className="db-w-sub">
-              {d?.ready ?? '-'} document requests are ready for release at the registrar's office.
+              {loading
+                ? 'Loading your overview…'
+                : needsCount > 0
+                  ? `${needsCount} item${needsCount !== 1 ? 's' : ''} need your attention today.`
+                  : 'Everything looks clear — nothing needs your action right now.'}
             </p>
           </div>
           <div className="db-w-side">
-            <div className="db-live"><span className="db-live-dot" /> Live data</div>
             <div className="db-stamp">
               Updated {stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH', { hour12: true }) : '-'}
             </div>
@@ -555,6 +604,22 @@ export default function AdminDashboard() {
           <div style={{ color: 'var(--adm-faint)', fontSize: 13 }}>Loading analytics…</div>
         ) : (
           <>
+            {/* Needs attention — the day's work, first */}
+            <div className="db-sec">
+              <div>
+                <h3>Needs <em>attention</em></h3>
+                <div className="sub">What&rsquo;s waiting on an administrator right now.</div>
+              </div>
+            </div>
+            <AttentionBand u={u} d={d} />
+
+            {/* System at a glance */}
+            <div className="db-sec" style={{ marginTop: '.5rem' }}>
+              <div>
+                <h3>System <em>at a glance</em></h3>
+                <div className="sub">Accounts and requests across the portal.</div>
+              </div>
+            </div>
             <div className="db-kpis">
               <Kpi label="Total Users"    icon="ti-users"           value={u?.total}
                 sub="across all roles" />
@@ -585,18 +650,8 @@ export default function AdminDashboard() {
               <AccountHealth u={u} g={g} term={termLabel} />
             </div>
 
-            {/* Recent activity + Pending review */}
-            <div className="db-row21">
-              <RecentActivity logs={recentLogs} />
-              <div className="db-pend-card">
-                <div className="db-card-head" style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--adm-line-soft)' }}>
-                  <h4>Pending review<span>Awaiting your action</span></h4>
-                </div>
-                <ActionItem icon="ti-file-text"       n={d?.submitted ?? 0} label="Document requests"    sub="New TOR, COR, and certificate requests" />
-                <ActionItem icon="ti-shield-check"    n={u?.unverified ?? 0} label="Unverified accounts" sub="Awaiting email verification" />
-                <ActionItem icon="ti-lock"            n={u?.locked ?? 0}    label="Locked accounts"      sub="Reset or unlock to restore access" />
-              </div>
-            </div>
+            {/* Recent activity — full width */}
+            <RecentActivity logs={recentLogs} />
 
             {/* Quick actions */}
             <div className="db-sec" style={{ marginTop: '.5rem' }}>

@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import ScrollMemory from '../ScrollMemory';
+import { useSupport, requestSelfPasswordReset } from '../SupportModal';
 import { useAuth } from '../../context/AuthContext';
 import { FacultyShellCtx } from '../../context/FacultyShellContext';
 import api from '../../api/axios';
@@ -502,11 +504,6 @@ function FacTopbar({ active, openDrawer, openNav, unread = 0, onBell }) {
         <span className="here">{pageLabel}</span>
       </div>
 
-      <div className="fac-topbar-search">
-        <i className="ti ti-search" />
-        <input placeholder="Search…" />
-      </div>
-
       <div className="fac-topbar-actions">
         <div className="fac-term-chip">
           <i className="ti ti-calendar" />
@@ -609,10 +606,17 @@ function DrawerNotifications({ close, notifs = [], unreadCount = 0 }) {
 
 function DrawerAccount({ close, logout, navigate, toast }) {
   const { user } = useAuth();
+  const openSupport = useSupport();
+  const changePassword = async () => {
+    close();
+    const r = await requestSelfPasswordReset();
+    if (r.ok) toast('Password reset link sent to your email.', { type: 'success', sub: r.email });
+    else toast(r.error, { type: 'error' });
+  };
   const items = [
-    { icon: 'ti-user',     label: 'My profile',       act: () => { navigate('/faculty/profile'); close(); }                 },
-    { icon: 'ti-key',      label: 'Change password',  act: () => { toast('Password reset email sent', { type: 'success' }); close(); } },
-    { icon: 'ti-help',     label: 'Help & support',   act: () => { toast('Opening help center…'); close(); }                },
+    { icon: 'ti-user',     label: 'My profile',       act: () => { navigate('/faculty/profile'); close(); } },
+    { icon: 'ti-key',      label: 'Change password',  act: changePassword },
+    { icon: 'ti-help',     label: 'Help & support',   act: () => { close(); openSupport(); } },
   ];
   const handleLogout = () => { close(); logout(); navigate('/login'); };
   return (
@@ -688,6 +692,7 @@ export default function FacultyShell() {
           <FacTopbar active={active} openDrawer={openDrawer} openNav={() => setNavOpen(true)}
             unread={unreadCount} onBell={() => { openDrawer('notifications'); markSeen(); }} />
           <div className="fac-body">
+            <ScrollMemory />
             <Outlet />
           </div>
         </div>

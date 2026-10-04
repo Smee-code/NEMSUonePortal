@@ -1,6 +1,25 @@
 from rest_framework import serializers
 
-from .models import ClassSchedule
+from .models import Building, ClassSchedule, Room
+
+
+class RoomSerializer(serializers.ModelSerializer):
+    room_type_display = serializers.CharField(source='get_room_type_display', read_only=True)
+
+    class Meta:
+        model = Room
+        fields = ['id', 'name', 'room_type', 'room_type_display', 'is_active']
+
+
+class BuildingSerializer(serializers.ModelSerializer):
+    rooms = RoomSerializer(many=True, read_only=True)
+    room_count = serializers.IntegerField(source='rooms.count', read_only=True)
+    department_name = serializers.CharField(source='department.name', read_only=True, default=None)
+
+    class Meta:
+        model = Building
+        fields = ['id', 'name', 'code', 'department', 'department_name',
+                  'is_active', 'rooms', 'room_count']
 
 
 class ScheduleSlotSerializer(serializers.ModelSerializer):
@@ -26,14 +45,19 @@ class ClassScheduleWriteSerializer(serializers.ModelSerializer):
 
 class ClassScheduleReadSerializer(serializers.ModelSerializer):
     day_display = serializers.CharField(source='get_day_of_week_display', read_only=True)
+    subject_id = serializers.IntegerField(source='teaching_assignment.subject.id', read_only=True)
     subject_code = serializers.CharField(source='teaching_assignment.subject.code', read_only=True)
     subject_name = serializers.CharField(source='teaching_assignment.subject.name', read_only=True)
+    section = serializers.CharField(source='teaching_assignment.section', read_only=True)
     subject_units = serializers.DecimalField(
         source='teaching_assignment.subject.units', max_digits=4,
         decimal_places=2, coerce_to_string=False, read_only=True
     )
     faculty_name = serializers.CharField(source='teaching_assignment.faculty.full_name', read_only=True)
     faculty_id = serializers.UUIDField(source='teaching_assignment.faculty.id', read_only=True)
+    block_name = serializers.SerializerMethodField()
+    block_program = serializers.SerializerMethodField()
+    block_year_level = serializers.SerializerMethodField()
     term_display = serializers.SerializerMethodField()
     term_id = serializers.IntegerField(source='teaching_assignment.academic_term.id', read_only=True)
     teaching_assignment_id = serializers.IntegerField(source='teaching_assignment.id', read_only=True)
@@ -42,13 +66,26 @@ class ClassScheduleReadSerializer(serializers.ModelSerializer):
         model = ClassSchedule
         fields = [
             'id', 'teaching_assignment_id',
-            'subject_code', 'subject_name', 'subject_units',
+            'subject_id', 'subject_code', 'subject_name', 'subject_units', 'section',
+            'block_name', 'block_program', 'block_year_level',
             'faculty_name', 'faculty_id', 'term_display', 'term_id',
             'day_of_week', 'day_display', 'start_time', 'end_time', 'room', 'building',
         ]
 
     def get_term_display(self, obj):
         return str(obj.teaching_assignment.academic_term)
+
+    def get_block_name(self, obj):
+        b = obj.teaching_assignment.block
+        return b.name if b else ''
+
+    def get_block_program(self, obj):
+        b = obj.teaching_assignment.block
+        return b.program_id if b else None
+
+    def get_block_year_level(self, obj):
+        b = obj.teaching_assignment.block
+        return b.year_level if b else None
 
 
 class FacultySlotCreateSerializer(serializers.Serializer):

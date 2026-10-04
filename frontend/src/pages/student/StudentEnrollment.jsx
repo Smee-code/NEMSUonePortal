@@ -1,689 +1,352 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
-const STEPS = ['Term & Type', 'Program', 'Year Level', 'Courses', 'Review'];
-
-const STUDENT_TYPES = [
-  { value: 'freshman',   label: 'Freshman',   desc: 'First time enrolling in the institution' },
-  { value: 'regular',    label: 'Regular',    desc: 'Continuing student from previous semester' },
-  { value: 'shiftee',    label: 'Shiftee',    desc: 'Transferring from another program within the same school' },
-  { value: 'transferee', label: 'Transferee', desc: 'Transferring from another institution' },
-];
-
-const YEAR_LEVELS = [
-  { value: 1, label: '1st Year' },
-  { value: 2, label: '2nd Year' },
-  { value: 3, label: '3rd Year' },
-  { value: 4, label: '4th Year' },
-];
-
 const STATUS_META = {
-  pending:  { label: 'Pending Review', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
-  approved: { label: 'Approved',       bg: '#d1fae5', color: '#065f46', border: '#6ee7b7' },
-  rejected: { label: 'Rejected',       bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+  pending:  { label: 'Pending review', cls: 'pending'  },
+  approved: { label: 'Approved',       cls: 'approved' },
+  rejected: { label: 'Rejected',       cls: 'rejected' },
+};
+
+const YEAR_LABEL = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year' };
+
+// What the current-term record says in plain language, per status.
+const STANDING = {
+  approved: { line: 'Officially enrolled',               tone: 'var(--green)' },
+  pending:  { line: 'Submitted — awaiting validation',   tone: 'var(--amber)' },
+  rejected: { line: 'Not enrolled — see remarks below',  tone: 'var(--red)'   },
 };
 
 export default function StudentEnrollment() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
-  const [terms, setTerms] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [programs, setPrograms] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
-  const [loadingSubjects, setLoadingSubjects] = useState(false);
-
-  const [step, setStep] = useState(1);
-  const [selectedTerm, setSelectedTerm] = useState(null);
-  const [studentType, setStudentType] = useState('regular');
-  const [selectedDept, setSelectedDept] = useState(null);
-  const [selectedProgram, setSelectedProgram] = useState(null);
-  const [yearLevel, setYearLevel] = useState(null);
-  const [selectedSubjectIds, setSelectedSubjectIds] = useState([]);
-  const [showBackCourses, setShowBackCourses] = useState(false);
-
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+  const [history, setHistory]   = useState([]);
+  const [offered, setOffered]   = useState(null);   // { term, program, year_level, already_submitted, courses }
+  const [loading, setLoading]   = useState(true);
+  const [submitting, setSubmitting]     = useState(false);
+  const [submitError, setSubmitError]   = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  useEffect(() => {
-    Promise.all([
-      api.get('/enrollment/terms/'),
-      api.get('/enrollment/departments/'),
-      api.get('/enrollment/programs/'),
-      api.get('/enrollment/my/'),
-    ])
-      .then(([tRes, dRes, pRes, hRes]) => {
-        setTerms(tRes.data);
-        setDepartments(dRes.data);
-        setPrograms(pRes.data);
-        setHistory(hRes.data);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingData(false));
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  useEffect(() => {
-    if (!selectedTerm || !selectedProgram || !yearLevel) return;
-    setLoadingSubjects(true);
-    setSelectedSubjectIds([]);
-    setShowBackCourses(false);
-    api.get(`/enrollment/subjects/?program=${selectedProgram.id}&year_level=${yearLevel}&semester=${selectedTerm.semester}`)
-      .then(res => setSubjects(res.data))
-      .catch(() => setSubjects([]))
-      .finally(() => setLoadingSubjects(false));
-  }, [selectedTerm, selectedProgram, yearLevel]);
-
-  const programsForDept = selectedDept
-    ? programs.filter(p => p.department === selectedDept.id)
-    : [];
-
-  const regularSubjects = subjects.filter(s => s.year_level === yearLevel);
-  const backSubjects = subjects.filter(s => s.year_level !== yearLevel);
-  const selectedSubjectObjs = subjects.filter(s => selectedSubjectIds.includes(s.id));
-  const totalUnits = selectedSubjectObjs.reduce((sum, s) => sum + parseFloat(s.units || 0), 0);
-
-  const activeTerm = terms.find(t => t.enrollment_open);
-  const alreadyEnrolledTermIds = new Set(history.map(h => h.academic_term.id));
-  const enrollmentOpen = terms.some(t => t.enrollment_open && !alreadyEnrolledTermIds.has(t.id));
-  const currentEnrollment = history.find(h => h.academic_term.id === activeTerm?.id);
-
-  function toggleSubject(id) {
-    setSelectedSubjectIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+  async function load() {
+    setLoading(true);
+    try {
+      const [hRes, oRes] = await Promise.all([
+        api.get('/enrollment/my/'),
+        api.get('/enrollment/offered/'),
+      ]);
+      setHistory(hRes.data);
+      setOffered(oRes.data);
+    } catch { /* leave empty */ }
+    finally { setLoading(false); }
   }
 
-  function goNext() { setStep(s => s + 1); }
-  function goBack() { setStep(s => s - 1); }
-
-  function resetWizard() {
-    setStep(1);
-    setSelectedTerm(null);
-    setStudentType('regular');
-    setSelectedDept(null);
-    setSelectedProgram(null);
-    setYearLevel(null);
-    setSelectedSubjectIds([]);
-    setShowBackCourses(false);
-    setSubmitError('');
-    setSubmitSuccess(false);
-  }
+  const term        = offered?.term;
+  const termLabel   = term ? term.label : 'No active term';
+  const currentEnrollment = history.find(h => h.academic_term.id === term?.id);
+  const pastEnrollments   = history.filter(h => h.academic_term.id !== term?.id);
+  const courses     = offered?.courses || [];
+  const eligible    = courses.filter(c => c.eligible);
+  const blocked     = courses.filter(c => !c.eligible);
+  const eligibleUnits = eligible.reduce((s, c) => s + parseFloat(c.units || 0), 0);
 
   async function handleSubmit() {
     setSubmitError('');
     setSubmitting(true);
     try {
-      await api.post('/enrollment/submit/', {
-        academic_term_id: selectedTerm.id,
-        program_id: selectedProgram.id,
-        year_level: yearLevel,
-        subject_ids: selectedSubjectIds,
-        student_type: studentType,
-      });
+      await api.post('/enrollment/enroll/continuing/', {});
       setSubmitSuccess(true);
-      const hRes = await api.get('/enrollment/my/');
-      setHistory(hRes.data);
+      await load();
     } catch (err) {
-      const data = err.response?.data;
-      const msg =
-        data?.non_field_errors?.[0] ||
-        data?.subject_ids?.[0] ||
-        data?.program_id?.[0] ||
-        data?.year_level?.[0] ||
-        data?.academic_term_id?.[0] ||
-        data?.error ||
-        data?.detail ||
-        'Submission failed. Please try again.';
-      setSubmitError(msg);
+      setSubmitError(err.response?.data?.error || 'Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loadingData) {
-    return (
-      <div className="dashboard">
-        <Sidebar />
-        <main className="dashboard-content">
-          <Header user={user} logout={logout} />
-          <p style={{ color: '#6b7280' }}>Loading enrollment data...</p>
-        </main>
-      </div>
-    );
+  if (loading) {
+    return <div className="page"><p style={{ color: 'var(--muted)' }}>Loading enrollment…</p></div>;
   }
 
   return (
-    <div className="dashboard">
-      <Sidebar />
-      <main className="dashboard-content">
-        <Header user={user} logout={logout} />
+    <div className="page">
+      <style>{CSS}</style>
 
-        {currentEnrollment && (
-          <EnrollmentStatusCard enrollment={currentEnrollment} />
-        )}
-
-        {enrollmentOpen ? (
-          submitSuccess ? (
-            <div style={S.successBox}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>&#10003;</div>
-              <h3 style={{ margin: '0 0 0.5rem', color: '#065f46' }}>Enrollment Request Submitted!</h3>
-              <p style={{ margin: '0 0 1.25rem', color: '#374151', fontSize: '0.95rem' }}>
-                The registrar will review your request shortly. You will be notified of the outcome.
-              </p>
-              <button style={S.btnPrimary} onClick={resetWizard}>Submit Another</button>
-            </div>
-          ) : (
-            <section style={S.wizardBox}>
-              <h2 style={S.sectionTitle}>Online Enrollment Form</h2>
-
-              <div style={S.stepBar}>
-                {STEPS.map((label, i) => {
-                  const n = i + 1;
-                  const done = n < step;
-                  const active = n === step;
-                  return (
-                    <div key={n} style={S.stepItem}>
-                      <div style={S.stepCircle(active, done)}>{done ? '✓' : n}</div>
-                      <span style={S.stepLabel(active, done)}>{label}</span>
-                      {i < STEPS.length - 1 && <div style={S.stepLine(done)} />}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div style={S.stepContent}>
-                {step === 1 && (
-                  <Step1
-                    terms={terms}
-                    alreadyEnrolledTermIds={alreadyEnrolledTermIds}
-                    selectedTerm={selectedTerm}
-                    onSelectTerm={setSelectedTerm}
-                    studentType={studentType}
-                    onSelectType={setStudentType}
-                    onNext={goNext}
-                  />
-                )}
-                {step === 2 && (
-                  <Step2
-                    departments={departments}
-                    programsForDept={programsForDept}
-                    selectedDept={selectedDept}
-                    onSelectDept={(d) => { setSelectedDept(d); setSelectedProgram(null); }}
-                    selectedProgram={selectedProgram}
-                    onSelectProgram={setSelectedProgram}
-                    onNext={goNext}
-                    onBack={goBack}
-                  />
-                )}
-                {step === 3 && (
-                  <Step3
-                    yearLevel={yearLevel}
-                    onSelectYear={setYearLevel}
-                    onNext={goNext}
-                    onBack={goBack}
-                  />
-                )}
-                {step === 4 && (
-                  <Step4
-                    loading={loadingSubjects}
-                    regularSubjects={regularSubjects}
-                    backSubjects={backSubjects}
-                    selectedSubjectIds={selectedSubjectIds}
-                    onToggle={toggleSubject}
-                    showBackCourses={showBackCourses}
-                    onToggleBack={(checked) => {
-                      setShowBackCourses(checked);
-                      if (!checked) {
-                        const backIds = new Set(backSubjects.map(s => s.id));
-                        setSelectedSubjectIds(prev => prev.filter(id => !backIds.has(id)));
-                      }
-                    }}
-                    yearLabel={YEAR_LEVELS.find(y => y.value === yearLevel)?.label}
-                    totalUnits={totalUnits}
-                    selectedCount={selectedSubjectIds.length}
-                    onNext={goNext}
-                    onBack={goBack}
-                  />
-                )}
-                {step === 5 && (
-                  <Step5
-                    term={selectedTerm}
-                    studentType={studentType}
-                    dept={selectedDept}
-                    program={selectedProgram}
-                    yearLevel={yearLevel}
-                    subjects={selectedSubjectObjs}
-                    totalUnits={totalUnits}
-                    submitting={submitting}
-                    error={submitError}
-                    onSubmit={handleSubmit}
-                    onBack={goBack}
-                  />
-                )}
-              </div>
-            </section>
-          )
-        ) : !currentEnrollment && (
-          <div style={S.closedBox}>
-            <p style={{ margin: 0, fontWeight: 600, color: '#374151' }}>Enrollment is currently closed.</p>
-            <p style={{ margin: '0.25rem 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
-              Please check back later or contact the registrar&apos;s office.
-            </p>
-          </div>
-        )}
-
-        <section style={{ marginTop: '2rem' }}>
-          <h2 style={S.sectionTitle}>My Enrollment History</h2>
-          {history.length === 0 ? (
-            <p style={S.emptyHelp}>No enrollment requests yet.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {history.map(req => (
-                <HistoryCard key={req.id} req={req} />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
-    </div>
-  );
-}
-
-/* ── Sidebar / Header ───────────────────────────────────────── */
-
-function Sidebar() {
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-brand">
-        <img src="/logo.png" alt="NEMSU" className="sidebar-logo" />NEMSUonePortal
-      </div>
-      <Link className="sidebar-link" to="/student/dashboard">Dashboard</Link>
-      <Link className="sidebar-link active" to="/student/enrollment">Enrollment</Link>
-      <Link className="sidebar-link" to="/student/courses">My Courses</Link>
-      <Link className="sidebar-link" to="/student/grades">My Grades</Link>
-      <Link className="sidebar-link" to="/student/schedule">Schedule</Link>
-      <Link className="sidebar-link" to="/student/documents">Document Requests</Link>
-      <Link className="sidebar-link" to="/student/announcements">Announcements</Link>
-      <Link className="sidebar-link" to="/student/profile">My Profile</Link>
-    </aside>
-  );
-}
-
-function Header({ user, logout }) {
-  return (
-    <div className="dashboard-header">
-      <div>
-        <h1>Online Enrollment</h1>
-        <span className="badge">{user?.role}</span>
-      </div>
-      <button className="btn-logout" onClick={logout}>Sign Out</button>
-    </div>
-  );
-}
-
-/* ── Status card for existing term enrollment ───────────────── */
-
-function EnrollmentStatusCard({ enrollment }) {
-  const meta = STATUS_META[enrollment.status] ?? { label: enrollment.status, bg: '#f3f4f6', color: '#374151', border: '#e5e7eb' };
-  return (
-    <div style={{ ...S.statusCard, borderColor: meta.border }}>
-      <div style={S.statusCardHeader}>
+      {/* ── Page head ── */}
+      <div className="page-head">
         <div>
-          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1f2937' }}>
-            {enrollment.academic_term.semester_display} {enrollment.academic_term.year}
-          </div>
-          <div style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 2 }}>
-            {enrollment.program_code} &middot; {enrollment.year_level_display}
-            {enrollment.block_name && <> &middot; {enrollment.block_name}</>}
-            {enrollment.student_type_display && <> &middot; {enrollment.student_type_display}</>}
-          </div>
+          <div className="eyebrow">Academic · {termLabel}</div>
+          <h2>My <em>enrollment</em></h2>
+          <div className="sub">Your certificate of registration for the current term, and a record of the terms you’ve completed.</div>
         </div>
-        <span style={{ background: meta.bg, color: meta.color, padding: '4px 14px', borderRadius: 20, fontWeight: 700, fontSize: '0.82rem' }}>
-          {meta.label}
-        </span>
+        {currentEnrollment?.status === 'approved' && (
+          <div className="actions">
+            <button className="btn-sec" onClick={() => window.print()}>
+              <i className="ti ti-printer" /> Print COR
+            </button>
+          </div>
+        )}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.75rem' }}>
-        {enrollment.subjects.map(s => (
-          <span key={s.id} style={S.chip}>{s.code}</span>
-        ))}
+
+      {/* ── Current enrollment (COR) ── */}
+      {currentEnrollment && <CurrentEnrollment enr={currentEnrollment} user={user} />}
+
+      {/* ── Enroll panel (only when not already enrolled this term) ── */}
+      {!currentEnrollment && (
+        <EnrollPanel
+          offered={offered} term={term} termLabel={termLabel}
+          eligible={eligible} blocked={blocked} eligibleUnits={eligibleUnits}
+          submitting={submitting} submitError={submitError} submitSuccess={submitSuccess}
+          onSubmit={handleSubmit}
+        />
+      )}
+
+      {/* ── History (a chronological record, so shown as a timeline) ── */}
+      <div className="sec-head" style={{ marginTop: '2rem' }}>
+        <div>
+          <h3>Enrollment <em>history</em></h3>
+          <div className="sub">{pastEnrollments.length
+            ? `${pastEnrollments.length} completed term${pastEnrollments.length !== 1 ? 's' : ''} on record`
+            : 'Past terms will appear here'}</div>
+        </div>
       </div>
-      {enrollment.remarks && (
-        <p style={{ margin: '0.6rem 0 0', fontSize: '0.85rem', color: '#374151', fontStyle: 'italic' }}>
-          Remarks: {enrollment.remarks}
-        </p>
+      {pastEnrollments.length === 0 ? (
+        <div className="stu-empty"><i className="ti ti-clipboard-list" /><p>No completed terms yet. This is your first term on record.</p></div>
+      ) : (
+        <div className="se-tl">
+          {pastEnrollments.map((req, i) => (
+            <TimelineRow key={req.id} req={req} last={i === pastEnrollments.length - 1} />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-/* ── Wizard steps ───────────────────────────────────────────── */
+/* ── Current enrollment / Certificate of Registration ────────────── */
+function CurrentEnrollment({ enr, user }) {
+  const standing = STANDING[enr.status] ?? STANDING.pending;
+  const meta = STATUS_META[enr.status] ?? STATUS_META.pending;
+  const subjects = enr.subjects ?? [];
 
-function Step1({ terms, alreadyEnrolledTermIds, selectedTerm, onSelectTerm, studentType, onSelectType, onNext }) {
-  const openTerms = terms.filter(t => t.enrollment_open && !alreadyEnrolledTermIds.has(t.id));
+  const facts = [
+    ['Student No.', enr.student_id ?? user?.student_id ?? '—', true],
+    ['Program',     enr.program_code ?? '—', false],
+    ['Year Level',  enr.year_level_display ?? '—', false],
+    ['Block',       enr.block_name ?? enr.block_code ?? '—', false],
+  ];
+
   return (
-    <div>
-      <h3 style={S.stepTitle}>Step 1: Academic Term &amp; Student Type</h3>
+    <div className="se-cor">
+      {/* document header */}
+      <div className="se-cor-top">
+        <div>
+          <div className="se-cor-eyebrow">Certificate of Registration</div>
+          <h3 className="se-cor-term">
+            {enr.academic_term.semester_display} <em>{enr.academic_term.year}</em>
+          </h3>
+          <div className="se-cor-standing" style={{ color: standing.tone }}>
+            <i className={`ti ${enr.status === 'approved' ? 'ti-circle-check'
+              : enr.status === 'rejected' ? 'ti-circle-x' : 'ti-clock'}`} />
+            {standing.line}
+            {enr.student_type_display ? ` · ${enr.student_type_display}` : ''}
+          </div>
+        </div>
+        <span className={`se-status se-status--${meta.cls}`}>{meta.label}</span>
+      </div>
 
-      <div style={S.fieldGroup}>
-        <label style={S.label}>Academic Term</label>
-        {openTerms.length === 0 ? (
-          <p style={S.emptyHelp}>No open enrollment terms available.</p>
+      {/* registration facts */}
+      <div className="se-cor-meta">
+        {facts.map(([label, value, mono]) => (
+          <div key={label}>
+            <div className="se-dt">{label}</div>
+            <div className={`se-dd${mono ? ' mono' : ''}`}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* enrolled subjects */}
+      {subjects.length > 0 && (
+        <div className="se-cor-body">
+          <div className="se-cor-bh">
+            <h4>Enrolled subjects</h4>
+            <span>{subjects.length} subject{subjects.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="table-wrap">
+            <table className="se-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 110 }}>Code</th>
+                  <th>Descriptive title</th>
+                  <th className="num" style={{ width: 80 }}>Units</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subjects.map(s => (
+                  <tr key={s.id || s.code}>
+                    <td className="se-code">{s.code}</td>
+                    <td className="se-title">{s.name}</td>
+                    <td className="num">{fmtUnits(s.units)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={2}>Total academic load</td>
+                  <td className="num">{fmtUnits(enr.total_units)} units</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {enr.remarks && (
+        <div className="se-remarks">
+          <i className="ti ti-message-2" />
+          <span><strong>Registrar remarks:</strong> {enr.remarks}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Enroll panel ────────────────────────────────────────────── */
+function EnrollPanel({ offered, term, termLabel, eligible, blocked, eligibleUnits, submitting, submitError, submitSuccess, onSubmit }) {
+  if (submitSuccess || offered?.already_submitted) {
+    return (
+      <div className="se-submitted">
+        <i className="ti ti-circle-check" />
+        <h3>Enrollment submitted</h3>
+        <p>The registrar will review your enrollment and finalize your courses. You’ll be notified of the outcome.</p>
+      </div>
+    );
+  }
+  if (!term) return <ClosedNotice title="Enrollment is closed." desc="There’s no term open for enrollment right now. Please check back later." />;
+  if (!term.enrollment_open) return <ClosedNotice title="Enrollment is closed." desc="Enrollment for this term isn’t open yet. Please check back later or contact the registrar." />;
+  if (!offered?.program || !offered?.year_level) {
+    return <ClosedNotice title="Your record isn’t set up yet." desc="Your program and year level haven’t been set. Please contact the registrar’s office to enroll." icon="ti-user-question" />;
+  }
+
+  const yearLabel = YEAR_LABEL[offered.year_level] || `Year ${offered.year_level}`;
+
+  return (
+    <div className="se-cor">
+      <div className="se-cor-top">
+        <div>
+          <div className="se-cor-eyebrow">Enroll — {termLabel}</div>
+          <h3 className="se-cor-term">{offered.program.code} · <em>{yearLabel}</em></h3>
+          <div className="se-cor-sub">These courses are offered for your year level this semester. The registrar reviews your enrollment before it’s final.</div>
+        </div>
+      </div>
+
+      <div className="se-cor-body">
+        {eligible.length === 0 ? (
+          <div className="se-note">No courses are available for you to enroll in this term. Please contact the registrar.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {openTerms.map(t => (
-              <label key={t.id} style={S.radioCard(selectedTerm?.id === t.id)}>
-                <input
-                  type="radio"
-                  name="term"
-                  checked={selectedTerm?.id === t.id}
-                  onChange={() => onSelectTerm(t)}
-                />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t.semester_display} {t.year}</div>
-                  <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{t.start_date} to {t.end_date}</div>
-                </div>
-              </label>
+          <div className="table-wrap">
+            <table className="se-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 110 }}>Code</th>
+                  <th>Descriptive title</th>
+                  <th className="num" style={{ width: 80 }}>Units</th>
+                </tr>
+              </thead>
+              <tbody>
+                {eligible.map(c => (
+                  <tr key={c.id}>
+                    <td className="se-code">{c.code}</td>
+                    <td className="se-title">{c.name}</td>
+                    <td className="num">{fmtUnits(c.units)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={2}>{eligible.length} course{eligible.length !== 1 ? 's' : ''}</td>
+                  <td className="num">{fmtUnits(eligibleUnits)} units</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        {blocked.length > 0 && (
+          <div className="se-blocked">
+            <div className="se-blocked-h">Not available yet</div>
+            {blocked.map(c => (
+              <div key={c.id} className="se-blocked-row">
+                <span><strong>{c.code}</strong> — {c.name}</span>
+                <span className="se-blocked-why">
+                  <i className="ti ti-lock" />
+                  {c.blocked_reason || `Requires passing ${c.prerequisite_code}`}
+                </span>
+              </div>
             ))}
           </div>
         )}
-      </div>
 
-      <div style={S.fieldGroup}>
-        <label style={S.label}>Student Type</label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.5rem' }}>
-          {STUDENT_TYPES.map(t => (
-            <label key={t.value} style={S.radioCard(studentType === t.value)}>
-              <input
-                type="radio"
-                name="studentType"
-                checked={studentType === t.value}
-                onChange={() => onSelectType(t.value)}
-              />
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t.label}</div>
-                <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>{t.desc}</div>
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
+        {submitError && <div className="se-error">{submitError}</div>}
 
-      <div style={S.navRow}>
-        <span />
-        <button style={S.btnPrimary} disabled={!selectedTerm} onClick={onNext}>
-          Next: Select Program &rarr;
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Step2({ departments, programsForDept, selectedDept, onSelectDept, selectedProgram, onSelectProgram, onNext, onBack }) {
-  return (
-    <div>
-      <h3 style={S.stepTitle}>Step 2: Department &amp; Program</h3>
-
-      <div style={S.fieldGroup}>
-        <label style={S.label}>Department</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          {departments.filter(d => d.is_active).map(d => (
-            <label key={d.id} style={S.radioCard(selectedDept?.id === d.id)}>
-              <input
-                type="radio"
-                name="department"
-                checked={selectedDept?.id === d.id}
-                onChange={() => onSelectDept(d)}
-              />
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{d.code}</div>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{d.name}</div>
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {selectedDept && (
-        <div style={S.fieldGroup}>
-          <label style={S.label}>Program</label>
-          {programsForDept.filter(p => p.is_active).length === 0 ? (
-            <p style={S.emptyHelp}>No active programs for this department.</p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.5rem' }}>
-              {programsForDept.filter(p => p.is_active).map(p => (
-                <label key={p.id} style={S.radioCard(selectedProgram?.id === p.id)}>
-                  <input
-                    type="radio"
-                    name="program"
-                    checked={selectedProgram?.id === p.id}
-                    onChange={() => onSelectProgram(p)}
-                  />
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{p.code}</div>
-                    <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>{p.name}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div style={S.navRow}>
-        <button style={S.btnSecondary} onClick={onBack}>&larr; Back</button>
-        <button style={S.btnPrimary} disabled={!selectedProgram} onClick={onNext}>
-          Next: Year Level &rarr;
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Step3({ yearLevel, onSelectYear, onNext, onBack }) {
-  return (
-    <div>
-      <h3 style={S.stepTitle}>Step 3: Year Level</h3>
-      <div style={S.fieldGroup}>
-        <label style={S.label}>Select Your Current Year Level</label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem' }}>
-          {YEAR_LEVELS.map(y => (
-            <label key={y.value} style={{ ...S.radioCard(yearLevel === y.value), justifyContent: 'center', textAlign: 'center' }}>
-              <input
-                type="radio"
-                name="yearLevel"
-                checked={yearLevel === y.value}
-                onChange={() => onSelectYear(y.value)}
-              />
-              <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{y.label}</div>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div style={S.navRow}>
-        <button style={S.btnSecondary} onClick={onBack}>&larr; Back</button>
-        <button style={S.btnPrimary} disabled={yearLevel === null} onClick={onNext}>
-          Next: Select Courses &rarr;
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Step4({ loading, regularSubjects, backSubjects, selectedSubjectIds, onToggle, showBackCourses, onToggleBack, yearLabel, totalUnits, selectedCount, onNext, onBack }) {
-  return (
-    <div>
-      <h3 style={S.stepTitle}>Step 4: Select Courses</h3>
-
-      {loading ? (
-        <p style={S.emptyHelp}>Loading courses...</p>
-      ) : (
-        <>
-          <div style={S.fieldGroup}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label style={{ ...S.label, marginBottom: 0 }}>{yearLabel} Courses</label>
-              {selectedCount > 0 && (
-                <span style={{ fontSize: '0.82rem', color: '#6b7280' }}>
-                  {selectedCount} selected &middot; {fmtUnits(totalUnits)} units total
-                </span>
-              )}
-            </div>
-            {regularSubjects.length === 0 ? (
-              <p style={S.emptyHelp}>No active courses available for your selection.</p>
-            ) : (
-              <div style={S.subjectList}>
-                {regularSubjects.map(s => (
-                  <SubjectRow key={s.id} subject={s} checked={selectedSubjectIds.includes(s.id)} onToggle={onToggle} />
-                ))}
-              </div>
-            )}
+        <div className="se-submit">
+          <div className="se-submit-sum">
+            <strong>{eligible.length}</strong> course{eligible.length !== 1 ? 's' : ''} ·{' '}
+            <strong>{fmtUnits(eligibleUnits)}</strong> units
           </div>
-
-          {backSubjects.length > 0 && (
-            <div style={{ ...S.fieldGroup, borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
-              <label style={S.backToggle}>
-                <input type="checkbox" checked={showBackCourses} onChange={e => onToggleBack(e.target.checked)} />
-                <span>Include back courses from other year levels</span>
-              </label>
-              {showBackCourses && (
-                <div style={{ ...S.subjectList, marginTop: '0.75rem' }}>
-                  {backSubjects.map(s => (
-                    <SubjectRow key={s.id} subject={s} checked={selectedSubjectIds.includes(s.id)} onToggle={onToggle} showYear />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
-      <div style={S.navRow}>
-        <button style={S.btnSecondary} onClick={onBack}>&larr; Back</button>
-        <button style={S.btnPrimary} disabled={selectedSubjectIds.length === 0} onClick={onNext}>
-          Next: Review &rarr;
-        </button>
+          <button className="btn-pri" disabled={submitting || eligible.length === 0} onClick={onSubmit}>
+            {submitting ? 'Submitting…' : 'Submit enrollment'}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function Step5({ term, studentType, dept, program, yearLevel, subjects, totalUnits, submitting, error, onSubmit, onBack }) {
-  const yearLabel = YEAR_LEVELS.find(y => y.value === yearLevel)?.label;
-  const typeLabel = STUDENT_TYPES.find(t => t.value === studentType)?.label;
+function ClosedNotice({ title, desc, icon = 'ti-calendar-off' }) {
   return (
-    <div>
-      <h3 style={S.stepTitle}>Step 5: Review &amp; Submit</h3>
-
-      <div style={S.reviewCard}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem 1.5rem', marginBottom: '1.25rem' }}>
-          <RevRow label="Term" value={`${term?.semester_display} ${term?.year}`} />
-          <RevRow label="Student Type" value={typeLabel} />
-          <RevRow label="Department" value={`${dept?.code} — ${dept?.name}`} />
-          <RevRow label="Program" value={`${program?.code} — ${program?.name}`} />
-          <RevRow label="Year Level" value={yearLabel} />
-          <RevRow label="Total Units" value={`${fmtUnits(totalUnits)} units`} />
-        </div>
-
-        <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#374151', marginBottom: '0.5rem' }}>
-          Selected Courses ({subjects.length})
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-          {subjects.map(s => (
-            <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#1f2937', padding: '0.3rem 0', borderBottom: '1px solid #f3f4f6' }}>
-              <span><strong>{s.code}</strong> &mdash; {s.name}</span>
-              <span style={{ color: '#6b7280', flexShrink: 0, marginLeft: '1rem' }}>{fmtUnits(s.units)} units</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {error && <div style={S.errorBox}>{error}</div>}
-
-      <div style={S.navRow}>
-        <button style={S.btnSecondary} disabled={submitting} onClick={onBack}>&larr; Back</button>
-        <button style={S.btnSubmit(submitting)} disabled={submitting} onClick={onSubmit}>
-          {submitting ? 'Submitting...' : 'Submit Enrollment Request'}
-        </button>
+    <div className="se-closed">
+      <i className={`ti ${icon}`} />
+      <div>
+        <div className="se-closed-t">{title}</div>
+        <div className="se-closed-d">{desc}</div>
       </div>
     </div>
   );
 }
 
-/* ── Shared sub-components ──────────────────────────────────── */
-
-function SubjectRow({ subject, checked, onToggle, showYear }) {
+/* ── History timeline row ────────────────────────────────────── */
+function TimelineRow({ req, last }) {
+  const meta = STATUS_META[req.status] ?? STATUS_META.pending;
   return (
-    <label style={S.subjectRow(checked)}>
-      <input type="checkbox" checked={checked} onChange={() => onToggle(subject.id)} />
-      <span style={{ flex: 1 }}>
-        {showYear && subject.year_level_display && (
-          <span style={{ color: '#9ca3af', fontSize: '0.78rem', marginRight: 4 }}>
-            {subject.year_level_display} /
-          </span>
-        )}
-        <strong>{subject.code}</strong> &mdash; {subject.name}
-        <span style={{ color: '#6b7280', marginLeft: 6, fontSize: '0.82rem' }}>
-          ({fmtUnits(subject.units)} {parseFloat(subject.units) === 1 ? 'unit' : 'units'})
-        </span>
-      </span>
-    </label>
-  );
-}
-
-function RevRow({ label, value }) {
-  return (
-    <div>
-      <div style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {label}
+    <div className="se-tl-item">
+      <div className="se-tl-rail">
+        <span className={`se-tl-dot se-tl-dot--${meta.cls}`} />
+        {!last && <span className="se-tl-line" />}
       </div>
-      <div style={{ fontSize: '0.92rem', color: '#1f2937', fontWeight: 500, marginTop: 2 }}>{value}</div>
-    </div>
-  );
-}
-
-function HistoryCard({ req }) {
-  const meta = STATUS_META[req.status] ?? { label: req.status, bg: '#f3f4f6', color: '#374151', border: '#e5e7eb' };
-  return (
-    <div style={S.histCard}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.4rem' }}>
-        <div>
-          <strong style={{ fontSize: '0.95rem', color: '#1f2937' }}>
+      <div className="se-tl-card">
+        <div className="se-tl-main">
+          <div className="se-tl-term">
             {req.academic_term.semester_display} {req.academic_term.year}
-          </strong>
-          <span style={{ fontSize: '0.82rem', color: '#6b7280', marginLeft: 8 }}>
-            {req.year_level_display} &middot; {fmtUnits(req.total_units)} units
-            {req.program_code && <> &middot; {req.program_code}</>}
-            {req.student_type_display && <> &middot; {req.student_type_display}</>}
-          </span>
+          </div>
+          <div className="se-tl-meta">
+            {req.year_level_display}
+            {req.program_code ? ` · ${req.program_code}` : ''}
+            {req.block_name ? ` · ${req.block_name}` : ''}
+            {req.student_type_display ? ` · ${req.student_type_display}` : ''}
+          </div>
+          {req.remarks && <div className="se-tl-remarks">Remarks: {req.remarks}</div>}
         </div>
-        <span style={{ background: meta.bg, color: meta.color, padding: '2px 10px', borderRadius: 4, fontWeight: 600, fontSize: '0.8rem' }}>
-          {meta.label}
-        </span>
+        <div className="se-tl-nums">
+          <div className="se-tl-num"><strong>{req.subjects?.length ?? 0}</strong><span>subjects</span></div>
+          <div className="se-tl-num"><strong>{fmtUnits(req.total_units)}</strong><span>units</span></div>
+        </div>
+        <span className={`se-status se-status--${meta.cls}`}>{meta.label}</span>
       </div>
-      {req.block_name && (
-        <span style={{ background: '#dbeafe', color: '#1e40af', borderRadius: 4, padding: '2px 9px', fontWeight: 700, fontSize: '0.8rem', display: 'inline-block', marginBottom: '0.4rem' }}>
-          {req.block_name}
-        </span>
-      )}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-        {req.subjects.map(s => (
-          <span key={s.id} style={S.chip}>{s.code}</span>
-        ))}
-      </div>
-      {req.remarks && (
-        <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#374151', fontStyle: 'italic' }}>
-          Remarks: {req.remarks}
-        </p>
-      )}
     </div>
   );
 }
-
-/* ── Helpers ─────────────────────────────────────────────────── */
 
 function fmtUnits(val) {
   const n = parseFloat(val);
@@ -691,62 +354,107 @@ function fmtUnits(val) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-/* ── Styles ──────────────────────────────────────────────────── */
+/* ── Scoped styles ───────────────────────────────────────────── */
+const CSS = `
+  /* Certificate-of-registration document */
+  .se-cor{background:#fff;border:1px solid var(--line);border-top:3px solid var(--gold);margin-bottom:1rem;}
+  .se-cor-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem 1.5rem;
+    padding:1.5rem 1.75rem;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;}
+  .se-cor-eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:.55rem;}
+  .se-cor-term{font-family:'Inter',sans-serif;font-weight:500;font-size:27px;color:var(--ink);letter-spacing:-.015em;line-height:1.08;}
+  .se-cor-term em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;color:var(--ink-2);}
+  .se-cor-standing{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;margin-top:.6rem;}
+  .se-cor-standing i{font-size:16px;}
+  .se-cor-sub{font-size:13px;color:var(--muted);margin-top:.6rem;max-width:560px;line-height:1.6;}
 
-const S = {
-  sectionTitle: { fontSize: '1.05rem', color: '#1e3a5f', marginBottom: '1rem', fontWeight: 700 },
-  wizardBox: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '1.5rem', marginBottom: '2rem' },
-  stepBar: { display: 'flex', alignItems: 'center', marginBottom: '2rem', overflowX: 'auto', gap: 0 },
-  stepItem: { display: 'flex', alignItems: 'center', flexShrink: 0 },
-  stepCircle: (active, done) => ({
-    width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontWeight: 700, fontSize: '0.85rem',
-    background: done ? '#10b981' : active ? '#1e3a5f' : '#e5e7eb',
-    color: done || active ? '#fff' : '#6b7280',
-    flexShrink: 0,
-  }),
-  stepLabel: (active, done) => ({
-    fontSize: '0.78rem', marginLeft: 6, fontWeight: active ? 700 : 500,
-    color: done ? '#10b981' : active ? '#1e3a5f' : '#9ca3af', whiteSpace: 'nowrap',
-  }),
-  stepLine: (done) => ({
-    height: 2, width: 32, background: done ? '#10b981' : '#e5e7eb', margin: '0 6px', flexShrink: 0,
-  }),
-  stepContent: { minHeight: 200 },
-  stepTitle: { fontSize: '0.98rem', fontWeight: 700, color: '#1e3a5f', marginBottom: '1.25rem', marginTop: 0 },
-  fieldGroup: { marginBottom: '1.25rem' },
-  label: { display: 'block', fontWeight: 600, fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' },
-  radioCard: (selected) => ({
-    display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem 0.85rem',
-    border: `1.5px solid ${selected ? '#1e3a5f' : '#e5e7eb'}`,
-    borderRadius: 7, cursor: 'pointer', background: selected ? '#f0f4ff' : '#fff',
-  }),
-  subjectList: {
-    display: 'flex', flexDirection: 'column', gap: '0.25rem',
-    maxHeight: 320, overflowY: 'auto', padding: '0.5rem',
-    border: '1px solid #e5e7eb', borderRadius: 6,
-  },
-  subjectRow: (checked) => ({
-    display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.4rem 0.5rem',
-    borderRadius: 5, cursor: 'pointer', fontSize: '0.9rem', color: '#374151',
-    background: checked ? '#eff6ff' : 'transparent',
-  }),
-  backToggle: { display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, color: '#374151' },
-  reviewCard: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.25rem', marginBottom: '1.25rem' },
-  navRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' },
-  btnPrimary: { background: '#1e3a5f', color: '#fff', padding: '0.55rem 1.4rem', borderRadius: 6, border: 'none', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' },
-  btnSecondary: { background: '#f3f4f6', color: '#374151', padding: '0.55rem 1.2rem', borderRadius: 6, border: '1px solid #d1d5db', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' },
-  btnSubmit: (dis) => ({
-    background: '#16a34a', color: '#fff', padding: '0.6rem 1.6rem', borderRadius: 6,
-    border: 'none', fontWeight: 700, fontSize: '0.95rem',
-    cursor: dis ? 'not-allowed' : 'pointer', opacity: dis ? 0.7 : 1,
-  }),
-  errorBox: { background: '#fee2e2', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: 6, fontSize: '0.9rem', marginBottom: '1rem' },
-  successBox: { background: '#d1fae5', border: '1px solid #6ee7b7', borderRadius: 10, padding: '2rem', textAlign: 'center', marginBottom: '2rem' },
-  closedBox: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.25rem', marginBottom: '2rem' },
-  emptyHelp: { margin: 0, color: '#6b7280', fontSize: '0.9rem' },
-  statusCard: { background: '#fff', border: '2px solid', borderRadius: 10, padding: '1.25rem', marginBottom: '1.5rem' },
-  statusCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' },
-  chip: { background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 500 },
-  histCard: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem 1.25rem' },
-};
+  /* status pill (shared by COR + timeline) */
+  .se-status{display:inline-flex;align-items:center;gap:7px;font-size:10.5px;font-weight:700;
+    letter-spacing:.09em;text-transform:uppercase;padding:6px 12px;white-space:nowrap;flex-shrink:0;}
+  .se-status::before{content:'';width:7px;height:7px;border-radius:50%;}
+  .se-status--approved{background:var(--green-tint);color:var(--green);}
+  .se-status--approved::before{background:var(--green);}
+  .se-status--pending{background:var(--amber-tint);color:var(--amber);}
+  .se-status--pending::before{background:var(--amber);}
+  .se-status--rejected{background:var(--red-tint);color:var(--red);}
+  .se-status--rejected::before{background:var(--red);}
+
+  /* registration facts */
+  .se-cor-meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1.5rem;
+    padding:1.5rem 1.75rem;border-bottom:1px solid var(--line-soft);background:var(--warm);}
+  .se-dt{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px;}
+  .se-dd{font-weight:500;font-size:15px;color:var(--ink);}
+  .se-dd.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.01em;}
+
+  /* subjects table */
+  .se-cor-body{padding:1.5rem 1.75rem 1.75rem;}
+  .se-cor-bh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1rem;}
+  .se-cor-bh h4{font-size:15px;font-weight:600;color:var(--ink);}
+  .se-cor-bh span{font-size:12px;color:var(--muted);}
+  .se-table{width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--line);}
+  .se-table thead th{background:var(--warm);text-align:left;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;padding:12px 18px;border-bottom:1px solid var(--line);}
+  .se-table th.num,.se-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .se-table td{padding:14px 18px;border-bottom:1px solid var(--line-soft);color:var(--ink);vertical-align:middle;}
+  .se-table tbody tr:last-child td{border-bottom:0;}
+  .se-table tbody tr:hover td{background:var(--cool);}
+  .se-code{font-weight:600;color:var(--gold);letter-spacing:.03em;white-space:nowrap;}
+  .se-title{font-weight:500;}
+  .se-table tfoot td{padding:13px 18px;border-top:1px solid var(--line);background:var(--warm);
+    font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+  .se-table tfoot td.num{font-size:15px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:600;}
+
+  .se-remarks{display:flex;gap:10px;align-items:flex-start;padding:1rem 1.75rem 1.25rem;font-size:13px;color:var(--ink);line-height:1.55;}
+  .se-remarks i{color:var(--amber);font-size:16px;margin-top:1px;}
+
+  /* enroll panel extras */
+  .se-note{background:var(--warm);border:1px solid var(--line);padding:1.25rem;font-size:13px;color:var(--muted);}
+  .se-blocked{margin-top:1.25rem;}
+  .se-blocked-h{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:.6rem;}
+  .se-blocked-row{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.6rem .85rem;
+    background:var(--warm);border:1px solid var(--line-soft);margin-bottom:6px;font-size:13px;}
+  .se-blocked-row>span:first-child{color:var(--muted);}
+  .se-blocked-why{display:inline-flex;align-items:center;gap:5px;color:var(--amber);font-size:11.5px;flex-shrink:0;}
+  .se-error{background:var(--red-tint);color:var(--red);padding:.75rem 1rem;margin-top:1rem;font-size:13px;}
+  .se-submit{display:flex;justify-content:space-between;align-items:center;gap:1rem;
+    border-top:1px solid var(--line-soft);padding-top:1.25rem;margin-top:1.25rem;}
+  .se-submit-sum{font-size:13px;color:var(--muted);}
+  .se-submit-sum strong{color:var(--ink);font-weight:600;}
+
+  .se-submitted{background:var(--green-tint);border:1px solid #a7f3d0;padding:2.25rem 2rem;text-align:center;margin-bottom:1rem;}
+  .se-submitted i{font-size:42px;color:var(--green);display:block;margin-bottom:.75rem;}
+  .se-submitted h3{color:var(--green);font-size:22px;font-weight:500;margin-bottom:.5rem;}
+  .se-submitted p{color:var(--ink);font-size:14px;max-width:460px;margin:0 auto;line-height:1.6;}
+
+  .se-closed{background:var(--warm);border:1px solid var(--line);padding:1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:16px;}
+  .se-closed i{font-size:28px;color:var(--muted);flex-shrink:0;}
+  .se-closed-t{font-weight:600;color:var(--ink);margin-bottom:4px;}
+  .se-closed-d{font-size:13px;color:var(--muted);line-height:1.55;}
+
+  /* history timeline */
+  .se-tl{display:flex;flex-direction:column;}
+  .se-tl-item{display:grid;grid-template-columns:auto 1fr;gap:1.1rem;}
+  .se-tl-rail{display:flex;flex-direction:column;align-items:center;}
+  .se-tl-dot{width:13px;height:13px;border-radius:50%;margin-top:1.35rem;flex-shrink:0;
+    box-shadow:0 0 0 3px #fff, 0 0 0 4px var(--line);}
+  .se-tl-dot--approved{background:var(--green);box-shadow:0 0 0 3px #fff,0 0 0 4px var(--green);}
+  .se-tl-dot--pending{background:var(--amber);box-shadow:0 0 0 3px #fff,0 0 0 4px var(--amber);}
+  .se-tl-dot--rejected{background:var(--red);box-shadow:0 0 0 3px #fff,0 0 0 4px var(--red);}
+  .se-tl-line{flex:1;width:2px;background:var(--line);margin:6px 0;}
+  .se-tl-card{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;
+    background:#fff;border:1px solid var(--line);padding:1.1rem 1.4rem;margin-bottom:.9rem;flex:1;}
+  .se-tl-main{flex:1;min-width:180px;}
+  .se-tl-term{font-weight:500;font-size:18px;color:var(--ink);letter-spacing:-.005em;}
+  .se-tl-meta{font-size:11.5px;color:var(--muted);margin-top:4px;}
+  .se-tl-remarks{font-size:12px;color:var(--amber);margin-top:5px;font-style:italic;}
+  .se-tl-nums{display:flex;gap:1.75rem;}
+  .se-tl-num{text-align:center;}
+  .se-tl-num strong{display:block;font-weight:500;font-size:20px;color:var(--ink);line-height:1;}
+  .se-tl-num span{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+
+  @media(max-width:620px){
+    .se-cor-term{font-size:23px;}
+    .se-tl-card{gap:.75rem 1.1rem;}
+    .se-tl-nums{gap:1.25rem;}
+    .se-status{order:3;}
+  }
+`;

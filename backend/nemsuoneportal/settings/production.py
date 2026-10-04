@@ -27,8 +27,13 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
-# ── Database SSL — F-03: require encrypted connection in production ────────────
-DATABASES['default']['OPTIONS']['sslmode'] = 'require'
+# ── Database — F-03 ───────────────────────────────────────────────────────────
+# SQLite is a local file, so there is no network connection to encrypt; the
+# transport-security control no longer applies. Protect the file instead:
+# host it on a persistent volume with filesystem permissions restricted to the
+# application user, and ensure it is excluded from version control and backups
+# that leave the server unencrypted.
+DATABASES['default']['CONN_MAX_AGE'] = 0
 
 # ── Use real SMTP in production ───────────────────────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

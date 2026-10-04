@@ -1,204 +1,325 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
+import { useShell } from '../../components/layout/StudentShell';
 
-const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-const DAY_LABELS = {
-  monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
-  thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday',
-};
+const DAY_ORDER  = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const DAY_LABELS = { monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday' };
+const DAY_SHORT  = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat' };
+const WEEK_KEYS  = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const SLOT_H     = 58;
+
+// Muted, harmonious palette (navy / teal / ochre / slate / plum / green family),
+// desaturated to a similar weight so subjects read as distinct but still on-brand.
+const SUBJECT_COLORS = ['#1e3a5f', '#2f6f68', '#8a5a2b', '#4b4b7a', '#2a6f4b', '#9a3f3f', '#3a5e8e', '#6e6224'];
+function subjectColor(code, allCodes) {
+  const idx = allCodes.indexOf(code);
+  return SUBJECT_COLORS[idx % SUBJECT_COLORS.length] ?? '#1e3a5f';
+}
 
 function formatTime(t) {
+  if (!t) return '-';
   const [h, m] = t.split(':').map(Number);
   const ampm = h < 12 ? 'AM' : 'PM';
-  const hr = h % 12 || 12;
-  return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+function timeToDecimal(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return h + m / 60;
+}
+function fmtHr(hr) {
+  if (hr === 12) return '12 PM';
+  return hr > 12 ? `${hr - 12} PM` : `${hr} AM`;
 }
 
 export default function StudentSchedule() {
-  const { user, logout } = useAuth();
-  const [terms, setTerms] = useState([]);
-  const [selectedTerm, setSelectedTerm] = useState('');
+  const { currentTerm }   = useShell();
   const [schedule, setSchedule] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
+  const now = new Date();
 
+  // The schedule for the current active term is loaded automatically — no term picker.
   useEffect(() => {
-    api.get('/enrollment/terms/').then(res => {
-      setTerms(res.data);
-      const active = res.data.find(t => t.is_active);
-      if (active) setSelectedTerm(String(active.id));
-    }).catch(() => setError('Failed to load terms.'));
-  }, []);
-
-  useEffect(() => {
-    if (!selectedTerm) return;
     setLoading(true);
     setError('');
-    api.get(`/schedules/student/?term_id=${selectedTerm}`)
-      .then(res => setSchedule(res.data))
-      .catch(() => setError('Failed to load schedule.'))
+    api.get('/schedules/student/')
+      .then(res => setSchedule(Array.isArray(res.data) ? res.data : (res.data.results ?? [])))
+      .catch(() => setError('Failed to load your schedule.'))
       .finally(() => setLoading(false));
-  }, [selectedTerm]);
+  }, []);
 
-  // Group all slots by day
+  /* ── Group slots by day ─────────────────────────────────── */
   const byDay = {};
   DAY_ORDER.forEach(d => { byDay[d] = []; });
+  const allCodes = schedule.map(s => s.subject_code);
   schedule.forEach(subj => {
-    subj.slots.forEach(slot => {
-      byDay[slot.day_of_week]?.push({ ...slot, subject_code: subj.subject_code, subject_name: subj.subject_name, faculty_name: subj.faculty_name });
+    (subj.slots ?? []).forEach(slot => {
+      byDay[slot.day_of_week]?.push({
+        ...slot,
+        subject_code: subj.subject_code,
+        subject_name: subj.subject_name,
+        faculty_name: subj.faculty_name,
+        color:        subjectColor(subj.subject_code, allCodes),
+      });
     });
   });
   DAY_ORDER.forEach(d => byDay[d].sort((a, b) => a.start_time.localeCompare(b.start_time)));
 
-  const hasSlots = schedule.some(s => s.slots.length > 0);
-  const selectedTermLabel = (() => {
-    const t = terms.find(t => String(t.id) === selectedTerm);
-    return t ? `${t.semester_display} ${t.year}` : '';
-  })();
+  const allSlots = DAY_ORDER.flatMap(d => byDay[d]);
+  const hasSlots = allSlots.length > 0;
+
+  /* ── Dynamic hour range (fit earliest → latest class) ───── */
+  let minHour = 7, maxHour = 18;
+  if (hasSlots) {
+    minHour = Math.max(0, Math.floor(Math.min(...allSlots.map(s => timeToDecimal(s.start_time)))));
+    maxHour = Math.min(24, Math.ceil(Math.max(...allSlots.map(s => timeToDecimal(s.end_time)))));
+    if (maxHour <= minHour) maxHour = minHour + 1;
+  }
+  const HOURS = [];
+  for (let h = minHour; h < maxHour; h++) HOURS.push(h);
+  const gridHeight = HOURS.length * SLOT_H;
+
+  const termLabel   = currentTerm ? `${currentTerm.semester_display} ${currentTerm.year}` : (schedule[0]?.term || 'Current term');
+  const totalUnits  = schedule.reduce((s, x) => s + parseFloat(x.subject_units || 0), 0);
+  const totalMtgs   = schedule.reduce((s, x) => s + (x.slots?.length ?? 0), 0);
+  const activeDays  = DAY_ORDER.filter(d => byDay[d].length > 0);
+
+  /* ── Today / now marker ─────────────────────────────────── */
+  const todayKey = WEEK_KEYS[now.getDay()];
+  const nowDec   = now.getHours() + now.getMinutes() / 60;
+  const showNow  = hasSlots && DAY_ORDER.includes(todayKey) && nowDec >= minHour && nowDec <= maxHour;
+
+  // Legend: one entry per subject, in grid-color order.
+  const legend = schedule.map(s => ({
+    code: s.subject_code, name: s.subject_name, color: subjectColor(s.subject_code, allCodes),
+  }));
 
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><img src="/logo.png" alt="NEMSU" className="sidebar-logo" />NEMSUonePortal</div>
-        <Link className="sidebar-link" to="/student/dashboard">Dashboard</Link>
-        <Link className="sidebar-link" to="/student/enrollment">Enrollment</Link>
-        <Link className="sidebar-link" to="/student/courses">My Courses</Link>
-        <Link className="sidebar-link" to="/student/grades">My Grades</Link>
-        <Link className="sidebar-link active" to="/student/schedule">Schedule</Link>
-        <Link className="sidebar-link" to="/student/documents">Document Requests</Link>
-        <Link className="sidebar-link" to="/student/announcements">Announcements</Link>
-        <Link className="sidebar-link" to="/student/profile">My Profile</Link>
-      </aside>
+    <div className="page">
+      <style>{CSS}</style>
 
-      <main className="dashboard-content">
-        <div className="dashboard-header">
-          <div>
-            <h1>Class Schedule</h1>
-            <span className="badge">{user?.role}</span>
-          </div>
-          <button className="btn-logout" onClick={logout}>Sign Out</button>
+      {/* ── Page head ──────────────────────────────────────── */}
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">Academic · {termLabel}</div>
+          <h2>My <em>schedule</em></h2>
+          <div className="sub">Your weekly timetable for the current term — the subjects your professors have added you to, with rooms, instructors, and class times.</div>
         </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={styles.label}>Academic Term</label>
-          <select
-            value={selectedTerm}
-            onChange={e => setSelectedTerm(e.target.value)}
-            style={styles.select}
-          >
-            <option value="">— Select term —</option>
-            {terms.map(t => (
-              <option key={t.id} value={t.id}>{t.semester_display} {t.year}</option>
-            ))}
-          </select>
-        </div>
-
-        {error && <div style={styles.alertError}>{error}</div>}
-
-        {loading ? (
-          <p style={{ color: '#6b7280' }}>Loading schedule…</p>
-        ) : selectedTerm && schedule.length === 0 ? (
-          <div style={styles.emptyState}>
-            <p style={{ fontWeight: 600 }}>No approved enrollment found for {selectedTermLabel}.</p>
-            <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-              Submit an enrollment request to see your class schedule.
-            </p>
+        {hasSlots && (
+          <div className="actions">
+            <button className="btn-sec" onClick={() => window.print()}>
+              <i className="ti ti-printer" /> Print
+            </button>
           </div>
-        ) : selectedTerm && !hasSlots && schedule.length > 0 ? (
-          <>
-            <div style={styles.emptyState}>
-              <p style={{ fontWeight: 600 }}>Schedule not yet posted for {selectedTermLabel}.</p>
-              <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                You are enrolled in {schedule.length} subject(s). Check back once the registrar has posted class schedules.
-              </p>
+        )}
+      </div>
+
+      {error && (
+        <div style={{ background: 'var(--red-tint)', color: 'var(--red)', padding: '0.75rem 1rem', marginBottom: '1.5rem', fontSize: 13 }}>{error}</div>
+      )}
+
+      {loading && <p style={{ color: 'var(--muted)' }}>Loading your schedule…</p>}
+
+      {!loading && schedule.length === 0 && !error && (
+        <div className="stu-empty">
+          <i className="ti ti-calendar-off" />
+          <p>You have no classes for {termLabel} yet. Your schedule will appear here once a professor adds you to a class.</p>
+        </div>
+      )}
+
+      {!loading && schedule.length > 0 && (
+        <>
+          {/* ── Schedule header: title + facts ───────────────── */}
+          <div className="sch-head">
+            <h4>Weekly schedule<span>{hasSlots ? `${DAY_SHORT[activeDays[0]] || 'Mon'}–${DAY_SHORT[activeDays[activeDays.length - 1]] || 'Sat'} · ${fmtHr(minHour)} to ${fmtHr(maxHour)}` : termLabel}</span></h4>
+            <div className="sch-facts">
+              <span className="sch-fact"><b>{schedule.length}</b> subjects</span>
+              <span className="sch-fact"><b>{totalUnits}</b> units</span>
+              <span className="sch-fact"><b>{totalMtgs}</b> meetings/wk</span>
+              <span className="sch-fact"><b>{activeDays.length}</b> school days</span>
             </div>
-            <h3 style={styles.sectionTitle}>Enrolled Subjects</h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    {['Code', 'Subject', 'Units', 'Faculty', 'Schedule'].map(h => (
-                      <th key={h} style={styles.th}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {schedule.map(s => (
-                    <tr key={s.subject_code}>
-                      <td style={styles.td}>{s.subject_code}</td>
-                      <td style={styles.td}>{s.subject_name}</td>
-                      <td style={styles.td}>{s.subject_units}</td>
-                      <td style={styles.td}>{s.faculty_name}</td>
-                      <td style={{ ...styles.td, color: '#6b7280', fontStyle: 'italic' }}>TBA</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : hasSlots ? (
-          <>
-            {/* Subject summary cards */}
-            <h3 style={styles.sectionTitle}>Enrolled Subjects — {selectedTermLabel}</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '2rem' }}>
-              {schedule.map(s => (
-                <div key={s.subject_code} style={styles.subjectCard}>
-                  <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem' }}>{s.subject_code}</div>
-                  <div style={{ fontSize: '0.82rem', color: '#374151', marginTop: '0.1rem' }}>{s.subject_name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                    {s.subject_units} units · {s.faculty_name}
-                  </div>
-                </div>
+          </div>
+
+          {/* ── Subject legend ───────────────────────────────── */}
+          {hasSlots && (
+            <div className="sch-legend">
+              {legend.map(l => (
+                <span key={l.code} className="sch-leg">
+                  <span className="sch-leg-sw" style={{ background: l.color }} />
+                  <b>{l.code}</b><span className="sch-leg-nm">{l.name}</span>
+                </span>
               ))}
             </div>
+          )}
 
-            {/* Weekly schedule by day */}
-            <h3 style={styles.sectionTitle}>Weekly Schedule</h3>
-            {DAY_ORDER.map(day => {
-              const slots = byDay[day];
-              if (!slots.length) return null;
-              return (
-                <div key={day} style={{ marginBottom: '1.25rem' }}>
-                  <div style={styles.dayHeader}>{DAY_LABELS[day]}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem', paddingTop: '0.5rem' }}>
-                    {slots.map(slot => (
-                      <div key={slot.id} style={styles.slotCard}>
-                        <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.88rem' }}>
-                          {slot.subject_code}
-                        </div>
-                        <div style={{ fontSize: '0.78rem', color: '#374151' }}>{slot.subject_name}</div>
-                        <div style={{ fontSize: '0.78rem', color: '#059669', fontWeight: 600, marginTop: '0.3rem' }}>
-                          {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{slot.room}</div>
-                        <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.15rem' }}>
-                          {slot.faculty_name}
-                        </div>
+          {hasSlots ? (
+            <>
+              {/* ── Calendar grid (tablet / desktop) ─────────── */}
+              <div className="sched-grid">
+                <div className="sch-cal">
+                  {/* Header row */}
+                  <div className="sch-row sch-row--head">
+                    <div className="sch-corner">Time</div>
+                    {DAY_ORDER.map(d => (
+                      <div key={d} className={`sch-dayhead${d === todayKey ? ' is-today' : ''}`}>
+                        {DAY_LABELS[d]}
+                        {d === todayKey && <span className="sch-today-pill">Today</span>}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Grid body */}
+                  <div className="sch-row" style={{ position: 'relative' }}>
+                    {/* Hour labels */}
+                    <div className="sch-timecol">
+                      {HOURS.map(hr => (
+                        <div key={hr} className="sch-hour" style={{ height: SLOT_H }}>{fmtHr(hr)}</div>
+                      ))}
+                    </div>
+
+                    {/* Day columns */}
+                    {DAY_ORDER.map(d => (
+                      <div key={d} className={`sch-daycol${d === todayKey ? ' is-today' : ''}`} style={{ height: gridHeight }}>
+                        {HOURS.map(hr => (
+                          <div key={hr} className="sch-cell" style={{ height: SLOT_H }} />
+                        ))}
+
+                        {/* now line (today only) */}
+                        {showNow && d === todayKey && (
+                          <div className="sch-now" style={{ top: (nowDec - minHour) * SLOT_H }}>
+                            <span className="sch-now-dot" />
+                          </div>
+                        )}
+
+                        {byDay[d].map((s, i) => {
+                          const startDec = timeToDecimal(s.start_time);
+                          const endDec   = timeToDecimal(s.end_time);
+                          const top      = (startDec - minHour) * SLOT_H;
+                          const height   = Math.max((endDec - startDec) * SLOT_H - 3, 26);
+                          return (
+                            <div key={i} className="sch-block"
+                              style={{ top, height, background: s.color }}
+                              title={`${s.subject_code} — ${s.subject_name}\n${formatTime(s.start_time)} – ${formatTime(s.end_time)}\n${s.room || 'Room TBA'}\n${s.faculty_name}`}
+                            >
+                              <div className="sch-block-code">{s.subject_code}</div>
+                              <div className="sch-block-room">{s.room || 'TBA'}</div>
+                              {height >= 56 && (
+                                <div className="sch-block-time">{formatTime(s.start_time)} – {formatTime(s.end_time)}</div>
+                              )}
+                              {height >= 82 && s.faculty_name && (
+                                <div className="sch-block-fac">{s.faculty_name}</div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ))}
                   </div>
                 </div>
-              );
-            })}
-          </>
-        ) : null}
-      </main>
+              </div>
+
+              {/* ── Agenda list (phone) ──────────────────────── */}
+              <div className="sched-agenda">
+                {activeDays.map(d => (
+                  <div key={d} className="sch-ag-day">
+                    <div className={`sch-ag-dh${d === todayKey ? ' is-today' : ''}`}>
+                      {DAY_LABELS[d]}{d === todayKey && <span className="sch-today-pill">Today</span>}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {byDay[d].map((s, i) => (
+                        <div key={i} className="sch-ag-item">
+                          <div className="sch-ag-bar" style={{ background: s.color }} />
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div className="sch-ag-code">{s.subject_code}<span className="sch-ag-nm"> · {s.subject_name}</span></div>
+                            <div className="sch-ag-time">{formatTime(s.start_time)} – {formatTime(s.end_time)}</div>
+                            <div className="sch-ag-meta">{s.room || 'Room TBA'} · {s.faculty_name}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="sch-notimes">
+              <i className="ti ti-clock" />
+              Your classes for {termLabel} don’t have posted times yet. Room and time assignments will appear here once your professors set them.
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-const styles = {
-  label: { display: 'block', fontWeight: 600, fontSize: '0.9rem', color: '#374151', marginBottom: '0.4rem' },
-  select: { width: '100%', maxWidth: 420, padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.95rem' },
-  alertError: { background: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem' },
-  emptyState: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem', textAlign: 'center', color: '#6b7280', marginBottom: '1.5rem' },
-  sectionTitle: { fontSize: '0.95rem', fontWeight: 700, color: '#374151', marginBottom: '0.75rem' },
-  subjectCard: { background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '0.75rem 1rem', minWidth: 160, maxWidth: 230 },
-  dayHeader: { fontWeight: 700, color: '#1e3a5f', fontSize: '0.88rem', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.3rem' },
-  slotCard: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem 1rem', minWidth: 170, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' },
-  th: { textAlign: 'left', padding: '0.5rem 0.75rem', background: '#f9fafb', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#374151', fontSize: '0.82rem' },
-  td: { padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', color: '#1f2937' },
-};
+const CSS = `
+  /* header */
+  .sch-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;}
+  .sch-head h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;line-height:1.3;}
+  .sch-head h4 span{display:block;font-family:'Inter',sans-serif;font-weight:400;font-size:20px;color:var(--ink);
+    text-transform:none;letter-spacing:-.01em;margin-top:4px;}
+  .sch-facts{display:flex;gap:1.5rem;flex-wrap:wrap;}
+  .sch-fact{font-size:12px;color:var(--muted);}
+  .sch-fact b{color:var(--ink);font-weight:600;font-size:15px;margin-right:5px;font-variant-numeric:tabular-nums;}
+
+  /* legend */
+  .sch-legend{display:flex;flex-wrap:wrap;gap:.6rem 1.25rem;padding:.9rem 1.1rem;background:#fff;
+    border:1px solid var(--line);border-bottom:none;}
+  .sch-leg{display:inline-flex;align-items:center;gap:8px;font-size:12px;min-width:0;}
+  .sch-leg-sw{width:11px;height:11px;flex-shrink:0;}
+  .sch-leg b{color:var(--ink);font-weight:600;letter-spacing:.02em;}
+  .sch-leg-nm{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
+
+  /* calendar */
+  .sch-cal{background:#fff;border:1px solid var(--line);overflow-x:auto;margin-bottom:1.5rem;}
+  .sch-row{display:grid;grid-template-columns:64px repeat(6,minmax(96px,1fr));min-width:640px;}
+  .sch-row--head{border-bottom:1px solid var(--line);}
+  .sch-corner{padding:11px 8px;background:var(--warm);border-right:1px solid var(--line);
+    font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.12em;text-transform:uppercase;}
+  .sch-dayhead{padding:11px 12px;background:var(--warm);border-right:1px solid var(--line);
+    font-size:11px;color:var(--ink);font-weight:600;letter-spacing:.05em;text-align:center;
+    display:flex;align-items:center;justify-content:center;gap:7px;}
+  .sch-dayhead.is-today{background:var(--gold-tint);color:var(--ink);}
+  .sch-today-pill{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
+    color:#fff;background:var(--gold);padding:2px 6px;}
+  .sch-timecol{border-right:1px solid var(--line);}
+  .sch-hour{padding:4px 8px;font-size:10px;color:var(--muted);border-bottom:1px solid var(--line-soft);
+    font-variant-numeric:tabular-nums;text-align:right;}
+  .sch-daycol{position:relative;border-right:1px solid var(--line);}
+  .sch-daycol.is-today{background:rgba(184,144,67,.045);}
+  .sch-cell{border-bottom:1px solid var(--line-soft);}
+  .sch-block{position:absolute;left:3px;right:3px;color:#fff;padding:6px 8px;font-size:11px;line-height:1.3;
+    overflow:hidden;transition:filter .15s;cursor:default;box-shadow:0 1px 2px rgba(10,22,40,.18);}
+  .sch-block:hover{filter:brightness(1.12);}
+  .sch-block-code{font-weight:700;font-size:12px;letter-spacing:.02em;}
+  .sch-block-room{opacity:.85;margin-top:2px;}
+  .sch-block-time{opacity:.7;margin-top:1px;font-size:10px;}
+  .sch-block-fac{opacity:.7;margin-top:2px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sch-now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3;}
+  .sch-now-dot{position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--red);}
+
+  /* agenda (phone) */
+  .sched-grid{display:block;}
+  .sched-agenda{display:none;margin-bottom:1.5rem;}
+  .sch-ag-day{margin-bottom:1.1rem;}
+  .sch-ag-dh{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);
+    margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+  .sch-ag-dh.is-today{color:var(--ink);}
+  .sch-ag-item{display:flex;gap:12px;background:#fff;border:1px solid var(--line);padding:11px 13px;}
+  .sch-ag-bar{width:5px;flex-shrink:0;}
+  .sch-ag-code{font-size:13px;font-weight:700;color:var(--ink);}
+  .sch-ag-nm{font-weight:400;color:var(--muted);}
+  .sch-ag-time{font-size:12px;color:var(--ink);margin-top:3px;font-weight:500;}
+  .sch-ag-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  .sch-notimes{background:var(--warm);border:1px solid var(--line);padding:.95rem 1.25rem;margin-bottom:1.5rem;
+    display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);}
+  .sch-notimes i{font-size:16px;flex-shrink:0;}
+
+  @media(max-width:760px){
+    .sched-grid{display:none;}
+    .sched-agenda{display:block;}
+  }
+`;

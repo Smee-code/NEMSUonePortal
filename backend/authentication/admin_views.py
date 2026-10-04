@@ -15,6 +15,7 @@ from .models import AuditLog, User
 from .permissions import IsAdmin, IsRegistrarOrAdmin, get_client_ip
 from .serializers import (
     AdminUserCreateSerializer,
+    RegistrarFacultyUpdateSerializer,
     AdminUserListSerializer,
     AdminUserUpdateSerializer,
     AuditLogSerializer,
@@ -212,8 +213,7 @@ class RegistrationReviewView(APIView):
 class AdminUserListView(generics.ListCreateAPIView):
     """
     GET  /api/auth/admin/users/ — paginated user list with filters.
-    POST /api/auth/admin/users/ — create a staff account (faculty / registrar /
-                                  department_encoder / admin).
+    POST /api/auth/admin/users/ — create a staff account (faculty / registrar / admin).
     """
     serializer_class   = AdminUserListSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
@@ -266,6 +266,63 @@ class AdminUserListView(generics.ListCreateAPIView):
             },
         )
         return Response(AdminUserListSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class RegistrarFacultyCreateView(APIView):
+    """POST /api/auth/registrar/faculty/ — registrar (or admin) creates a FACULTY account.
+
+    Registrars may create faculty only: the role is forced to 'faculty' server-side,
+    so this endpoint can never mint a registrar/admin/student account regardless of
+    what the client sends."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    throttle_classes   = [AdminUserManageThrottle]
+
+    def post(self, request):
+        ip = get_client_ip(request)
+        data = {**request.data, 'role': 'faculty'}   # force faculty — no privilege escalation
+        serializer = AdminUserCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        _audit(
+            request.user, request.user.role,
+            'faculty_account_created', f'user:{user.id}', ip, 'success',
+            {
+                'target_user': str(user.id),
+                'role': user.role,
+                'department': user.department.code if user.department_id else None,
+            },
+        )
+        return Response(AdminUserListSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class RegistrarFacultyUpdateView(APIView):
+    """PATCH /api/auth/registrar/faculty/<uuid:pk>/ — registrar (or admin) edits a
+    FACULTY account's info. Non-faculty targets are rejected so this endpoint can
+    only ever modify faculty."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    throttle_classes   = [AdminUserManageThrottle]
+
+    def patch(self, request, pk):
+        ip = get_client_ip(request)
+        try:
+            user = User.objects.get(pk=pk, role='faculty')
+        except User.DoesNotExist:
+            return Response({'error': 'Faculty member not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = RegistrarFacultyUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.update(user, serializer.validated_data)
+
+        _audit(
+            request.user, request.user.role,
+            'faculty_account_updated', f'user:{user.id}', ip, 'success',
+            {
+                'target_user': str(user.id),
+                'department': user.department.code if user.department_id else None,
+                'rank': user.rank or None,
+            },
+        )
+        return Response(AdminUserListSerializer(user).data)
 
 
 class AdminUserDetailView(APIView):
@@ -339,13 +396,6 @@ class AdminUserDetailView(APIView):
             if 'program' not in update_fields:
                 update_fields.append('program')
 
-        # A department encoder must always be bound to a department.
-        effective_role = user.role
-        if effective_role == 'department_encoder' and user.department_id is None:
-            return Response(
-                {'department': 'A department encoder must be assigned to a department.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         if data.get('unlock') and (user.failed_login_attempts > 0 or user.locked_until):
             changes['unlock'] = True
@@ -414,7 +464,7 @@ class AdminStatsView(APIView):
 
         user_counts = {
             r: User.objects.filter(role=r).count()
-            for r in ['student', 'faculty', 'registrar', 'department_encoder', 'admin']
+            for r in ['student', 'faculty', 'registrar', 'admin']
         }
         user_counts['total']      = sum(user_counts.values())
         user_counts['locked']     = User.objects.filter(locked_until__gt=timezone.now()).count()

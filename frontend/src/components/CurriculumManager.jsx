@@ -33,7 +33,7 @@ export default function CurriculumManager() {
   const [courseErr, setCourseErr]   = useState('');
 
   useEffect(() => {
-    api.get('/enrollment/encoder/programs/').then(r => setPrograms(r.data)).catch(() => setError('Failed to load programs.'));
+    api.get('/enrollment/curriculum/programs/').then(r => setPrograms(r.data)).catch(() => setError('Failed to load programs.'));
   }, []);
 
   const loadCurricula = useCallback((pid) => {

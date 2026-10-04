@@ -1,6 +1,9 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import ScrollMemory from '../ScrollMemory';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../Toast';
+import { useSupport, requestSelfPasswordReset } from '../SupportModal';
 import api from '../../api/axios';
 import useNotifications from '../../hooks/useNotifications';
 import NotificationList from '../NotificationList';
@@ -15,6 +18,7 @@ function initials(name) {
 
 const NAV = [
   { key: 'dashboard',    path: '/student/dashboard',    icon: 'ti-layout-dashboard', label: 'Dashboard',         section: 'overview' },
+  { key: 'enrollment',   path: '/student/enrollment',   icon: 'ti-clipboard-check',  label: 'My Enrollment',     section: 'academic' },
   { key: 'grades',       path: '/student/grades',       icon: 'ti-school',           label: 'My Grades',         section: 'academic' },
   { key: 'schedule',     path: '/student/schedule',     icon: 'ti-calendar-event',   label: 'My Schedule',       section: 'academic' },
   { key: 'curriculum',   path: '/student/curriculum',   icon: 'ti-route',            label: 'Curriculum',        section: 'academic' },
@@ -32,7 +36,7 @@ const GROUPS = [
 ];
 
 const CRUMB = {
-  dashboard: 'Dashboard', grades: 'My Grades',
+  dashboard: 'Dashboard', enrollment: 'My Enrollment', grades: 'My Grades',
   schedule: 'My Schedule', curriculum: 'Curriculum', documents: 'Document Requests',
   announcements: 'Announcements', spotlight: 'Campus Spotlight', profile: 'My Profile',
 };
@@ -446,12 +450,6 @@ function Topbar({ user, currentTerm, onBell, onAccount, pathKey, openNav, unread
         <span className="here">{CRUMB[pathKey] || pathKey}</span>
       </div>
 
-      <div className="stu-ts">
-        <i className="ti ti-search" />
-        <input placeholder="Search…" readOnly />
-        <span className="kbd">⌘K</span>
-      </div>
-
       <div className="stu-ta">
         {currentTerm && (
           <div className="term-chip">
@@ -500,6 +498,14 @@ function ToastHost({ toasts }) {
 /* ─── Drawer host ─────────────────────────────────────────── */
 function DrawerHost({ drawer, onClose, user, logout, notifs = [], unreadCount = 0 }) {
   const { type, data } = drawer;
+  const toast = useToast();
+  const openSupport = useSupport();
+  const changePassword = async () => {
+    onClose();
+    const r = await requestSelfPasswordReset();
+    if (r.ok) toast('Password reset link sent to your email.', { type: 'success', sub: r.email });
+    else toast(r.error, { type: 'error' });
+  };
   return (
     <>
       <div className="stu-dback" onClick={onClose} />
@@ -518,6 +524,12 @@ function DrawerHost({ drawer, onClose, user, logout, notifs = [], unreadCount = 
                 <Link to="/student/profile" className="stu-dmi" onClick={onClose}>
                   <i className="ti ti-user" />My Profile
                 </Link>
+                <button className="stu-dmi" onClick={changePassword}>
+                  <i className="ti ti-key" />Change password
+                </button>
+                <button className="stu-dmi" onClick={() => { onClose(); openSupport(); }}>
+                  <i className="ti ti-help" />Help &amp; support
+                </button>
                 <button className="stu-dmi danger" onClick={() => { onClose(); logout(); }}>
                   <i className="ti ti-logout" />Sign out
                 </button>
@@ -612,6 +624,7 @@ export default function StudentShell() {
             openNav={() => setNavOpen(true)}
           />
           <div className="stu-content">
+            <ScrollMemory />
             <Outlet />
           </div>
         </main>

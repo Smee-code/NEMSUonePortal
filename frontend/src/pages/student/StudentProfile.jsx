@@ -1,28 +1,34 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/Toast';
 
 const YEAR_LABELS = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year' };
 
-export default function StudentProfile() {
-  const { user, logout } = useAuth();
+function initials(name) {
+  const p = (name || '').trim().split(/\s+/);
+  return p.length === 1 ? (p[0][0] || '?').toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
+}
 
-  const [profile, setProfile] = useState(null);
+export default function StudentProfile() {
+  const { user } = useAuth();
+  const toast = useToast();
+
+  const [profile, setProfile]         = useState(null);
   const [departments, setDepartments] = useState([]);
-  const [programs, setPrograms] = useState([]);
-  const [form, setForm] = useState({ department: '', program: '', year_level: '' });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
+  const [programs, setPrograms]       = useState([]);
+  const [form, setForm]               = useState({ department: '', program: '', year_level: '' });
+  const [loading, setLoading]         = useState(true);
+  const [saving, setSaving]           = useState(false);
+  const [enrollmentStats, setEnrollmentStats] = useState(null);
 
   useEffect(() => {
     Promise.all([
       api.get('/auth/academic-profile/'),
       api.get('/auth/departments/'),
       api.get('/enrollment/programs/'),
-    ]).then(([profileRes, deptRes, progRes]) => {
+      api.get('/enrollment/my/'),
+    ]).then(([profileRes, deptRes, progRes, enrollRes]) => {
       const p = profileRes.data;
       setProfile(p);
       setDepartments(deptRes.data);
@@ -32,15 +38,19 @@ export default function StudentProfile() {
         program:    p.program_id ?? '',
         year_level: p.year_level ?? '',
       });
-    }).catch(() => setError('Failed to load profile data.'))
+      const enrollments = Array.isArray(enrollRes.data) ? enrollRes.data : (enrollRes.data.results ?? []);
+      setEnrollmentStats({
+        totalTerms:  enrollments.length,
+        approved:    enrollments.filter(e => e.status === 'approved').length,
+        totalUnits:  enrollments.filter(e => e.status === 'approved').reduce((s, e) => s + parseFloat(e.total_units || 0), 0),
+      });
+    }).catch(() => toast('Failed to load profile data.', { type: 'error' }))
       .finally(() => setLoading(false));
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setError('');
-    setSuccess('');
     try {
       const res = await api.patch('/auth/academic-profile/', {
         department: form.department || null,
@@ -48,162 +58,236 @@ export default function StudentProfile() {
         year_level: form.year_level !== '' ? Number(form.year_level) : null,
       });
       setProfile(res.data);
-      setSuccess('Academic information updated successfully.');
+      toast('Academic information updated successfully.', { type: 'success' });
     } catch (err) {
       const data = err.response?.data;
       if (data && typeof data === 'object') {
-        const msgs = Object.values(data).flat().join(' ');
-        setError(msgs);
+        toast(Object.values(data).flat().join(' '), { type: 'error' });
       } else {
-        setError('Failed to save changes.');
+        toast('Failed to save changes.', { type: 'error' });
       }
     } finally {
       setSaving(false);
     }
   };
 
+  if (loading) return <div className="page"><p style={{ color: 'var(--muted)' }}>Loading profile…</p></div>;
+
+  const programsForDept = form.department
+    ? programs.filter(p => String(p.department) === String(form.department))
+    : programs;
+
+  const verified = !!profile?.is_verified;
+  const facts = [
+    profile?.student_id   && { k: 'Student No.', v: profile.student_id, mono: true },
+    profile?.program_name && { k: 'Program',     v: profile.program_code || profile.program_name },
+    profile?.year_level   && { k: 'Year level',  v: YEAR_LABELS[profile.year_level] },
+    profile?.department_name && { k: 'Department', v: profile.department_code || profile.department_name },
+  ].filter(Boolean);
+
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><img src="/logo.png" alt="NEMSU" className="sidebar-logo" />NEMSUonePortal</div>
-        <Link className="sidebar-link" to="/student/dashboard">Dashboard</Link>
-        <Link className="sidebar-link" to="/student/enrollment">Enrollment</Link>
-        <Link className="sidebar-link" to="/student/courses">My Courses</Link>
-        <Link className="sidebar-link" to="/student/grades">My Grades</Link>
-        <Link className="sidebar-link" to="/student/schedule">Schedule</Link>
-        <Link className="sidebar-link" to="/student/documents">Document Requests</Link>
-        <Link className="sidebar-link" to="/student/announcements">Announcements</Link>
-        <Link className="sidebar-link active" to="/student/profile">My Profile</Link>
-      </aside>
+    <div className="page">
+      <style>{CSS}</style>
 
-      <main className="dashboard-content">
-        <div className="dashboard-header">
-          <div>
-            <h1>My Profile</h1>
-            <span className="badge">{user?.role}</span>
-          </div>
-          <button className="btn-logout" onClick={logout}>Sign Out</button>
+      {/* ── Page head ──────────────────────────────────────── */}
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">Campus · My account</div>
+          <h2>My <em>profile</em></h2>
+          <div className="sub">Your student record, and the academic details that drive your enrollment.</div>
         </div>
+      </div>
 
-        {loading ? (
-          <p style={s.muted}>Loading profile…</p>
-        ) : (
-          <div style={s.grid}>
-            {/* ── Account Info (read-only) ── */}
-            <div style={s.card}>
-              <h2 style={s.cardTitle}>Account Information</h2>
-              <div style={s.infoGrid}>
-                <InfoRow label="Full Name"   value={profile?.full_name} />
-                <InfoRow label="Student ID"  value={profile?.student_id} />
-                <InfoRow label="Email"       value={profile?.institutional_email} />
-                <InfoRow label="Role"        value="Student" />
-                <InfoRow label="Email Verified" value={profile?.is_verified ? 'Yes' : 'No'} />
+      {/* ── Identity hero ──────────────────────────────────── */}
+      <div className="pf-hero">
+        <div className="pf-av">{initials(profile?.full_name)}</div>
+        <div className="pf-idmain">
+          <div className="pf-name">{profile?.full_name ?? user?.full_name}</div>
+          <div className="pf-email">{profile?.institutional_email}</div>
+          <div className="pf-badges">
+            <span className="pf-badge pf-badge--role"><i className="ti ti-school" /> Student</span>
+            <span className={`pf-badge ${verified ? 'pf-badge--ok' : 'pf-badge--warn'}`}>
+              <i className={`ti ${verified ? 'ti-rosette-discount-check' : 'ti-clock'}`} />
+              {verified ? 'Verified' : 'Pending verification'}
+            </span>
+          </div>
+        </div>
+        {facts.length > 0 && (
+          <div className="pf-facts">
+            {facts.map(f => (
+              <div key={f.k} className="pf-fact">
+                <div className="k">{f.k}</div>
+                <div className={`v${f.mono ? ' mono' : ''}`}>{f.v}</div>
               </div>
-            </div>
-
-            {/* ── Academic Info (editable) ── */}
-            <div style={s.card}>
-              <h2 style={s.cardTitle}>Academic Information</h2>
-
-              <div style={s.currentGrid}>
-                <CurrentInfo label="Department" value={profile?.department_name} />
-                <CurrentInfo label="Program"    value={profile?.program_name} />
-                <CurrentInfo label="Year Level" value={profile?.year_level ? YEAR_LABELS[profile.year_level] : null} />
-              </div>
-
-              <form onSubmit={handleSubmit}>
-                <div style={s.fieldGroup}>
-                  <label style={s.label} htmlFor="department">Department</label>
-                  <select
-                    id="department"
-                    style={s.select}
-                    value={form.department}
-                    onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
-                  >
-                    <option value="">— Not Set —</option>
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.code} — {d.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={s.fieldGroup}>
-                  <label style={s.label} htmlFor="program">Program</label>
-                  <select
-                    id="program"
-                    style={s.select}
-                    value={form.program}
-                    onChange={e => setForm(f => ({ ...f, program: e.target.value }))}
-                  >
-                    <option value="">— Not Set —</option>
-                    {programs.map(p => (
-                      <option key={p.id} value={p.id}>{p.code} — {p.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={s.fieldGroup}>
-                  <label style={s.label} htmlFor="year_level">Year Level</label>
-                  <select
-                    id="year_level"
-                    style={s.select}
-                    value={form.year_level}
-                    onChange={e => setForm(f => ({ ...f, year_level: e.target.value }))}
-                  >
-                    <option value="">— Not Set —</option>
-                    <option value="1">1st Year</option>
-                    <option value="2">2nd Year</option>
-                    <option value="3">3rd Year</option>
-                    <option value="4">4th Year</option>
-                  </select>
-                </div>
-
-                {error && <p style={s.errorMsg}>{error}</p>}
-                {success && <p style={s.successMsg}>{success}</p>}
-
-                <button type="submit" style={s.btnSave} disabled={saving}>
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </button>
-              </form>
-            </div>
+            ))}
           </div>
         )}
-      </main>
+      </div>
+
+      <div className="pf-grid">
+
+        {/* ── Left: details + editable academics ─────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+          {/* Account details (read-only) */}
+          <div className="info-section" style={{ marginBottom: 0 }}>
+            <div className="info-section-head"><h4>Account details</h4></div>
+            {[
+              ['Full name',      profile?.full_name],
+              ['Student ID',     profile?.student_id, true],
+              ['Email address',  profile?.institutional_email],
+              ['Role',           'Student'],
+              ['Email status',   verified ? 'Verified' : 'Pending verification'],
+            ].map(([lbl, val, mono]) => (
+              <div key={lbl} className="info-row">
+                <span className="lbl">{lbl}</span>
+                <span className={`val${mono ? ' mono' : ''}`}>{val ?? '—'}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Academic information (editable — the single source) */}
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div className="card-head">
+              <h4>Academic information<span>Department, program, and year level</span></h4>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div className="pf-field">
+                <label className="pf-label">Department</label>
+                <select className="pf-input" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value, program: '' }))}>
+                  <option value="">Not set</option>
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+                </select>
+              </div>
+              <div className="pf-field">
+                <label className="pf-label">Program</label>
+                <select className="pf-input" value={form.program} onChange={e => setForm(f => ({ ...f, program: e.target.value }))}>
+                  <option value="">Not set</option>
+                  {programsForDept.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                </select>
+              </div>
+              <div className="pf-field">
+                <label className="pf-label">Year level</label>
+                <select className="pf-input" value={form.year_level} onChange={e => setForm(f => ({ ...f, year_level: e.target.value }))}>
+                  <option value="">Not set</option>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                </select>
+              </div>
+
+              <div className="pf-hint">
+                <i className="ti ti-info-circle" />
+                Your program and year level determine the courses offered to you during enrollment.
+              </div>
+
+              <button type="submit" className="btn-pri" disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* ── Right: summary + status ────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+          {enrollmentStats && (
+            <div className="card" style={{ marginBottom: 0 }}>
+              <div className="card-head"><h4>Enrollment summary<span>Across your record</span></h4></div>
+              {[
+                { label: 'Terms enrolled',         value: enrollmentStats.totalTerms },
+                { label: 'Approved terms',         value: enrollmentStats.approved },
+                { label: 'Total units (approved)', value: enrollmentStats.totalUnits },
+              ].map(({ label, value }) => (
+                <div key={label} className="pf-sum-row">
+                  <span className="pf-sum-l">{label}</span>
+                  <span className="pf-sum-v">{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Verification / account status */}
+          <div className={`pf-status pf-status--${verified ? 'ok' : 'warn'}`}>
+            <i className={`ti ${verified ? 'ti-shield-check' : 'ti-shield-exclamation'}`} />
+            <div>
+              <div className="pf-status-t">{verified ? 'Your account is verified' : 'Verify your email'}</div>
+              <div className="pf-status-d">
+                {verified
+                  ? 'Notices about enrollment, grades, and document requests are sent to your institutional email.'
+                  : 'Check your institutional email for the verification link to secure your account.'}
+              </div>
+            </div>
+          </div>
+
+          <div className="pf-note">
+            Need to correct your name or student number? Those are kept by the registrar — visit the
+            registrar’s office to have them updated.
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function InfoRow({ label, value }) {
-  return (
-    <div style={{ display: 'contents' }}>
-      <span style={{ fontWeight: 600, color: '#6b7280', fontSize: '0.85rem' }}>{label}</span>
-      <span style={{ color: '#1f2937', fontSize: '0.9rem', wordBreak: 'break-all' }}>{value ?? '—'}</span>
-    </div>
-  );
-}
+const CSS = `
+  /* Identity hero */
+  .pf-hero{position:relative;overflow:hidden;background:var(--ink);color:#fff;
+    padding:1.9rem 2rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1.75rem;flex-wrap:wrap;
+    border-top:3px solid var(--gold);}
+  .pf-hero::after{content:'';position:absolute;top:-45%;right:-4%;width:300px;height:300px;border-radius:50%;
+    background:radial-gradient(circle,rgba(184,144,67,.22),transparent 70%);pointer-events:none;}
+  .pf-av{width:86px;height:86px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-size:30px;font-weight:600;letter-spacing:.04em;color:var(--ink);position:relative;z-index:1;
+    background:linear-gradient(135deg,var(--gold-soft),var(--gold));}
+  .pf-idmain{min-width:0;position:relative;z-index:1;}
+  .pf-name{font-family:'Inter',sans-serif;font-weight:500;font-size:26px;letter-spacing:-.015em;line-height:1.1;}
+  .pf-email{color:rgba(232,236,242,.72);font-size:13px;margin-top:5px;overflow-wrap:anywhere;}
+  .pf-badges{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap;}
+  .pf-badge{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:5px 11px;
+    display:inline-flex;align-items:center;gap:6px;}
+  .pf-badge i{font-size:13px;}
+  .pf-badge--role{background:rgba(255,255,255,.12);color:#fff;}
+  .pf-badge--ok{background:rgba(93,214,161,.16);color:#5dd6a1;}
+  .pf-badge--warn{background:rgba(240,200,120,.16);color:#f0c878;}
+  .pf-facts{margin-left:auto;display:flex;gap:2.25rem;flex-wrap:wrap;position:relative;z-index:1;}
+  .pf-fact .k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;}
+  .pf-fact .v{font-size:15px;color:#fff;margin-top:5px;font-weight:500;}
+  .pf-fact .v.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.03em;}
 
-function CurrentInfo({ label, value }) {
-  return (
-    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.65rem 1rem' }}>
-      <p style={{ margin: '0 0 0.15rem', fontSize: '0.72rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
-      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#1e3a5f' }}>
-        {value || <span style={{ color: '#9ca3af', fontStyle: 'italic', fontWeight: 400 }}>Not set</span>}
-      </p>
-    </div>
-  );
-}
+  /* Academic edit form */
+  .pf-field{margin-bottom:1rem;}
+  .pf-label{display:block;font-weight:600;font-size:13px;color:var(--ink);margin-bottom:5px;}
+  .pf-input{width:100%;padding:.55rem .7rem;border:1px solid var(--line);background:#fff;color:var(--ink);
+    font:14px/1.4 'Inter',sans-serif;outline:none;box-sizing:border-box;transition:border-color .15s;}
+  .pf-input:focus{border-color:var(--ink);}
+  .pf-hint{display:flex;gap:9px;align-items:flex-start;background:var(--warm);border:1px solid var(--line-soft);
+    padding:.7rem .9rem;margin-bottom:1.1rem;font-size:12.5px;color:var(--muted);line-height:1.5;}
+  .pf-hint i{color:var(--gold);font-size:15px;margin-top:1px;flex-shrink:0;}
 
-const s = {
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' },
-  card: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
-  cardTitle: { margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 700, color: '#1e3a5f' },
-  infoGrid: { display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.6rem 1.25rem', alignItems: 'baseline' },
-  currentGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.6rem', marginBottom: '1.25rem' },
-  fieldGroup: { marginBottom: '1rem' },
-  label: { display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#374151', marginBottom: '0.35rem' },
-  select: { width: '100%', padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem', boxSizing: 'border-box' },
-  btnSave: { background: '#1e3a5f', color: '#fff', border: 'none', borderRadius: 6, padding: '0.55rem 1.25rem', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', marginTop: '0.25rem' },
-  errorMsg: { color: '#b91c1c', fontSize: '0.85rem', marginBottom: '0.5rem' },
-  successMsg: { color: '#065f46', background: '#d1fae5', borderRadius: 6, padding: '0.5rem 0.75rem', fontSize: '0.85rem', marginBottom: '0.5rem' },
-  muted: { color: '#9ca3af', fontSize: '0.9rem' },
-};
+  /* Enrollment summary rows */
+  .pf-sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+    padding:14px 0;border-bottom:1px solid var(--line-soft);}
+  .pf-sum-row:last-child{border-bottom:none;}
+  .pf-sum-l{font-size:13px;color:var(--muted);}
+  .pf-sum-v{font-size:22px;font-weight:500;color:var(--ink);letter-spacing:-.015em;font-variant-numeric:tabular-nums;}
+
+  /* Status card */
+  .pf-status{display:flex;gap:13px;align-items:flex-start;padding:1.1rem 1.25rem;border:1px solid var(--line);}
+  .pf-status i{font-size:22px;flex-shrink:0;margin-top:1px;}
+  .pf-status--ok{background:var(--green-tint);border-color:#a7f3d0;}
+  .pf-status--ok i{color:var(--green);}
+  .pf-status--warn{background:var(--amber-tint);border-color:#f3e0b0;}
+  .pf-status--warn i{color:var(--amber);}
+  .pf-status-t{font-weight:600;font-size:14px;color:var(--ink);}
+  .pf-status-d{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:3px;}
+
+  .pf-note{font-size:12px;color:var(--faint);line-height:1.6;padding:0 .25rem;}
+
+  @media(max-width:640px){
+    .pf-hero{padding:1.5rem 1.25rem;gap:1.25rem;}
+    .pf-facts{margin-left:0;gap:1.5rem;width:100%;}
+    .pf-name{font-size:22px;}
+  }
+`;

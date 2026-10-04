@@ -34,30 +34,25 @@ export default function ForgotPassword() {
         <h2>Forgot Password</h2>
 
         {submitted ? (
-          <>
-            <p className="success-message">
-              If that email is registered, a password reset link has been sent.
-              Please check your inbox.
-            </p>
-            <p className="auth-links">
-              <Link to="/login">Back to Sign In</Link>
-            </p>
-          </>
+          <p className="success-message">
+            If that email is registered, a password reset link has been sent.
+            Please check your inbox.
+          </p>
         ) : (
           <form onSubmit={handleSubmit} noValidate>
             <p style={{ color: '#6b7280', fontSize: '.875rem', marginBottom: '1rem' }}>
-              Enter your institutional email and we&apos;ll send you a reset link.
+              Enter the email address linked to your account and we&apos;ll send you a reset link.
             </p>
 
             <div className="form-group">
-              <label htmlFor="email">Institutional Email</label>
+              <label htmlFor="email">Email address</label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="student@nemsu.edu.ph"
+                placeholder="you@example.com"
                 autoComplete="email"
               />
             </div>

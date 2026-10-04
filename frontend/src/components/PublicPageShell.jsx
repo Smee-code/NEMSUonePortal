@@ -1,16 +1,31 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import ScrollMemory from './ScrollMemory';
 
 /* Shared chrome for public sub-pages (News, Programs, Campus Life, In Focus). */
 export default function PublicPageShell({ eyebrow, title, subtitle, children }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // "Back to home" should return you to where you were on the landing page.
+  // A real back navigation (POP) lets ScrollMemory restore the scroll position;
+  // if there's no in-app history to go back to, fall through to a fresh home load.
+  const goHome = () => {
+    if (location.key && location.key !== 'default') navigate(-1);
+    else navigate('/');
+  };
+
   return (
     <div className="pp">
+      <ScrollMemory />
       <style>{CSS}</style>
       <header className="pp-top">
         <Link to="/" className="pp-brand">
           <img src="/logo.png" alt="NEMSU" />
           <span>NEMSUonePortal</span>
         </Link>
-        <Link to="/" className="pp-back"><i className="ti ti-arrow-left" /> Back to home</Link>
+        <button type="button" className="pp-back" onClick={goHome}>
+          <i className="ti ti-arrow-left" /> Back to home
+        </button>
       </header>
 
       <div className="pp-wrap">
@@ -30,7 +45,7 @@ const CSS = `
   .pp-top{display:flex;justify-content:space-between;align-items:center;padding:1rem 2rem;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10;}
   .pp-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#0a1628;font-weight:600;font-size:15px;}
   .pp-brand img{width:34px;height:34px;border-radius:50%;object-fit:contain;}
-  .pp-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5a6478;text-decoration:none;font-weight:500;}
+  .pp-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5a6478;text-decoration:none;font-weight:500;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
   .pp-back:hover{color:#0a1628;}
   .pp-wrap{max-width:1100px;margin:0 auto;padding:2.5rem 2rem 4rem;}
   .pp-head{margin-bottom:2rem;}

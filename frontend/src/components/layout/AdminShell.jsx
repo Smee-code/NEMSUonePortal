@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import ScrollMemory from '../ScrollMemory';
+import { useSupport, requestSelfPasswordReset } from '../SupportModal';
 import { useAuth } from '../../context/AuthContext';
 import { AdminShellCtx } from '../../context/AdminShellContext';
 import api from '../../api/axios';
@@ -219,7 +221,7 @@ const CSS = `
   .toggle::after{content:"";position:absolute;width:16px;height:16px;background:#fff;top:3px;left:3px;transition:left .15s}
   .toggle.on::after{left:19px}
   /* Card grid */
-  .grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0;border:1px solid var(--adm-line);background:var(--adm-line)}
+  .grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:0;border:1px solid var(--adm-line);background:var(--adm-line)}
   .grid-cards > *{background:#fff;padding:1.5rem;display:flex;flex-direction:column;gap:.75rem;transition:background .15s}
   .grid-cards > *:hover{background:var(--adm-warm)}
   /* Stat row */
@@ -317,9 +319,10 @@ const SB_ITEMS = [
   { key: 'dashboard',     icon: 'ti-layout-dashboard', label: 'Dashboard',             section: 'overview', to: '/admin/dashboard'    },
   { key: 'users',         icon: 'ti-users',            label: 'User Management',       section: 'manage',   to: '/admin/users'        },
   { key: 'programs',      icon: 'ti-book-2',           label: 'Programs & Curriculum', section: 'manage',   to: '/admin/programs'     },
-  { key: 'curriculum',    icon: 'ti-list-tree',        label: 'Curriculum',            section: 'manage',   to: '/admin/curriculum'   },
   { key: 'terms',         icon: 'ti-calendar',         label: 'Academic Terms',        section: 'manage',   to: '/admin/terms'        },
-  { key: 'blocks',        icon: 'ti-database',         label: 'Block Management',      section: 'manage',   to: '/admin/blocks'       },
+  { key: 'schedule',      icon: 'ti-calendar-time',    label: 'Class Schedules',       section: 'manage',   to: '/admin/schedule'     },
+  { key: 'facilities',    icon: 'ti-building-community',label: 'Rooms & Buildings',     section: 'manage',   to: '/admin/facilities'   },
+  { key: 'midterm-reopen',icon: 'ti-lock-open',        label: 'Reopen Requests',       section: 'manage',   to: '/admin/midterm-reopen'},
   { key: 'reports',       icon: 'ti-chart-bar',        label: 'Reports & Export',      section: 'system',   to: '/admin/reports'      },
   { key: 'audit-log',     icon: 'ti-clock-hour-4',     label: 'Audit Log',             section: 'system',   to: '/admin/audit-log'    },
   { key: 'announcements', icon: 'ti-bell',             label: 'Announcements',         section: 'system',   to: '/admin/announcements'},
@@ -332,9 +335,10 @@ const PAGE_LABELS = {
   dashboard:     'Dashboard',
   users:         'User Management',
   programs:      'Programs & Curriculum',
-  curriculum:    'Curriculum',
   terms:         'Academic Terms',
-  blocks:        'Block Management',
+  schedule:      'Class Schedules',
+  facilities:    'Rooms & Buildings',
+  'midterm-reopen': 'Reopen Requests',
   reports:       'Reports & Export',
   'audit-log':   'Audit Log',
   announcements: 'Announcements',
@@ -418,20 +422,6 @@ function AdminTopbar({ active, openDrawer, openNav, unread = 0, onBell }) {
         <span>Admin</span>
         <i className="ti ti-chevron-right" />
         <span className="here">{pageLabel}</span>
-      </div>
-
-      <div className="adm-search">
-        <i className="ti ti-search" />
-        <input
-          placeholder="Search users, programs, requests…"
-          onKeyDown={e => {
-            if (e.key === 'Enter' && e.target.value.trim()) {
-              e.target.blur();
-              e.target.value = '';
-            }
-          }}
-        />
-        <span className="adm-kbd">⌘K</span>
       </div>
 
       <div className="adm-topbar-actions">
@@ -543,11 +533,16 @@ function DrawerNotifications({ close, notifs = [], unreadCount = 0 }) {
 
 function DrawerAccount({ close, logout, navigate, toast }) {
   const { user } = useAuth();
+  const openSupport = useSupport();
+  const changePassword = async () => {
+    close();
+    const r = await requestSelfPasswordReset();
+    if (r.ok) toast('Password reset link sent to your email.', { type: 'success', sub: r.email });
+    else toast(r.error, { type: 'error' });
+  };
   const items = [
-    { icon: 'ti-user',     label: 'My profile',       act: () => toast('Profile · coming soon')                            },
-    { icon: 'ti-settings', label: 'Account settings', act: () => toast('Account settings · coming soon')                  },
-    { icon: 'ti-key',      label: 'Change password',  act: () => toast('Password reset email sent', { type: 'success' }) },
-    { icon: 'ti-help',     label: 'Help & support',   act: () => toast('Opening help center…')                            },
+    { icon: 'ti-key',      label: 'Change password',  act: changePassword },
+    { icon: 'ti-help',     label: 'Help & support',   act: () => { close(); openSupport(); } },
   ];
   const handleLogout = () => {
     close();
@@ -712,6 +707,7 @@ export default function AdminShell() {
           <AdminTopbar active={active} openDrawer={openDrawer} openNav={() => setNavOpen(true)}
             unread={unreadCount} onBell={() => { openDrawer('notifications'); markSeen(); }} />
           <div className="adm-body">
+            <ScrollMemory />
             <Outlet />
           </div>
         </div>

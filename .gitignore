@@ -34,6 +34,8 @@ build/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+db.sqlite3-wal
+db.sqlite3-shm
 media/
 staticfiles/
 
@@ -72,3 +74,13 @@ test_accounts.txt
 add_academic_data.py
 add_subjects_data.py
 .claude/
+
+# Local scratch / data (not for repo)
+_design_ref/
+admin_redesign_extracted.html
+*.sqlite3.backup-*
+.agents/
+nemsuoneportal.zip
+landing_design_temp.txt
+reg_ref.html
+*.zip

@@ -42,7 +42,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('student', 'Student'),
         ('faculty', 'Faculty'),
         ('registrar', 'Registrar'),
-        ('department_encoder', 'Department Encoder'),
         ('admin', 'Admin'),
     ]
 
@@ -115,6 +114,20 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Faculty classification: a GEC faculty teaches general-education courses across
     # programs; otherwise a faculty's `program` marks the program they are core to.
     is_gec_faculty = models.BooleanField(default=False)
+
+    # Academic rank (faculty only) — COS through the NBC 461 academic ladder.
+    FACULTY_RANKS = [
+        'COS',
+        'Instructor I', 'Instructor II', 'Instructor III',
+        'Assistant Professor I', 'Assistant Professor II',
+        'Assistant Professor III', 'Assistant Professor IV',
+        'Associate Professor I', 'Associate Professor II', 'Associate Professor III',
+        'Associate Professor IV', 'Associate Professor V',
+        'Professor I', 'Professor II', 'Professor III',
+        'Professor IV', 'Professor V', 'Professor VI',
+    ]
+    RANK_CHOICES = [(r, r) for r in FACULTY_RANKS]
+    rank = models.CharField(max_length=40, blank=True, default='', choices=RANK_CHOICES)
 
     # Account lockout — OWASP A07
     failed_login_attempts = models.PositiveSmallIntegerField(default=0)

@@ -7,7 +7,6 @@ const ROLE_HOME = {
   student:            '/student/dashboard',
   faculty:            '/faculty/dashboard',
   registrar:          '/registrar/dashboard',
-  department_encoder: '/encoder/applications',
   admin:              '/admin/dashboard',
 };
 
@@ -42,6 +41,9 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <Link to="/" className="auth-back">
+          <span aria-hidden="true">←</span> Back to home
+        </Link>
         <h1>NEMSUonePortal</h1>
         <h2>Sign In</h2>
 

@@ -47,13 +47,10 @@ const TITLES = {
   '/registrar/students': 'Students',
   '/registrar/faculty': 'Faculty',
   '/registrar/schedule': 'Schedules',
-  '/registrar/blocks': 'Blocks',
   '/registrar/documents': 'Document Requests',
   '/registrar/academic-data': 'Academic Data',
   '/registrar/announcements': 'Announcements',
 
-  '/encoder/applications': 'Applications',
-  '/encoder/curriculum': 'Curriculum',
 
   '/admin/dashboard': 'Admin Dashboard',
   '/admin/users': 'User Management',
@@ -62,7 +59,6 @@ const TITLES = {
   '/admin/landing': 'Landing Content',
   '/admin/terms': 'Academic Terms',
   '/admin/reports': 'Reports',
-  '/admin/blocks': 'Blocks',
   '/admin/audit-log': 'Audit Log',
   '/admin/settings': 'System Settings',
   '/admin/announcements': 'Announcements',

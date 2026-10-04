@@ -4,310 +4,330 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useRegistrarShell } from '../../context/RegistrarShellContext';
 
-function initials(name) {
-  const p = (name || '').trim().split(/\s+/);
-  return p.length === 1 ? (p[0][0] || '?').toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
-}
-
-function fillColor(pct) {
-  if (pct >= 100) return 'var(--red)';
-  if (pct >= 85)  return 'var(--amber)';
-  return 'var(--green)';
-}
-
-/* ── SVG Donut ─────────────────────────────────────────────────────────────── */
-function Donut({ data, size = 180, thickness = 22 }) {
-  const total = data.reduce((s, d) => s + d.value, 0) || 1;
-  const cx = size / 2, cy = size / 2;
-  const r  = (size - thickness) / 2;
-  let cum  = 0;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--cool-2)" strokeWidth={thickness} />
-      {data.map(d => {
-        const frac  = d.value / total;
-        const s0    = (cum / total) * 2 * Math.PI - Math.PI / 2;
-        const s1    = ((cum + d.value) / total) * 2 * Math.PI - Math.PI / 2;
-        cum += d.value;
-        if (d.value === 0) return null;
-        const sx = cx + r * Math.cos(s0), sy = cy + r * Math.sin(s0);
-        const ex = cx + r * Math.cos(s1), ey = cy + r * Math.sin(s1);
-        return (
-          <path key={d.name}
-            d={`M ${sx} ${sy} A ${r} ${r} 0 ${frac > 0.5 ? 1 : 0} 1 ${ex} ${ey}`}
-            fill="none" stroke={d.color} strokeWidth={thickness} strokeLinecap="butt"
-          />
-        );
-      })}
-    </svg>
-  );
-}
-
-/* ── Treemap colors ─────────────────────────────────────────────────────────── */
-const TM_COLORS = ['#1e3a5f','#2d5494','#3b6abf','#4a80ea','#0a7c52','#0d9488','#a06b16','#a8331e'];
-
-/* ── Activity icon map ──────────────────────────────────────────────────────── */
-const ACT_ICON = {
-  submit: 'ti-chart-bar', approve: 'ti-circle-check', reject: 'ti-circle-x',
-  create: 'ti-plus', update: 'ti-pencil', delete: 'ti-trash',
-  lockout: 'ti-lock', login: 'ti-login', logout: 'ti-logout',
-  advance: 'ti-arrow-right', backup: 'ti-database',
-};
-const ACT_TAG = {
-  created: 'created', approved: 'approved', rejected: 'rejected',
-  updated: 'updated', deleted: 'deleted', locked: 'locked',
-  submit: 'updated', create: 'created', approve: 'approved', reject: 'rejected',
-};
+const DOC_STATUSES = [
+  { key: 'submitted',  label: 'Submitted',  color: 'var(--ink-2)' },
+  { key: 'processing', label: 'Processing', color: '#3b82f6'      },
+  { key: 'ready',      label: 'Ready',      color: 'var(--green)' },
+  { key: 'released',   label: 'Released',   color: '#0d9488'      },
+  { key: 'rejected',   label: 'Rejected',   color: 'var(--red)'   },
+];
 
 export default function RegistrarDashboard() {
   const { user }        = useAuth();
   const { currentTerm } = useRegistrarShell();
 
   const [stats,   setStats]   = useState(null);
-  const [recent,  setRecent]  = useState([]);
+  const [queue,   setQueue]   = useState({ registrations: 0, enrollments: 0 });
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
 
   useEffect(() => {
-    Promise.allSettled([
+    let alive = true;
+
+    // Counts work whether the endpoint paginates ({count}) or returns a plain array.
+    const countOf = res => {
+      if (res.status !== 'fulfilled') return 0;
+      const d = res.value.data;
+      if (Array.isArray(d)) return d.length;
+      return d?.count ?? (Array.isArray(d?.results) ? d.results.length : 0);
+    };
+
+    const load = () => Promise.allSettled([
       api.get('/auth/admin/stats/'),
-      api.get('/auth/audit-log/?page_size=7'),
-    ]).then(([sRes, aRes]) => {
-      if (sRes.status === 'fulfilled') setStats(sRes.value.data);
-      else setError('Failed to load analytics. Try refreshing.');
-      if (aRes.status === 'fulfilled') {
-        const d = aRes.value.data;
-        setRecent(Array.isArray(d) ? d.slice(0, 7) : (d?.results ?? []).slice(0, 7));
-      }
-    }).finally(() => setLoading(false));
+      api.get('/auth/registrar/registrations/?status=pending&page_size=1'),
+      api.get('/enrollment/requests/?status=pending&page_size=1'),
+    ]).then(([s, r, e]) => {
+      if (!alive) return;
+      if (s.status === 'fulfilled') { setStats(s.value.data); setError(''); }
+      else setError('Couldn’t load the dashboard figures. Refresh to try again.');
+      setQueue({ registrations: countOf(r), enrollments: countOf(e) });
+    }).finally(() => { if (alive) setLoading(false); });
+
+    load();
+    // Keep the desk live: refresh on a timer and whenever the tab regains focus.
+    const iv = setInterval(load, 45000);
+    const onVis = () => { if (!document.hidden) load(); };
+    window.addEventListener('focus', onVis);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+      window.removeEventListener('focus', onVis);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, []);
 
-  /* ── Derived values ─────────────────────────────────────────────────────── */
-  const d  = stats?.documents         ?? {};
-  const g  = stats?.grade_submission  ?? {};
-  const tl = stats?.active_term_label ?? '';
+  const doc = stats?.documents        ?? {};
+  const usr = stats?.users            ?? {};
+  const grd = stats?.grade_submission ?? {};
 
-  const totalDocs   = (d.submitted ?? 0) + (d.processing ?? 0) + (d.ready ?? 0) + (d.released ?? 0) + (d.rejected ?? 0);
-  const gradeRate   = (g.total_assignments ?? 0) > 0 ? Math.round((g.submitted_assignments ?? 0) / g.total_assignments * 100) : 0;
-  const docRate     = totalDocs > 0 ? Math.round(((d.processing ?? 0) + (d.ready ?? 0) + (d.released ?? 0)) / totalDocs * 100) : 0;
+  const totalDocs = DOC_STATUSES.reduce((s, x) => s + (doc[x.key] ?? 0), 0);
+  const gradeRate = (grd.total_assignments ?? 0) > 0
+    ? Math.round((grd.submitted_assignments ?? 0) / grd.total_assignments * 100) : 0;
 
-  const termLabel = currentTerm ? `${currentTerm.semester_display} · ${currentTerm.year}` : (tl || 'No active term');
-  const now       = stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH') : '-';
+  const hr = new Date().getHours();
+  const greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
 
-  /* ── Chart data ─────────────────────────────────────────────────────────── */
-  const docPipeline = [
-    { label: 'Submitted',  value: d.submitted  ?? 0, color: 'var(--ink-2)', dot: 'var(--faint)'  },
-    { label: 'Processing', value: d.processing ?? 0, color: '#3b82f6',      dot: '#3b82f6'        },
-    { label: 'Ready',      value: d.ready      ?? 0, color: 'var(--green)', dot: 'var(--green)'  },
-    { label: 'Released',   value: d.released   ?? 0, color: '#0d9488',      dot: '#0d9488'        },
-    { label: 'Rejected',   value: d.rejected   ?? 0, color: 'var(--red)',   dot: 'var(--red)'    },
+  const termLabel = currentTerm
+    ? `${currentTerm.semester_display} ${currentTerm.year}`
+    : (stats?.active_term_label || 'No active term');
+  const generated = stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH', {
+    dateStyle: 'medium', timeStyle: 'short',
+  }) : '';
+
+  // The registrar's live work queue — the hero of the page.
+  const tiles = [
+    { value: queue.registrations, label: 'Registration requests', verb: 'Validate accounts', icon: 'ti-user-check',       to: '/registrar/registrations' },
+    { value: queue.enrollments,   label: 'Enrollment requests',   verb: 'Review enrollments', icon: 'ti-clipboard-check',  to: '/registrar/enrollment'    },
+    { value: doc.submitted ?? 0,  label: 'Documents to process',  verb: 'Start processing',   icon: 'ti-file-text',        to: '/registrar/documents'     },
+    { value: doc.ready ?? 0,      label: 'Ready for release',      verb: 'Release to student', icon: 'ti-package',          to: '/registrar/documents'     },
   ];
-  const maxDoc = Math.max(...docPipeline.map(p => p.value), 1);
+  const openTotal  = tiles.reduce((s, t) => s + (t.value || 0), 0);
+  const openQueues = tiles.filter(t => (t.value || 0) > 0).length;
 
-  const healthBars = [
-    { name: 'Grade Submission',    val: gradeRate,  sub: `${g.submitted_assignments ?? 0} of ${g.total_assignments ?? 0} submitted`,         color: 'var(--ink-2)'  },
-    { name: 'Document Processing', val: docRate,    sub: `${(d.processing ?? 0) + (d.ready ?? 0) + (d.released ?? 0)} of ${totalDocs} progressed`, color: '#3b82f6' },
+  const figures = [
+    { num: usr.student    ?? 0, label: 'Students on record' },
+    { num: usr.faculty    ?? 0, label: 'Faculty on record'  },
+    { num: usr.unverified ?? 0, label: 'Unverified accounts', warn: (usr.unverified ?? 0) > 0 },
+    { num: usr.locked     ?? 0, label: 'Locked accounts',     warn: (usr.locked ?? 0) > 0     },
+  ];
+
+  const goTo = [
+    { icon: 'ti-users',          label: 'Students',        to: '/registrar/students' },
+    { icon: 'ti-calendar-event', label: 'Class schedules', to: '/registrar/schedule' },
+    { icon: 'ti-user-edit',      label: 'Faculty',         to: '/registrar/faculty'  },
+    { icon: 'ti-database',       label: 'Academic data',   to: '/registrar/academic-data' },
   ];
 
   return (
     <>
       <style>{CSS}</style>
 
-      {/* ── Welcome ── */}
-      <div className="welcome">
+      <header className="rd-head">
         <div>
-          <div className="welcome-eyebrow">Office of the Registrar</div>
-          <h1>Good day, <em>{user?.full_name?.split(' ')[0] ?? 'Registrar'}</em></h1>
-          <p>Validate student registrations, process document requests, and manage academic records across all programs.</p>
+          <div className="rd-desk">{greeting} · Registrar's desk</div>
+          <h1 className="rd-name">{user?.full_name || 'Registrar'}</h1>
         </div>
-        <div className="welcome-side">
-          <div className="live-indicator"><span className="dot" />Live data</div>
-          <div className="stamp">{termLabel}</div>
+        <div className="rd-head-r">
+          <span className="rd-term"><i className="ti ti-calendar" />{termLabel}</span>
         </div>
-      </div>
+      </header>
 
-      {error && (
-        <div style={{ background: 'var(--red-tint)', border: '1px solid var(--red)', color: 'var(--red)', padding: '.75rem 1rem', fontSize: 13 }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="rd-error">{error}</div>}
 
       {loading ? (
-        <div className="empty">
-          <i className="ti ti-loader" />
-          <div className="t">Loading analytics…</div>
-        </div>
+        <div className="rd-loading">Loading the desk…</div>
       ) : (
         <>
-          {/* ── KPI strip ── */}
-          <div className="kpis">
-            {[
-              { label: 'Document Requests',   value: totalDocs,                 icon: 'ti-file-text',      sub: `${d.ready ?? 0} ready for release`      },
-              { label: 'Ready for Release',   value: d.ready ?? '-',            icon: 'ti-package',        sub: 'awaiting student pickup'               },
-              { label: 'Grade Assignments',   value: g.total_assignments ?? '-',icon: 'ti-chart-bar',      sub: `${g.submitted_assignments ?? 0} submitted` },
-            ].map(kpi => (
-              <div className="kpi" key={kpi.label}>
-                <div className="kpi-head">
-                  <div className="kpi-label">{kpi.label}</div>
-                  <div className="kpi-icon"><i className={`ti ${kpi.icon}`} /></div>
-                </div>
-                <div className="kpi-value">{kpi.value}</div>
-                <div className="kpi-sub">{kpi.sub}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* ── Document pipeline ── */}
-          <div>
-            <div className="card">
-              <div className="card-head">
-                <h4>Document Request Pipeline<span>{totalDocs} total</span></h4>
-              </div>
-              <div className="pipe">
-                {docPipeline.map(p => (
-                  <div className="pipe-row" key={p.label}>
-                    <div className="pipe-label">
-                      <div className="pipe-dot" style={{ background: p.dot }} />
-                      {p.label}
-                    </div>
-                    <div className="pipe-bar">
-                      <div className="pipe-bar-fill" style={{ width: `${Math.round(p.value / maxDoc * 100)}%`, background: p.color }}>
-                        {p.value > 0 && p.value}
-                      </div>
-                    </div>
-                    <div className="pipe-num">{p.value}</div>
-                  </div>
-                ))}
-              </div>
+          {/* ── The docket: what needs the registrar today ── */}
+          <section className="rd-docket">
+            <div className="rd-docket-head">
+              <h2>What needs you today</h2>
+              <span className={`rd-docket-sum${openTotal === 0 ? ' clear' : ''}`}>
+                {openTotal > 0
+                  ? `${openTotal} waiting across ${openQueues} ${openQueues === 1 ? 'queue' : 'queues'}`
+                  : 'Every queue is clear — nothing waiting'}
+              </span>
             </div>
-          </div>
-
-          {/* ── Account Health + Grade Inset ── */}
-          <div className="row-21">
-            <div className="card">
-              <div className="card-head">
-                <h4>Account Health<span>System overview</span></h4>
-              </div>
-              <div className="db-health">
-                {healthBars.map(h => (
-                  <div className="db-health-item" key={h.name}>
-                    <div className="db-health-top">
-                      <div className="db-health-name">{h.name}</div>
-                      <div className="db-health-val"><strong>{h.val}</strong>%</div>
+            <div className="rd-tiles">
+              {tiles.map(t => {
+                const active = (t.value || 0) > 0;
+                return (
+                  <Link key={t.label} to={t.to} className={`rd-tile${active ? ' active' : ''}`}>
+                    <div className="rd-tile-top">
+                      <span className="rd-tile-num">{t.value}</span>
+                      <i className={`ti ${t.icon}`} />
                     </div>
-                    <div className="health-bar">
-                      <div className="health-bar-fill" style={{ width: `${Math.min(h.val, 100)}%`, background: h.color }} />
-                    </div>
-                    <div className="db-health-desc">{h.sub}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="card" style={{ background: 'var(--warm)' }}>
-              <div className="card-head" style={{ borderColor: 'var(--line-soft)' }}>
-                <h4>Grade Submission<span style={{ color: 'var(--gold)' }}>This term</span></h4>
-              </div>
-              <div className="grade-inset">
-                <div className="grade-inset-head">Submission Progress</div>
-                <div className="grade-stats">
-                  {[
-                    { num: g.total_assignments    ?? '-', lbl: 'Total assignments' },
-                    { num: g.submitted_assignments ?? '-', lbl: 'Submitted'         },
-                    { num: g.pending_assignments   ?? '-', lbl: 'Pending'           },
-                  ].map(s => (
-                    <div className="grade-stat" key={s.lbl}>
-                      <div className="num">{s.num}</div>
-                      <div className="lbl">{s.lbl}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ marginTop: '1rem' }}>
-                <div className="health-bar" style={{ height: 8 }}>
-                  <div className="health-bar-fill" style={{ width: `${gradeRate}%`, background: 'var(--gold)' }} />
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>
-                  {g.submitted_grade_records ?? 0} of {g.total_grade_records ?? 0} grade records submitted
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Recent Activity + Quick Actions ── */}
-          <div className="row-2">
-            <div className="card">
-              <div className="card-head">
-                <h4>Recent Activity<span>Last {Math.min(recent.length, 7)} events</span></h4>
-              </div>
-              {recent.length > 0 ? (
-                <div className="activity">
-                  {recent.map((row, i) => {
-                    const actionKey = (row.action || '').split('.').pop();
-                    const tagClass  = ACT_TAG[actionKey] ?? 'updated';
-                    const iconClass = ACT_ICON[actionKey] ?? 'ti-point';
-                    return (
-                      <div className="activity-row" key={i}>
-                        <div className="act-icon"><i className={`ti ${iconClass}`} /></div>
-                        <div className="act-meta">
-                          <div className="act-text">
-                            <strong>{row.performed_by || row.who || 'System'}</strong>
-                            {' · '}{row.action || ''}
-                          </div>
-                          <div className="act-sub">{row.resource_repr || row.resource || ''}</div>
-                        </div>
-                        <span className={`act-tag ${tagClass}`}>{actionKey}</span>
-                        <div className="act-time">
-                          {row.timestamp ? new Date(row.timestamp).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ color: 'var(--faint)', fontSize: 13, padding: '1rem 0' }}>No recent activity to show.</div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="sec-head" style={{ marginBottom: 0 }}>
-                <div><h3>Quick <em>Actions</em></h3></div>
-              </div>
-              <div className="quick">
-                {[
-                  { icon: 'ti-user-check', title: 'Registration Requests', desc: 'Validate new student accounts', to: '/registrar/registrations' },
-                  { icon: 'ti-file-text',        title: 'Process Documents', desc: 'Advance document request status',   to: '/registrar/documents'  },
-                  { icon: 'ti-users',            title: 'View Students',    desc: 'Browse enrolled student list',       to: '/registrar/students'   },
-                  { icon: 'ti-calendar-event',   title: 'Class Schedules',  desc: 'View published class timetables',   to: '/registrar/schedule'   },
-                ].map(q => (
-                  <Link key={q.to} to={q.to} className="quick-item">
-                    <div className="quick-icon"><i className={`ti ${q.icon}`} /></div>
-                    <div className="quick-title">{q.title}</div>
-                    <div className="quick-desc">{q.desc}</div>
+                    <div className="rd-tile-label">{t.label}</div>
+                    <div className="rd-tile-act">{active ? t.verb : 'Up to date'}</div>
                   </Link>
-                ))}
-              </div>
+                );
+              })}
             </div>
+          </section>
+
+          {/* ── Throughput: document flow + grade submission ── */}
+          <div className="rd-row2">
+            <section className="rd-panel">
+              <div className="rd-panel-head">
+                <h3>Document flow</h3>
+                <span>{totalDocs} total this term</span>
+              </div>
+              {totalDocs > 0 ? (
+                <>
+                  <div className="rd-stack" role="img" aria-label="Document requests by status">
+                    {DOC_STATUSES.map(s => (doc[s.key] ?? 0) > 0 && (
+                      <div key={s.key} style={{ flexGrow: doc[s.key], background: s.color }}
+                        title={`${s.label}: ${doc[s.key]}`} />
+                    ))}
+                  </div>
+                  <div className="rd-legend">
+                    {DOC_STATUSES.map(s => (
+                      <div className="rd-leg" key={s.key}>
+                        <span className="d" style={{ background: s.color }} />
+                        {s.label}<b>{doc[s.key] ?? 0}</b>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="rd-empty">No document requests have come in this term.</div>
+              )}
+            </section>
+
+            <section className="rd-panel warm">
+              <div className="rd-panel-head">
+                <h3>Grade submission</h3>
+                <span>this term</span>
+              </div>
+              {(grd.total_assignments ?? 0) > 0 ? (
+                <>
+                  <div className="rd-grade-top">
+                    <span className="rd-grade-pct">{gradeRate}<em>%</em></span>
+                    <span className="rd-grade-cap">of teaching loads submitted</span>
+                  </div>
+                  <div className="rd-grade-bar">
+                    <div className="rd-grade-bar-fill" style={{ width: `${gradeRate}%` }} />
+                  </div>
+                  <div className="rd-grade-figs">
+                    <div><b>{grd.total_assignments ?? 0}</b><span>total loads</span></div>
+                    <div><b>{grd.submitted_assignments ?? 0}</b><span>submitted</span></div>
+                    <div><b>{grd.pending_assignments ?? 0}</b><span>pending</span></div>
+                  </div>
+                </>
+              ) : (
+                <div className="rd-empty">No teaching loads recorded for {termLabel} yet.</div>
+              )}
+            </section>
           </div>
 
-          {/* ── Footer ── */}
-          <div className="foot-note">
-            <div className="live"><span className="dot" />Live · Data as of {now}</div>
-            <div>NEMSUonePortal · Registrar</div>
-          </div>
+          {/* ── Records at a glance ── */}
+          <section className="rd-records">
+            <div className="rd-records-head"><h3>Records at a glance</h3></div>
+            <div className="rd-figs">
+              {figures.map(f => (
+                <div className={`rd-fig${f.warn ? ' warn' : ''}`} key={f.label}>
+                  <span className="rd-fig-num">{f.num}</span>
+                  <span className="rd-fig-lbl">{f.label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ── Go to ── */}
+          <nav className="rd-goto">
+            <span className="rd-goto-lbl">Go to</span>
+            {goTo.map(l => (
+              <Link key={l.to} to={l.to} className="rd-goto-link">
+                <i className={`ti ${l.icon}`} />{l.label}
+              </Link>
+            ))}
+          </nav>
+
+          {generated && <div className="rd-foot">Figures as of {generated}</div>}
         </>
       )}
     </>
   );
 }
 
-/* ── Dashboard-specific CSS (shared primitives come from RegistrarShell) ── */
 const CSS = `
-  .db-health { display: flex; flex-direction: column; gap: 1.25rem; padding: .25rem 0; }
-  .db-health-item {}
-  .db-health-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-  .db-health-name { font-size: 13px; color: var(--ink); font-weight: 500; }
-  .db-health-val { font-size: 12px; color: var(--muted); }
-  .db-health-val strong { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 18px; color: var(--ink); letter-spacing: -.01em; margin-right: 6px; }
-  .db-health-desc { font-size: 11px; color: var(--faint); margin-top: 6px; letter-spacing: .02em; }
+  /* ── Header ── */
+  .rd-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:1rem;
+    padding-bottom:1.1rem; margin-bottom:1.6rem; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .rd-desk{ font-size:12.5px; color:var(--muted); font-weight:500; }
+  .rd-name{ font:600 25px/1.1 'Inter',sans-serif; color:var(--ink); margin:.3rem 0 0; letter-spacing:-.015em; }
+  .rd-head-r{ display:flex; align-items:center; gap:12px; padding-top:2px; }
+  .rd-term{ display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink);
+    background:var(--warm); border:1px solid var(--line); padding:7px 13px; }
+  .rd-term i{ font-size:15px; color:var(--gold); }
+
+  .rd-error{ background:var(--red-tint); border:1px solid var(--red); color:var(--red);
+    padding:.7rem 1rem; font-size:13px; margin-bottom:1.25rem; }
+  .rd-loading{ color:var(--muted); font-size:13px; padding:3rem 0; }
+
+  /* ── Docket (hero) ── */
+  .rd-docket-head{ display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
+    flex-wrap:wrap; margin-bottom:15px; }
+  .rd-docket-head h2{ margin:0; font:400 27px/1.05 'Instrument Serif',Georgia,serif; color:var(--ink); }
+  .rd-docket-sum{ font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .rd-docket-sum.clear{ color:var(--green); }
+
+  .rd-tiles{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .rd-tile{ position:relative; display:flex; flex-direction:column; gap:11px;
+    background:#fff; border:1px solid var(--line); padding:18px 18px 15px 21px;
+    text-decoration:none; color:inherit; transition:border-color .16s, box-shadow .16s, transform .16s; }
+  .rd-tile::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background:var(--line); transition:background .16s, width .16s; }
+  .rd-tile.active::before{ background:var(--gold); width:4px; }
+  .rd-tile:hover{ border-color:var(--ink); box-shadow:0 10px 26px -18px rgba(10,22,40,.55); transform:translateY(-2px); }
+  .rd-tile:hover::before{ width:6px; }
+  .rd-tile:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+  .rd-tile-top{ display:flex; align-items:flex-start; justify-content:space-between; }
+  .rd-tile-num{ font:600 42px/.9 'Inter',sans-serif; letter-spacing:-.03em;
+    font-variant-numeric:tabular-nums; color:var(--ink); }
+  .rd-tile:not(.active) .rd-tile-num{ color:var(--faint); }
+  .rd-tile-top i{ font-size:19px; color:var(--gold); margin-top:4px; }
+  .rd-tile:not(.active) .rd-tile-top i{ color:var(--faint); }
+  .rd-tile-label{ font-size:13px; font-weight:600; color:var(--ink); }
+  .rd-tile-act{ font-size:12px; color:var(--muted); margin-top:1px; transition:color .16s; }
+  .rd-tile.active:hover .rd-tile-act{ color:var(--ink); }
+
+  /* ── Throughput row ── */
+  .rd-row2{ display:grid; grid-template-columns:1.5fr 1fr; gap:14px; margin-top:1.6rem; }
+  .rd-panel{ background:#fff; border:1px solid var(--line); padding:18px 20px; }
+  .rd-panel.warm{ background:var(--warm); }
+  .rd-panel-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px; }
+  .rd-panel-head h3{ margin:0; font:600 15px 'Inter',sans-serif; color:var(--ink); letter-spacing:-.005em; }
+  .rd-panel-head span{ font-size:11px; color:var(--muted); }
+  .rd-empty{ font-size:13px; color:var(--muted); padding:.75rem 0 1.25rem; }
+
+  .rd-stack{ display:flex; height:16px; overflow:hidden; border:1px solid var(--line); background:var(--cool-2); }
+  .rd-stack > div{ min-width:3px; }
+  .rd-legend{ display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:14px; }
+  .rd-leg{ display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); }
+  .rd-leg .d{ width:9px; height:9px; flex:none; }
+  .rd-leg b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+
+  .rd-grade-top{ display:flex; align-items:baseline; gap:9px; }
+  .rd-grade-pct{ font:600 42px/.9 'Inter',sans-serif; color:var(--ink); letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+  .rd-grade-pct em{ font:500 20px 'Inter',sans-serif; color:var(--muted); margin-left:1px; }
+  .rd-grade-cap{ font-size:12px; color:var(--muted); }
+  .rd-grade-bar{ height:8px; background:var(--cool-2); border:1px solid var(--line); margin:14px 0 14px; overflow:hidden; }
+  .rd-grade-bar-fill{ height:100%; background:var(--gold); }
+  .rd-grade-figs{ display:flex; gap:1.5rem; }
+  .rd-grade-figs div{ display:flex; flex-direction:column; }
+  .rd-grade-figs b{ font:600 17px 'Inter',sans-serif; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .rd-grade-figs span{ font-size:11px; color:var(--muted); margin-top:1px; }
+
+  /* ── Records strip ── */
+  .rd-records{ margin-top:1.6rem; border:1px solid var(--line); background:#fff; }
+  .rd-records-head{ padding:12px 20px; border-bottom:1px solid var(--line-soft); }
+  .rd-records-head h3{ margin:0; font:600 13px 'Inter',sans-serif; color:var(--ink); }
+  .rd-figs{ display:grid; grid-template-columns:repeat(4,1fr); }
+  .rd-fig{ padding:16px 20px; border-right:1px solid var(--line-soft); display:flex; flex-direction:column; gap:3px; }
+  .rd-fig:last-child{ border-right:none; }
+  .rd-fig-num{ font:600 27px/1 'Inter',sans-serif; color:var(--ink); font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  .rd-fig.warn .rd-fig-num{ color:var(--amber); }
+  .rd-fig-lbl{ font-size:12px; color:var(--muted); }
+
+  /* ── Go to ── */
+  .rd-goto{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:1.6rem; }
+  .rd-goto-lbl{ font-size:12px; color:var(--faint); margin-right:2px; }
+  .rd-goto-link{ display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink);
+    text-decoration:none; background:#fff; border:1px solid var(--line); padding:8px 13px; transition:border-color .15s, background .15s; }
+  .rd-goto-link:hover{ border-color:var(--ink); background:var(--warm); }
+  .rd-goto-link i{ font-size:15px; color:var(--muted); }
+
+  .rd-foot{ margin-top:1.6rem; padding-top:1rem; border-top:1px solid var(--line-soft); font-size:11px; color:var(--faint); }
+
+  /* ── Responsive ── */
+  @media (max-width:900px){ .rd-tiles{ grid-template-columns:repeat(2,1fr); } .rd-row2{ grid-template-columns:1fr; } }
+  @media (max-width:640px){ .rd-tiles{ grid-template-columns:1fr; } .rd-figs{ grid-template-columns:repeat(2,1fr); }
+    .rd-fig:nth-child(2){ border-right:none; } }
+  @media (prefers-reduced-motion: reduce){
+    .rd-tile, .rd-tile::before, .rd-tile-act i, .rd-goto-link{ transition:none; }
+    .rd-tile:hover{ transform:none; }
+    .rd-tile:hover .rd-tile-act i{ transform:none; }
+  }
 `;

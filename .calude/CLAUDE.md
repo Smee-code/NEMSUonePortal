@@ -77,7 +77,7 @@ All roles share a **Single Sign-On (SSO)** login. Access is governed by **Role-B
 - **Responsibilities:** Business logic, API endpoints, authentication, enrollment processing, grade management
 
 ### Database
-- **System:** PostgreSQL
+- **System:** SQLite (Django `sqlite3` backend — file at `backend/db.sqlite3`)
 - **Stores:** Student records, enrollments, grades, schedules, document requests, user accounts
 
 ### Authentication
@@ -94,7 +94,7 @@ All roles share a **Single Sign-On (SSO)** login. Access is governed by **Role-B
 - **Pattern:** Three-Tier Architecture
   - **Tier 1:** Responsive frontend interface layer
   - **Tier 2:** Secure backend business logic layer (Django)
-  - **Tier 3:** Centralized relational database layer (PostgreSQL)
+  - **Tier 3:** Centralized relational database layer (SQLite)
 
 ---
 
@@ -170,7 +170,7 @@ The system is evaluated using **ISO/IEC 25010** via structured **User Acceptance
 | **Audit Log** | Record of all significant user actions for accountability and oversight |
 | **ISO/IEC 25010** | International software quality standard used to evaluate the system |
 | **Django** | Python web framework used for the backend |
-| **PostgreSQL** | Relational database storing all academic data |
+| **SQLite** | Embedded relational database storing all academic data |
 | **Three-Tier Architecture** | Frontend / Backend / Database separation pattern |
 
 ---

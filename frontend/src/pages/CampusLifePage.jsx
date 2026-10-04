@@ -63,7 +63,7 @@ export default function CampusLifePage() {
 }
 
 const CSS = `
-  .cl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem;}
+  .cl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr));gap:1.25rem;}
   .cl-item{position:relative;aspect-ratio:4/3;overflow:hidden;background:#eef1f7;border:1px solid #e5e7eb;padding:0;cursor:pointer;text-align:left;font-family:inherit;color:#fff;display:block;width:100%;}
   .cl-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease;}
   .cl-item:hover img{transform:scale(1.04);}

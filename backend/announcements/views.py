@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 
 from authentication.models import AuditLog, User
-from authentication.permissions import IsFacultyOrAbove, get_client_ip
+from authentication.permissions import IsRegistrarOrAdmin, get_client_ip
 
 from .models import Announcement
 from .serializers import AnnouncementSerializer
@@ -87,7 +87,7 @@ class AnnouncementPagination(LimitOffsetPagination):
 class AnnouncementListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/announcements/ — all authenticated users (audience-filtered)
-    POST /api/announcements/ — faculty / registrar / admin only
+    POST /api/announcements/ — registrar / admin only
     """
     serializer_class = AnnouncementSerializer
     pagination_class = AnnouncementPagination
@@ -95,7 +95,7 @@ class AnnouncementListCreateView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
             return [IsAuthenticated()]
-        return [IsAuthenticated(), IsFacultyOrAbove()]
+        return [IsAuthenticated(), IsRegistrarOrAdmin()]
 
     def get_throttles(self):
         if self.request.method == 'POST':
@@ -139,7 +139,7 @@ class AnnouncementDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
             return [IsAuthenticated()]
-        return [IsAuthenticated(), IsFacultyOrAbove()]
+        return [IsAuthenticated(), IsRegistrarOrAdmin()]
 
     def get_throttles(self):
         if self.request.method in SAFE_METHODS:

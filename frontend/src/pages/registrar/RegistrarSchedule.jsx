@@ -1,15 +1,15 @@
-﻿import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import api from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 const DAY_OPTIONS = [
-  { value: 'monday', label: 'Monday' },
-  { value: 'tuesday', label: 'Tuesday' },
+  { value: 'monday',    label: 'Monday'    },
+  { value: 'tuesday',   label: 'Tuesday'   },
   { value: 'wednesday', label: 'Wednesday' },
-  { value: 'thursday', label: 'Thursday' },
-  { value: 'friday', label: 'Friday' },
-  { value: 'saturday', label: 'Saturday' },
+  { value: 'thursday',  label: 'Thursday'  },
+  { value: 'friday',    label: 'Friday'    },
+  { value: 'saturday',  label: 'Saturday'  },
 ];
 
 const DAY_LABELS = {
@@ -17,16 +17,245 @@ const DAY_LABELS = {
   thursday: 'Thu', friday: 'Fri', saturday: 'Sat',
 };
 
-const PAGE_SIZE = 20;
+const DAY_ORDER = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+
+const PAGE_SIZE = 12;   // classes per page
 
 const EMPTY_FORM = {
-  teaching_assignment: '',
+  department: '',    // scopes the faculty / building / room lists (not saved)
+  subject_id: '',
+  faculty_id: '',
+  program_id: '',    // the block's program (auto-fills from the subject)
+  year_level: '',    // the block's year level
+  block_name: '',    // e.g. "Block A" — the student cohort
   room: '',
   building: '',
-  day_of_week: 'monday',
+  days: [],          // one or more meeting days; a slot is created per day
   start_time: '',
   end_time: '',
 };
+
+const YEAR_LEVELS = [
+  { value: 1, label: '1st Year' },
+  { value: 2, label: '2nd Year' },
+  { value: 3, label: '3rd Year' },
+  { value: 4, label: '4th Year' },
+];
+
+const CSS = `
+.sched-modal-back{
+  position:fixed;inset:0;background:rgba(10,22,40,.5);backdrop-filter:blur(3px);
+  z-index:1000;display:flex;align-items:flex-start;justify-content:center;
+  padding:3rem 1rem;overflow-y:auto;
+}
+.sched-modal{
+  background:#fff;border:1px solid var(--reg-line);border-radius:12px;
+  width:100%;max-width:620px;box-shadow:0 20px 60px -20px rgba(10,22,40,.4);
+  animation:schedModalIn .2s ease;
+}
+@keyframes schedModalIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.sched-modal-head{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;
+  padding:1.25rem 1.5rem;border-bottom:1px solid var(--reg-line-soft);
+}
+.sched-modal-head h4{font-size:1.05rem;font-weight:700;color:var(--reg-ink);line-height:1.2;}
+.sched-modal-head p{font-size:.82rem;color:var(--reg-muted);margin-top:.25rem;line-height:1.4;}
+.sched-modal-x{
+  background:none;border:none;cursor:pointer;color:var(--reg-faint);
+  font-size:1.2rem;line-height:1;padding:.2rem;flex-shrink:0;
+}
+.sched-modal-x:hover{color:var(--reg-ink);}
+.sched-modal-body{padding:1.25rem 1.5rem;}
+.sched-modal-err{
+  background:var(--reg-red-tint);color:var(--reg-red);
+  padding:.6rem .75rem;border-radius:6px;font-size:.85rem;margin-bottom:1rem;
+}
+.sched-modal-foot{
+  display:flex;justify-content:flex-end;gap:.75rem;
+  padding:1rem 1.5rem;border-top:1px solid var(--reg-line-soft);
+  background:var(--reg-warm);border-radius:0 0 12px 12px;
+}
+.sched-form-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.85rem;
+}
+.sched-cohort{display:grid;grid-template-columns:1.3fr 1fr 1.3fr;gap:.6rem;}
+.sched-cohort .form-select{width:100%;box-sizing:border-box;}
+@media(max-width:560px){ .sched-cohort{grid-template-columns:1fr;} }
+.sched-combo{position:relative;}
+.sched-combo-field{position:relative;}
+.sched-combo-chev{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:none;
+  cursor:pointer;color:var(--reg-faint);padding:4px;display:flex;line-height:1;}
+.sched-combo-chev:hover{color:var(--reg-ink);}
+.sched-combo-menu{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:5;
+  background:#fff;border:1px solid var(--reg-line);border-radius:8px;
+  box-shadow:0 12px 28px -12px rgba(10,22,40,.28);max-height:240px;overflow-y:auto;
+}
+.sched-combo-head{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--reg-faint);padding:9px 12px 5px;}
+.sched-combo-opt{
+  display:flex;align-items:center;justify-content:space-between;gap:.5rem;width:100%;
+  text-align:left;background:none;border:none;cursor:pointer;
+  padding:.55rem .75rem;font-size:.9rem;color:var(--reg-ink);font-family:inherit;
+}
+.sched-combo-opt:hover{background:var(--reg-warm);}
+.sched-combo-opt.is-sel{background:var(--reg-green-tint);}
+.sched-combo-name{font-weight:500;}
+.sched-combo-dept{font-size:.75rem;color:var(--reg-muted);flex-shrink:0;}
+.sched-combo-empty{padding:.6rem .75rem;font-size:.85rem;color:var(--reg-muted);}
+.sched-days{display:flex;flex-wrap:wrap;gap:.4rem;}
+.sched-day-btn{
+  padding:.45rem .8rem;border:1px solid var(--reg-line);background:#fff;
+  border-radius:7px;font-size:.85rem;font-weight:600;color:var(--reg-muted);
+  cursor:pointer;font-family:inherit;transition:all .12s;
+}
+.sched-day-btn:hover{border-color:var(--reg-ink);color:var(--reg-ink);}
+.sched-day-btn.on{background:var(--reg-ink);border-color:var(--reg-ink);color:#fff;}
+/* Day filter chips */
+.sched-dayfilter{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1.25rem;}
+.sched-chip{padding:6px 13px;border:1px solid var(--reg-line);background:#fff;border-radius:999px;
+  font-size:12.5px;font-weight:600;color:var(--reg-muted);cursor:pointer;font-family:inherit;transition:all .12s;}
+.sched-chip:hover{border-color:var(--reg-ink);color:var(--reg-ink);}
+.sched-chip.on{background:var(--reg-ink);border-color:var(--reg-ink);color:#fff;}
+
+/* Class cards + week strip */
+.sched-classes{display:flex;flex-direction:column;gap:.85rem;}
+.sched-class{border:1px solid var(--reg-line);border-radius:12px;background:#fff;
+  box-shadow:0 1px 2px rgba(10,22,40,.04);overflow:hidden;}
+.sched-class-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;
+  padding:.9rem 1.1rem;border-bottom:1px solid var(--reg-line-soft);}
+.sched-class-id{min-width:0;}
+.sched-class-title{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;}
+.sched-class-code{font-size:15px;font-weight:700;color:var(--reg-ink);letter-spacing:-.01em;}
+.sched-class-name{font-size:13px;color:var(--reg-muted);}
+.sched-class-sec{font-size:11px;font-weight:700;color:var(--reg-gold);border:1px solid #e7dcc0;
+  background:#fbf7ec;padding:1px 8px;border-radius:5px;}
+.sched-class-fac{font-size:12.5px;color:var(--reg-ink-2);margin-top:4px;display:flex;align-items:center;gap:6px;}
+.sched-class-fac i{font-size:14px;color:var(--reg-faint);}
+.sched-class-actions{display:flex;gap:.4rem;flex-shrink:0;}
+.sched-week{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:.9rem 1.1rem;}
+.sched-day{border:1px solid var(--reg-line-soft);border-radius:9px;min-height:78px;padding:7px 8px;
+  display:flex;flex-direction:column;gap:5px;background:#fbfcfe;}
+.sched-day-lbl{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--reg-faint);}
+.sched-day.has{background:#fff;border-color:#dce4f1;}
+.sched-day.has .sched-day-lbl{color:var(--reg-ink-2);}
+.sched-day-empty{font-size:15px;color:#d3d9e2;margin:auto auto 6px;}
+.sched-meet{position:relative;background:#eef2f9;border:1px solid #dce4f1;border-radius:7px;padding:6px 7px;}
+.sched-meet-time{font-size:11.5px;font-weight:700;color:#284a7a;line-height:1.2;}
+.sched-meet-room{font-size:10.5px;color:#5c73a0;margin-top:2px;display:flex;align-items:center;gap:3px;line-height:1.2;word-break:break-word;}
+.sched-meet-room i{font-size:12px;flex-shrink:0;}
+.sched-meet-actions{position:absolute;top:4px;right:4px;display:flex;gap:2px;opacity:0;transition:opacity .12s;}
+.sched-meet:hover .sched-meet-actions,.sched-meet:focus-within .sched-meet-actions{opacity:1;}
+.sched-meet-btn{background:rgba(255,255,255,.9);border:1px solid #dce4f1;border-radius:4px;cursor:pointer;
+  color:var(--reg-muted);width:19px;height:19px;display:grid;place-items:center;padding:0;font-size:11px;}
+.sched-meet-btn:hover{color:var(--reg-ink);}
+.sched-meet-btn.del:hover{color:var(--reg-red);border-color:#e6c3ba;}
+:is(.sched-chip,.sched-day-btn,.sched-meet-btn):focus-visible{outline:2px solid var(--reg-gold);outline-offset:1px;}
+@media(max-width:860px){ .sched-week{grid-template-columns:repeat(3,1fr);} }
+@media(max-width:520px){ .sched-week{grid-template-columns:repeat(2,1fr);} }
+
+/* View toggle (By class / By room) */
+.sched-viewtoggle{display:inline-flex;border:1px solid var(--reg-line);border-radius:8px;overflow:hidden;}
+.sched-viewtoggle button{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;font-size:12.5px;
+  font-weight:600;background:#fff;border:none;border-left:1px solid var(--reg-line);cursor:pointer;
+  color:var(--reg-muted);font-family:inherit;}
+.sched-viewtoggle button:first-child{border-left:none;}
+.sched-viewtoggle button.on{background:var(--reg-ink);color:#fff;}
+.sched-viewtoggle button i{font-size:15px;}
+
+/* By-room: department accordion → buildings → room chips */
+.sched-figs{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--reg-line);
+  background:#fff;border-radius:11px;overflow:hidden;margin-bottom:1.25rem;}
+.sched-fig{padding:14px 18px;border-right:1px solid var(--reg-line-soft);display:flex;flex-direction:column;gap:2px;}
+.sched-fig:last-child{border-right:none;}
+.sched-fig .n{font:600 26px/1 'Inter',sans-serif;color:var(--reg-ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.sched-fig .l{font-size:11.5px;color:var(--reg-muted);}
+@media(max-width:620px){.sched-figs{grid-template-columns:repeat(2,1fr);}
+  .sched-fig:nth-child(2){border-right:none;}
+  .sched-fig:nth-child(-n+2){border-bottom:1px solid var(--reg-line-soft);}}
+.sched-depts{display:flex;flex-direction:column;gap:.7rem;}
+.sched-dept-card{border:1px solid var(--reg-line);border-radius:11px;background:#fff;overflow:hidden;transition:border-color .14s,box-shadow .14s;}
+.sched-dept-card:hover{border-color:#d9dee7;box-shadow:0 8px 22px -16px rgba(10,22,40,.4);}
+.sched-dept-btn{width:100%;display:flex;justify-content:space-between;align-items:center;gap:1rem;
+  padding:.95rem 1.1rem;background:#fff;border:none;cursor:pointer;font-family:inherit;text-align:left;}
+.sched-dept-btn:hover{background:#fafbfd;}
+.sched-dept-l{display:flex;align-items:center;gap:13px;min-width:0;}
+.sched-dept-ic{width:42px;height:42px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:var(--reg-gold-tint);color:var(--reg-gold);border-radius:10px;}
+.sched-dept-ic i{font-size:21px;}
+.sched-dept-info{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.sched-dept-nameline{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.sched-dept-name{font-size:15px;font-weight:600;color:var(--reg-ink);letter-spacing:-.01em;}
+.sched-dept-chip{font-size:10.5px;font-weight:700;color:var(--reg-gold);border:1px solid #e7dcc0;
+  background:#fbf7ec;padding:1px 8px;border-radius:5px;}
+.sched-dept-meta{font-size:12px;color:var(--reg-muted);font-variant-numeric:tabular-nums;}
+.sched-dept-r{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.sched-dept-tc{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;
+  padding:3px 9px;border-radius:999px;border:1px solid;}
+.sched-dept-tc i{font-size:13px;}
+.sched-dept-tc[data-type="lecture"]{background:#eef2f9;border-color:#dce4f1;color:#284a7a;}
+.sched-dept-tc[data-type="laboratory"]{background:#e8f3ee;border-color:#cfe7db;color:#0a6b48;}
+.sched-dept-chev{font-size:17px;color:var(--reg-faint);margin-left:2px;}
+@media(max-width:560px){ .sched-dept-tc{display:none;} }
+.sched-dept-body{border-top:1px solid var(--reg-line-soft);padding:.35rem 1.1rem 1rem;display:flex;flex-direction:column;}
+.sched-bldrow{padding-top:.7rem;}
+.sched-bldrow-name{font-size:13px;font-weight:600;color:var(--reg-ink-2);display:flex;align-items:center;gap:7px;margin-bottom:.55rem;}
+.sched-bldrow-name i{font-size:15px;color:var(--reg-gold);}
+.sched-roomchips{display:flex;flex-wrap:wrap;gap:.5rem;}
+.sched-roomchips-empty{font-size:12px;color:var(--reg-faint);}
+.sched-roomchip{display:inline-flex;align-items:center;gap:7px;border:1px solid;border-radius:8px;
+  padding:6px 9px 6px 10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform .1s,box-shadow .1s;}
+.sched-roomchip:hover{transform:translateY(-1px);box-shadow:0 5px 12px -6px rgba(10,22,40,.35);}
+.sched-roomchip i{font-size:14px;}
+.sched-roomchip[data-type="lecture"]{background:#eef2f9;border-color:#dce4f1;color:#284a7a;}
+.sched-roomchip[data-type="laboratory"]{background:#e8f3ee;border-color:#cfe7db;color:#0a6b48;}
+.sched-roomchip-n{background:rgba(10,22,40,.13);border-radius:999px;font-size:10.5px;font-weight:700;
+  min-width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
+
+/* Room schedule modal — Mon–Sat week view */
+.sched-roomtype-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+  padding:2px 9px;border-radius:999px;border:1px solid;margin-left:2px;vertical-align:middle;}
+.sched-roomtype-chip i{font-size:12px;}
+.sched-roomtype-chip[data-type="lecture"]{background:#eef2f9;border-color:#dce4f1;color:#284a7a;}
+.sched-roomtype-chip[data-type="laboratory"]{background:#e8f3ee;border-color:#cfe7db;color:#0a6b48;}
+
+.sched-room-stats{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--reg-line);
+  border-radius:10px;overflow:hidden;margin-bottom:1.1rem;}
+.srs{padding:.7rem .95rem;border-right:1px solid var(--reg-line-soft);display:flex;flex-direction:column;gap:2px;}
+.srs:last-child{border-right:none;}
+.srs .n{font:600 22px/1 'Inter',sans-serif;color:var(--reg-ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.srs .n.free{color:var(--reg-green);}
+.srs .l{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--reg-muted);font-weight:600;}
+
+.sched-roomweek{display:flex;flex-direction:column;border:1px solid var(--reg-line);border-radius:10px;overflow:hidden;}
+.sched-rwday{display:grid;grid-template-columns:108px 1fr;border-bottom:1px solid var(--reg-line-soft);min-height:48px;}
+.sched-rwday:last-child{border-bottom:none;}
+.sched-rwday-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--reg-ink-2);
+  white-space:nowrap;padding:.6rem .7rem;background:var(--reg-warm);border-right:1px solid var(--reg-line-soft);
+  display:flex;flex-direction:column;gap:3px;justify-content:center;}
+.sched-rwday.is-free .sched-rwday-lbl{color:var(--reg-faint);}
+.sched-rwday.today .sched-rwday-lbl{background:var(--reg-gold-tint);color:#8a6a12;}
+.sched-rwday-today{font-size:8px;letter-spacing:.05em;font-weight:700;color:#fff;background:var(--reg-gold);
+  padding:1px 5px;border-radius:3px;width:fit-content;}
+.sched-rwday-body{padding:.5rem .7rem;display:flex;flex-direction:column;gap:.45rem;min-width:0;justify-content:center;}
+.sched-rwday-free{font-size:12px;color:var(--reg-faint);display:inline-flex;align-items:center;gap:6px;}
+.sched-rwday-free i{font-size:13px;}
+.sched-rwmeet{display:flex;gap:.7rem;align-items:center;min-width:0;background:#fff;
+  border:1px solid var(--reg-line-soft);border-left:3px solid var(--reg-ink-2);border-radius:7px;padding:.5rem .65rem;}
+.sched-rwmeet[data-type="laboratory"]{border-left-color:#0a6b48;}
+.sched-rwmeet[data-type="lecture"]{border-left-color:#284a7a;}
+.sched-rwmeet-time{flex:0 0 auto;font-size:11.5px;font-weight:700;color:var(--reg-ink-2);background:var(--reg-cool-2);
+  border-radius:5px;padding:4px 8px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.sched-rwmeet[data-type="laboratory"] .sched-rwmeet-time{background:#e8f3ee;color:#0a6b48;}
+.sched-rwmeet[data-type="lecture"] .sched-rwmeet-time{background:#eef2f9;color:#284a7a;}
+.sched-rwmeet-info{min-width:0;}
+.sched-rwmeet-course{font-size:13px;color:var(--reg-ink);line-height:1.3;}
+.sched-rwmeet-course b{font-weight:700;}
+.sched-rwmeet-fac{font-size:11.5px;color:var(--reg-muted);margin-top:2px;display:flex;align-items:center;gap:4px;}
+.sched-rwmeet-fac i{font-size:12px;color:var(--reg-faint);}
+@media(max-width:520px){ .sched-rwday{grid-template-columns:92px 1fr;} .sched-rwday-lbl{font-size:10px;letter-spacing:.02em;padding:.6rem .5rem;} .sched-rwmeet{flex-direction:column;align-items:flex-start;gap:.3rem;} }
+:is(.sched-viewtoggle button,.sched-dept-btn,.sched-roomchip):focus-visible{outline:2px solid var(--reg-gold);outline-offset:1px;}
+`;
 
 function buildPageNumbers(current, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -49,27 +278,146 @@ function formatTime(t) {
   return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
+/* Searchable single-select: type to filter by label, click to choose. */
+function SearchSelect({ options, value, onChange, placeholder = 'Search…' }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const boxRef = useRef(null);
+  const selected = options.find(o => String(o.value) === String(value));
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = e => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? options.filter(o =>
+        o.label.toLowerCase().includes(q) || (o.sublabel || '').toLowerCase().includes(q))
+    : options;
+
+  const shown = open
+    ? query
+    : (selected ? `${selected.label}${selected.sublabel ? ` · ${selected.sublabel}` : ''}` : '');
+
+  return (
+    <div className="sched-combo" ref={boxRef}>
+      <input
+        className="form-input"
+        style={{ width: '100%', boxSizing: 'border-box' }}
+        placeholder={placeholder}
+        value={shown}
+        onFocus={() => { setOpen(true); setQuery(''); }}
+        onChange={e => { setQuery(e.target.value); if (!open) setOpen(true); }}
+      />
+      {open && (
+        <div className="sched-combo-menu">
+          {filtered.length === 0 ? (
+            <div className="sched-combo-empty">No matches found</div>
+          ) : filtered.map(o => (
+            <button
+              type="button"
+              key={o.value}
+              className={`sched-combo-opt${String(o.value) === String(value) ? ' is-sel' : ''}`}
+              onClick={() => { onChange(String(o.value)); setOpen(false); setQuery(''); }}
+            >
+              <span className="sched-combo-name">{o.label}</span>
+              {o.sublabel && <span className="sched-combo-dept">{o.sublabel}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Pick-or-type field: shows a clear dropdown of catalog options (with a
+   chevron), and still lets you type a value that isn't in the catalog yet.
+   Picking an option calls onPick(option) (used to auto-fill the building). */
+function ComboInput({ value, onChange, options, onPick, placeholder, menuHeader, emptyHint }) {
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = e => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const q = (value || '').trim().toLowerCase();
+  const filtered = q
+    ? options.filter(o => o.value.toLowerCase().includes(q) || (o.sublabel || '').toLowerCase().includes(q))
+    : options;
+
+  return (
+    <div className="sched-combo" ref={boxRef}>
+      <div className="sched-combo-field">
+        <input
+          className="form-input"
+          style={{ width: '100%', boxSizing: 'border-box', paddingRight: 30 }}
+          placeholder={placeholder}
+          value={value}
+          onFocus={() => setOpen(true)}
+          onChange={e => { onChange(e.target.value); if (!open) setOpen(true); }}
+        />
+        <button type="button" className="sched-combo-chev" tabIndex={-1}
+          onClick={() => setOpen(o => !o)} aria-label="Show options">
+          <i className={`ti ti-chevron-${open ? 'up' : 'down'}`} />
+        </button>
+      </div>
+      {open && (
+        <div className="sched-combo-menu">
+          {menuHeader && <div className="sched-combo-head">{menuHeader}</div>}
+          {filtered.length === 0 ? (
+            <div className="sched-combo-empty">{emptyHint || 'No matches — keep typing to enter a value.'}</div>
+          ) : filtered.slice(0, 60).map((o, i) => (
+            <button
+              type="button"
+              key={o.value + '-' + i}
+              className="sched-combo-opt"
+              onClick={() => { onChange(o.value); onPick?.(o); setOpen(false); }}
+            >
+              <span className="sched-combo-name">{o.value}</span>
+              {o.sublabel && <span className="sched-combo-dept">{o.sublabel}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RegistrarSchedule() {
-  const { user, logout } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
+  const [terms,          setTerms]          = useState([]);
+  const [selectedTerm,   setSelectedTerm]   = useState('');
+  const [subjects,       setSubjects]       = useState([]);
+  const [facultyList,    setFacultyList]    = useState([]);
+  const [buildings,      setBuildings]      = useState([]);
+  const [schedules,      setSchedules]      = useState([]);
+  const [search,         setSearch]         = useState('');
 
-  const [terms, setTerms] = useState([]);
-  const [selectedTerm, setSelectedTerm] = useState('');
-  const [assignments, setAssignments] = useState([]);
-  const [schedules, setSchedules] = useState([]);
-
-  const [page, setPage] = useState(1);
+  const [page,           setPage]           = useState(1);
 
   const [loadingSchedules, setLoadingSchedules] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState('');
 
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [editId, setEditId] = useState(null);
+  const [showForm,       setShowForm]       = useState(false);
+  const [form,           setForm]           = useState(EMPTY_FORM);
+  const [editId,         setEditId]         = useState(null);
 
-  const [inlineBuilding, setInlineBuilding] = useState(null); // { id, value }
-  const [savingBuilding, setSavingBuilding] = useState(false);
+  const [dayFilter,       setDayFilter]       = useState('');   // '' = all days
+  const [viewMode,        setViewMode]        = useState('class');  // 'class' | 'room'
+  const [departments,     setDepartments]     = useState([]);
+  const [programs,        setPrograms]        = useState([]);
+  const [blockList,       setBlockList]       = useState([]);
+  const [openDepts,       setOpenDepts]       = useState(() => new Set());
+  const [roomView,        setRoomView]        = useState(null);     // { room, building } | null
 
   // Load terms on mount
   useEffect(() => {
@@ -77,23 +425,28 @@ export default function RegistrarSchedule() {
       setTerms(res.data);
       const active = res.data.find(t => t.is_active);
       if (active) setSelectedTerm(String(active.id));
-    }).catch(() => setError('Failed to load terms.'));
+    }).catch(() => toast('Failed to load terms.', { type: 'error' }));
   }, []);
 
-  // Load teaching assignments and schedules when term changes
+  // Subjects, faculty, and the room catalog for the pickers (loaded once)
   useEffect(() => {
-    if (!selectedTerm) { setAssignments([]); setSchedules([]); return; }
+    api.get('/enrollment/subjects/').then(r => setSubjects(r.data)).catch(() => {});
+    api.get('/grades/registrar/faculty/').then(r => setFacultyList(r.data)).catch(() => {});
+    api.get('/schedules/facilities/buildings/').then(r => setBuildings(r.data)).catch(() => {});
+    api.get('/enrollment/departments/').then(r => setDepartments(r.data)).catch(() => {});
+    api.get('/enrollment/programs/').then(r => setPrograms(r.data)).catch(() => {});
+  }, []);
+
+  // Load schedules when term changes
+  useEffect(() => {
+    if (!selectedTerm) { setSchedules([]); return; }
     setError('');
-    Promise.all([
-      api.get(`/grades/admin/assignments/?term=${selectedTerm}`),
-      api.get(`/schedules/?term_id=${selectedTerm}`),
-    ]).then(([aRes, sRes]) => {
-      setAssignments(aRes.data);
-      setSchedules(sRes.data);
-      setPage(1);
-    }).catch(() => setError('Failed to load data for this term.'))
-      .finally(() => setLoadingSchedules(false));
     setLoadingSchedules(true);
+    api.get(`/schedules/?term_id=${selectedTerm}`)
+      .then(sRes => { setSchedules(sRes.data); setPage(1); })
+      .catch(() => toast('Failed to load schedules for this term.', { type: 'error' }))
+      .finally(() => setLoadingSchedules(false));
+    api.get(`/enrollment/blocks/?term=${selectedTerm}`).then(r => setBlockList(r.data)).catch(() => {});
   }, [selectedTerm]);
 
   function reloadSchedules() {
@@ -104,94 +457,217 @@ export default function RegistrarSchedule() {
     });
   }
 
-  async function saveInlineBuilding() {
-    if (!inlineBuilding) return;
-    setSavingBuilding(true);
-    try {
-      await api.patch(`/schedules/${inlineBuilding.id}/`, { building: inlineBuilding.value.trim() });
-      setSchedules(prev =>
-        prev.map(s => s.id === inlineBuilding.id ? { ...s, building: inlineBuilding.value.trim() } : s)
-      );
-      setInlineBuilding(null);
-    } catch {
-      setError('Failed to update building.');
-    } finally {
-      setSavingBuilding(false);
-    }
+  // Pull the latest buildings + rooms so the room picker reflects anything
+  // added in Rooms & Buildings since this page loaded.
+  function refreshBuildings() {
+    api.get('/schedules/facilities/buildings/').then(r => setBuildings(r.data)).catch(() => {});
   }
 
   function openCreate() {
+    refreshBuildings();
     setForm(EMPTY_FORM);
     setEditId(null);
     setError('');
-    setSuccessMsg('');
     setShowForm(true);
+  }
+
+  // Infer which department a slot belongs to (from its instructor) so the
+  // modal opens already scoped to that department.
+  function deptOfFaculty(facultyId) {
+    const fac = facultyList.find(f => String(f.id) === String(facultyId));
+    const d = fac ? departments.find(x => x.code === fac.department_code) : null;
+    return d ? String(d.id) : '';
+  }
+
+  // Program / year / block for a slot: from its block if it has one, otherwise
+  // derived from the subject (program + year) with the old section as the name.
+  function cohortFromSlot(s) {
+    if (s.block_name) {
+      return {
+        program_id: s.block_program != null ? String(s.block_program) : '',
+        year_level: s.block_year_level != null ? String(s.block_year_level) : '',
+        block_name: s.block_name,
+      };
+    }
+    const subj = subjects.find(x => String(x.id) === String(s.subject_id));
+    return {
+      program_id: subj && subj.program != null ? String(subj.program) : '',
+      year_level: subj && subj.year_level != null ? String(subj.year_level) : '',
+      block_name: s.section || '',
+    };
   }
 
   function openEdit(sched) {
+    refreshBuildings();
+    const co = cohortFromSlot(sched);
     setForm({
-      teaching_assignment: String(sched.teaching_assignment_id),
-      room: sched.room,
-      building: sched.building ?? '',
-      day_of_week: sched.day_of_week,
+      department: deptOfFaculty(sched.faculty_id),
+      subject_id: sched.subject_id != null ? String(sched.subject_id) : '',
+      faculty_id: sched.faculty_id ? String(sched.faculty_id) : '',
+      program_id: co.program_id,
+      year_level: co.year_level,
+      block_name: co.block_name,
+      room:       sched.room,
+      building:   sched.building ?? '',
+      days:       [sched.day_of_week],   // a slot is one day; editing edits that day
       start_time: sched.start_time,
-      end_time: sched.end_time,
+      end_time:   sched.end_time,
     });
     setEditId(sched.id);
     setError('');
-    setSuccessMsg('');
     setShowForm(true);
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm('Delete this schedule slot?')) return;
+  // Add another meeting to an existing class: prefill its subject/faculty/section
+  // (and room) so the user only picks the new day(s) and time.
+  function openAddMeeting(cls) {
+    refreshBuildings();
+    const s0 = cls.slots[0] || {};
+    const co = cohortFromSlot(s0);
+    setForm({
+      department: deptOfFaculty(s0.faculty_id),
+      subject_id: s0.subject_id != null ? String(s0.subject_id) : '',
+      faculty_id: s0.faculty_id ? String(s0.faculty_id) : '',
+      program_id: co.program_id,
+      year_level: co.year_level,
+      block_name: co.block_name,
+      room:       s0.room || '',
+      building:   s0.building || '',
+      days:       [],
+      start_time: '',
+      end_time:   '',
+    });
+    setEditId(null);
     setError('');
-    setSuccessMsg('');
+    setShowForm(true);
+  }
+
+  // Days are multi-select in both add and edit. When editing, the first
+  // selected day updates this slot; any extra days are added as new meetings.
+  function toggleDay(d) {
+    setForm(p => {
+      const has = p.days.includes(d);
+      return { ...p, days: has ? p.days.filter(x => x !== d) : [...p.days, d] };
+    });
+  }
+
+  async function handleDelete(id) {
+    if (!await confirm({ title: 'Delete schedule slot?', message: 'This schedule slot will be permanently removed.', confirmText: 'Delete' })) return;
+    setError('');
     try {
       await api.delete(`/schedules/${id}/`);
-      setSuccessMsg('Schedule deleted.');
+      toast('Schedule deleted.', { type: 'success' });
       reloadSchedules();
     } catch {
-      setError('Failed to delete schedule.');
+      toast('Failed to delete schedule.', { type: 'error' });
     }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    setSuccessMsg('');
-    if (!form.teaching_assignment) { setError('Please select a subject/assignment.'); return; }
+    if (!form.subject_id) { setError('Please select a subject.'); return; }
+    if (!form.faculty_id) { setError('Please select the faculty (instructor) for this class.'); return; }
+    if (!form.program_id) { setError('Please select the program.'); return; }
+    if (!form.year_level) { setError('Please select the year level.'); return; }
+    if (!form.block_name.trim()) { setError('Please choose or enter the block.'); return; }
+    if (!form.days.length) { setError('Please select at least one meeting day.'); return; }
+    if (!form.room.trim()) { setError('Please choose or enter a room.'); return; }
     if (!form.start_time || !form.end_time) { setError('Start time and end time are required.'); return; }
 
     setSaving(true);
-    const payload = {
-      teaching_assignment: Number(form.teaching_assignment),
-      room: form.room.trim(),
-      building: form.building.trim(),
-      day_of_week: form.day_of_week,
-      start_time: form.start_time,
-      end_time: form.end_time,
-    };
     try {
+      // Find (or create) the teaching assignment for this subject + faculty + section,
+      // so choosing the instructor here assigns the class to them for the term.
+      const taRes = await api.post('/grades/admin/assignments/resolve/', {
+        subject_id:       Number(form.subject_id),
+        faculty_id:       form.faculty_id,
+        academic_term_id: Number(selectedTerm),
+        program_id:       Number(form.program_id),
+        year_level:       Number(form.year_level),
+        block_name:       form.block_name.trim(),
+      });
+      const base = {
+        teaching_assignment: taRes.data.id,
+        room:       form.room.trim(),
+        building:   form.building.trim(),
+        start_time: form.start_time,
+        end_time:   form.end_time,
+      };
+
       if (editId) {
-        await api.patch(`/schedules/${editId}/`, payload);
-        setSuccessMsg('Schedule updated.');
-      } else {
-        await api.post('/schedules/', payload);
-        setSuccessMsg('Schedule created.');
+        // Update the edited slot to the first selected day...
+        await api.patch(`/schedules/${editId}/`, { ...base, day_of_week: form.days[0] });
+        // ...and add any extra days the user ticked as new meetings.
+        const extraDays = form.days.slice(1);
+        let added = 0;
+        const failedMsgs = [];
+        if (extraDays.length) {
+          const results = await Promise.allSettled(
+            extraDays.map(day => api.post('/schedules/', { ...base, day_of_week: day }))
+          );
+          results.forEach((r, i) => {
+            if (r.status === 'fulfilled') { added += 1; return; }
+            const data = r.reason?.response?.data;
+            const detail = data?.non_field_errors
+              ? (Array.isArray(data.non_field_errors) ? data.non_field_errors.join(' ') : data.non_field_errors)
+              : (data?.error || 'could not be saved.');
+            failedMsgs.push(`${DAY_LABELS[extraDays[i]] || extraDays[i]}: ${detail}`);
+          });
+        }
+        if (failedMsgs.length) {
+          toast(added ? `Updated · ${added} day${added > 1 ? 's' : ''} added.` : 'Updated.', { type: 'success' });
+          setError(`Some added days couldn’t be saved — ${failedMsgs.join(' | ')}`);
+          reloadSchedules();
+          return;   // keep the modal open so the conflicts can be fixed
+        }
+        toast(added ? `Updated and ${added} day${added > 1 ? 's' : ''} added.` : 'Schedule updated.', { type: 'success' });
+        setShowForm(false);
+        setEditId(null);
+        reloadSchedules();
+        return;
       }
+
+      // Add mode — create one slot per selected day; report per-day failures.
+      const results = await Promise.allSettled(
+        form.days.map(day => api.post('/schedules/', { ...base, day_of_week: day }))
+      );
+      const failed = form.days
+        .map((day, i) => ({ day, r: results[i] }))
+        .filter(x => x.r.status === 'rejected');
+      const okCount = form.days.length - failed.length;
+
+      if (failed.length) {
+        if (okCount > 0) { toast(`${okCount} day${okCount > 1 ? 's' : ''} saved.`, { type: 'success' }); reloadSchedules(); }
+        const msgs = failed.map(({ day, r }) => {
+          const data = r.reason?.response?.data;
+          const detail = data?.non_field_errors
+            ? (Array.isArray(data.non_field_errors) ? data.non_field_errors.join(' ') : data.non_field_errors)
+            : (data?.error || 'could not be saved.');
+          return `${DAY_LABELS[day] || day}: ${detail}`;
+        });
+        setError(`Some days could not be saved — ${msgs.join(' | ')}`);
+        return;   // keep the modal open so the conflicts can be fixed
+      }
+
+      toast(`Schedule created (${okCount} day${okCount > 1 ? 's' : ''}).`, { type: 'success' });
       setShowForm(false);
       setEditId(null);
       reloadSchedules();
     } catch (err) {
       const data = err.response?.data;
+      let msg;
       if (data?.non_field_errors) {
-        setError(Array.isArray(data.non_field_errors) ? data.non_field_errors.join(' ') : data.non_field_errors);
+        msg = Array.isArray(data.non_field_errors) ? data.non_field_errors.join(' ') : data.non_field_errors;
+      } else if (data?.error) {
+        msg = data.error;
       } else if (data && typeof data === 'object') {
-        setError(Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | '));
+        msg = Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ');
       } else {
-        setError('Failed to save schedule.');
+        msg = 'Failed to save schedule.';
       }
+      setError(msg);
+      toast(msg, { type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -202,342 +678,672 @@ export default function RegistrarSchedule() {
     return t ? `${t.semester_display} ${t.year}` : '';
   })();
 
+  // Group meeting slots into classes — one card per subject + section + instructor.
+  const classesAll = (() => {
+    const map = new Map();
+    for (const s of schedules) {
+      const key = s.teaching_assignment_id;
+      if (!map.has(key)) {
+        map.set(key, {
+          taId: key,
+          subject_code: s.subject_code, subject_name: s.subject_name,
+          faculty_name: s.faculty_name, section: s.section, slots: [],
+        });
+      }
+      map.get(key).slots.push(s);
+    }
+    const list = [...map.values()];
+    list.forEach(c => c.slots.sort((a, b) =>
+      (DAY_ORDER[a.day_of_week] - DAY_ORDER[b.day_of_week]) ||
+      String(a.start_time).localeCompare(String(b.start_time))
+    ));
+    list.sort((a, b) => String(a.subject_code).localeCompare(String(b.subject_code)));
+    return list;
+  })();
+
+  const q = search.trim().toLowerCase();
+  const classes = classesAll.filter(c => {
+    const matchesSearch = !q || (
+      (c.subject_code || '').toLowerCase().includes(q) ||
+      (c.subject_name || '').toLowerCase().includes(q) ||
+      (c.faculty_name || '').toLowerCase().includes(q) ||
+      (c.section || '').toLowerCase().includes(q) ||
+      c.slots.some(s => (s.room || '').toLowerCase().includes(q))
+    );
+    const matchesDay = !dayFilter || c.slots.some(s => s.day_of_week === dayFilter);
+    return matchesSearch && matchesDay;
+  });
+
+  // Stat row values
+  const meetingCount  = schedules.length;
+  const classCount    = classesAll.length;
+  const uniqueFaculty = new Set(schedules.map(s => s.faculty_name)).size;
+  const uniqueRooms   = new Set(schedules.map(s => s.room).filter(Boolean)).size;
+
+  // Building/room pickers: catalog suggestions with free-text fallback.
+  const selDept = departments.find(d => String(d.id) === String(form.department)) || null;
+
+  // Faculty ordered so the chosen department's instructors come first.
+  const facultyOptions = [...facultyList].sort((a, b) => {
+    if (selDept) {
+      const am = a.department_code === selDept.code ? 0 : 1;
+      const bm = b.department_code === selDept.code ? 0 : 1;
+      if (am !== bm) return am - bm;
+    }
+    return (a.full_name || '').localeCompare(b.full_name || '');
+  }).map(f => ({ value: String(f.id), label: f.full_name, sublabel: f.department_code || '' }));
+
+  // Buildings + rooms scoped to the chosen department (its own buildings + shared).
+  const scopedBuildings = selDept
+    ? buildings.filter(b => b.department === selDept.id || !b.department)
+    : buildings;
+  const buildingOptions = scopedBuildings.map(b => ({ value: b.name }));
+  const bldQuery = (form.building || '').trim().toLowerCase();
+  const selBuildings = bldQuery
+    ? buildings.filter(b => (b.name || '').trim().toLowerCase() === bldQuery)
+    : [];
+  const selBuilding = selBuildings[0] || null;
+  const roomOptions = selBuildings.length
+    ? selBuildings.flatMap(b => b.rooms.map(r => ({ value: r.name, sublabel: r.room_type_display })))
+    : scopedBuildings.flatMap(b => b.rooms.map(r => ({
+        value: r.name,
+        sublabel: `${b.name}${r.room_type_display ? ' · ' + r.room_type_display : ''}`,
+        building: b.name,
+      })));
+
+  // Pagination on filtered classes
+  const totalPages    = Math.max(1, Math.ceil(classes.length / PAGE_SIZE));
+  const pageStart     = (page - 1) * PAGE_SIZE;
+  const pagedClasses  = classes.slice(pageStart, pageStart + PAGE_SIZE);
+
+  // Block suggestions for the chosen program + year level.
+  const blockOptions = blockList
+    .filter(b =>
+      (!form.program_id || String(b.program) === String(form.program_id)) &&
+      (!form.year_level || String(b.year_level) === String(form.year_level)))
+    .map(b => ({ value: b.name }));
+
+  // ── By-room view ──
+  function meetingsForRoom(roomName, buildingName) {
+    const rn = (roomName || '').toLowerCase();
+    const bn = (buildingName || '').toLowerCase();
+    return schedules
+      .filter(s => (s.room || '').toLowerCase() === rn && (!s.building || !bn || (s.building || '').toLowerCase() === bn))
+      .sort((a, b) => (DAY_ORDER[a.day_of_week] - DAY_ORDER[b.day_of_week]) ||
+        String(a.start_time).localeCompare(String(b.start_time)));
+  }
+  const deptGroups = [
+    ...departments.map(d => ({
+      key: d.id, title: d.name, code: d.code,
+      buildings: buildings.filter(b => b.department === d.id),
+    })),
+    { key: 'shared', title: 'Shared & general facilities', code: '', buildings: buildings.filter(b => !b.department) },
+  ];
+  const roomsIn = g => g.buildings.reduce((n, b) => n + (b.rooms ? b.rooms.length : 0), 0);
+  function toggleDept(key) {
+    setOpenDepts(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+  const roomMeetings = roomView ? meetingsForRoom(roomView.room.name, roomView.building.name) : [];
+
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><img src="/logo.png" alt="NEMSU" className="sidebar-logo" />NEMSUonePortal</div>
-        <Link className="sidebar-link" to="/registrar/dashboard">Dashboard</Link>
-        <Link className="sidebar-link" to="/registrar/enrollment">Enrollment Requests</Link>
-        <Link className="sidebar-link" to="/registrar/grades">List of Students</Link>
-        <Link className="sidebar-link" to="/registrar/faculty">Faculty</Link>
-        <Link className="sidebar-link active" to="/registrar/schedule">Class Schedules</Link>
-        <Link className="sidebar-link" to="/registrar/documents">Document Requests</Link>
-        <Link className="sidebar-link" to="/registrar/academic-data">Academic Data</Link>
-        <Link className="sidebar-link" to="/registrar/announcements">Announcements</Link>
-      </aside>
+    <>
+      <style>{CSS}</style>
 
-      <main className="dashboard-content">
-        <div className="dashboard-header">
-          <div>
-            <h1>Class Schedule Management</h1>
-            <span className="badge">{user?.role}</span>
+      {/* ── Page head ── */}
+      <div className="page-head">
+        <div className="page-head-l">
+          <div className="eyebrow">
+            Records{termLabel ? ` · ${termLabel}` : ''}
           </div>
-          <button className="btn-logout" onClick={logout}>Sign Out</button>
+          <h2>Class <em>schedules</em></h2>
+          <div className="sub">
+            View and manage class schedules across all subjects, sections, and rooms for the active term.
+          </div>
         </div>
-
-        {/* Term selector + Add button */}
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <label style={styles.label}>Academic Term</label>
-            <select
-              value={selectedTerm}
-              onChange={e => { setSelectedTerm(e.target.value); setShowForm(false); setError(''); setSuccessMsg(''); }}
-              style={styles.select}
-            >
-              <option value=""> -  Select term  - </option>
-              {terms.map(t => (
-                <option key={t.id} value={t.id}>{t.semester_display} {t.year}</option>
-              ))}
-            </select>
-          </div>
+        <div className="actions">
           {selectedTerm && (
-            <button onClick={openCreate} style={styles.btnAdd}>+ Add Schedule Slot</button>
+            <button className="btn-pri" onClick={openCreate}>
+              <i className="ti ti-plus" /> Add schedule slot
+            </button>
           )}
         </div>
+      </div>
 
-        {error && <div style={styles.alertError}>{error}</div>}
-        {successMsg && <div style={styles.alertSuccess}>{successMsg}</div>}
+      {/* ── Toolbar ── */}
+      <div className="toolbar">
+        <span className="label">Term</span>
+        <select
+          value={selectedTerm}
+          onChange={e => { setSelectedTerm(e.target.value); setShowForm(false); setError(''); setSearch(''); }}
+          style={{ minWidth: 200 }}
+        >
+          <option value="">- Select term -</option>
+          {terms.map(t => (
+            <option key={t.id} value={t.id}>{t.semester_display} {t.year}</option>
+          ))}
+        </select>
+        {selectedTerm && viewMode === 'class' && (
+          <div className="toolbar-search" style={{ marginLeft: '.5rem' }}>
+            <i className="ti ti-search" />
+            <input
+              placeholder="Search subject, faculty, or room…"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+        )}
+        {selectedTerm && (
+          <div className="sched-viewtoggle" style={{ marginLeft: 'auto' }}>
+            <button className={viewMode === 'class' ? 'on' : ''} onClick={() => setViewMode('class')}>
+              <i className="ti ti-list-details" /> By class
+            </button>
+            <button className={viewMode === 'room' ? 'on' : ''} onClick={() => setViewMode('room')}>
+              <i className="ti ti-building" /> By room
+            </button>
+          </div>
+        )}
+      </div>
 
-        {/* Create / Edit form */}
-        {showForm && (
-          <div style={styles.formCard}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1rem', color: '#1e3a5f' }}>
-              {editId ? 'Edit Schedule Slot' : 'Add Schedule Slot'}
-            </h3>
+      {/* ── Day filter ── */}
+      {selectedTerm && viewMode === 'class' && !loadingSchedules && schedules.length > 0 && (
+        <div className="sched-dayfilter">
+          <button className={`sched-chip${!dayFilter ? ' on' : ''}`} onClick={() => { setDayFilter(''); setPage(1); }}>
+            All days
+          </button>
+          {DAY_OPTIONS.map(d => (
+            <button
+              key={d.value}
+              className={`sched-chip${dayFilter === d.value ? ' on' : ''}`}
+              onClick={() => { setDayFilter(d.value); setPage(1); }}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Summary ── */}
+      {selectedTerm && viewMode === 'class' && !loadingSchedules && schedules.length > 0 && (
+        <div className="sched-figs">
+          <div className="sched-fig"><span className="n">{classCount}</span><span className="l">Classes</span></div>
+          <div className="sched-fig"><span className="n">{meetingCount}</span><span className="l">Weekly meetings</span></div>
+          <div className="sched-fig"><span className="n">{uniqueFaculty}</span><span className="l">Instructors</span></div>
+          <div className="sched-fig"><span className="n">{uniqueRooms}</span><span className="l">Rooms in use</span></div>
+        </div>
+      )}
+
+      {/* ── Add / Edit Modal ── */}
+      {showForm && (
+        <div
+          className="sched-modal-back"
+          onMouseDown={e => { if (e.target === e.currentTarget) { setShowForm(false); setEditId(null); setError(''); } }}
+        >
+          <div className="sched-modal" role="dialog" aria-modal="true" aria-label={editId ? 'Edit schedule slot' : 'Add schedule slot'}>
+            <div className="sched-modal-head">
+              <div>
+                <h4>{editId ? 'Edit schedule slot' : 'Add schedule slot'}</h4>
+                <p>{editId
+                  ? 'Update the class, instructor, time and room for this slot.'
+                  : 'Choose the subject and its instructor, then set the day, time and room.'}</p>
+              </div>
+              <button
+                type="button"
+                className="sched-modal-x"
+                onClick={() => { setShowForm(false); setEditId(null); setError(''); }}
+                aria-label="Close"
+              >
+                <i className="ti ti-x" />
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit}>
-              <div style={styles.formGrid}>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Subject / Assignment</label>
-                  <select
-                    value={form.teaching_assignment}
-                    onChange={e => setForm(p => ({ ...p, teaching_assignment: e.target.value }))}
-                    style={{ ...styles.select, maxWidth: '100%' }}
-                    required
-                    disabled={!!editId}
-                  >
-                    <option value=""> -  Select subject  - </option>
-                    {assignments.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.subject_code}  -  {a.subject_name} ({a.faculty_name})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="sched-modal-body">
+                {error && <div className="sched-modal-err">{error}</div>}
+                <div className="sched-form-grid">
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">
+                      Department
+                      <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--reg-faint)' }}> · narrows the instructor, building &amp; room lists below</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      style={{ width: '100%' }}
+                      value={form.department}
+                      onChange={e => setForm(p => ({ ...p, department: e.target.value }))}
+                    >
+                      <option value="">All departments</option>
+                      {departments.map(d => (
+                        <option key={d.id} value={d.id}>{d.name}{d.code ? ` (${d.code})` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="form-group">
-                  <label style={styles.label}>Day</label>
-                  <select
-                    value={form.day_of_week}
-                    onChange={e => setForm(p => ({ ...p, day_of_week: e.target.value }))}
-                    style={styles.select}
-                    required
-                  >
-                    {DAY_OPTIONS.map(d => (
-                      <option key={d.value} value={d.value}>{d.label}</option>
-                    ))}
-                  </select>
-                </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Subject</label>
+                    <select
+                      className="form-select"
+                      style={{ width: '100%' }}
+                      value={form.subject_id}
+                      onChange={e => {
+                        const sid = e.target.value;
+                        const subj = subjects.find(x => String(x.id) === String(sid));
+                        setForm(p => ({
+                          ...p,
+                          subject_id: sid,
+                          program_id: subj && subj.program != null ? String(subj.program) : p.program_id,
+                          year_level: subj && subj.year_level != null ? String(subj.year_level) : p.year_level,
+                        }));
+                      }}
+                      required
+                    >
+                      <option value="">- Select subject -</option>
+                      {subjects.map(s => (
+                        <option key={s.id} value={s.id}>{s.code} – {s.name}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="form-group">
-                  <label style={styles.label}>Room</label>
-                  <input
-                    type="text"
-                    value={form.room}
-                    onChange={e => setForm(p => ({ ...p, room: e.target.value }))}
-                    placeholder="e.g. Room 101"
-                    required
-                    style={styles.input}
-                  />
-                </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Faculty (instructor)</label>
+                    <SearchSelect
+                      options={facultyOptions}
+                      value={form.faculty_id}
+                      onChange={id => setForm(p => ({ ...p, faculty_id: id }))}
+                      placeholder={selDept ? `Search faculty · ${selDept.code || selDept.name} shown first` : 'Search faculty by name…'}
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label style={styles.label}>Department Building</label>
-                  <input
-                    type="text"
-                    value={form.building}
-                    onChange={e => setForm(p => ({ ...p, building: e.target.value }))}
-                    placeholder="e.g. IT Building"
-                    style={styles.input}
-                  />
-                </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">
+                      Day(s)
+                      <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--reg-faint)' }}> · pick one or more (a meeting is created for each)</span>
+                    </label>
+                    <div className="sched-days">
+                      {DAY_OPTIONS.map(d => (
+                        <button
+                          type="button"
+                          key={d.value}
+                          className={`sched-day-btn${form.days.includes(d.value) ? ' on' : ''}`}
+                          onClick={() => toggleDay(d.value)}
+                          aria-pressed={form.days.includes(d.value)}
+                        >
+                          {DAY_LABELS[d.value]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                <div className="form-group">
-                  <label style={styles.label}>Start Time</label>
-                  <input
-                    type="time"
-                    value={form.start_time}
-                    onChange={e => setForm(p => ({ ...p, start_time: e.target.value }))}
-                    required
-                    style={styles.input}
-                  />
-                </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">
+                      Block
+                      <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--reg-faint)' }}> · the student cohort this class is for (prevents double-booking a block)</span>
+                    </label>
+                    <div className="sched-cohort">
+                      <select
+                        className="form-select"
+                        value={form.program_id}
+                        onChange={e => setForm(p => ({ ...p, program_id: e.target.value }))}
+                      >
+                        <option value="">Program…</option>
+                        {programs.map(pr => (
+                          <option key={pr.id} value={pr.id}>{pr.code ? `${pr.code} — ${pr.name}` : pr.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        className="form-select"
+                        value={form.year_level}
+                        onChange={e => setForm(p => ({ ...p, year_level: e.target.value }))}
+                      >
+                        <option value="">Year…</option>
+                        {YEAR_LEVELS.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
+                      </select>
+                      <ComboInput
+                        value={form.block_name}
+                        onChange={v => setForm(p => ({ ...p, block_name: v }))}
+                        options={blockOptions}
+                        placeholder="Block, e.g. Block A"
+                        menuHeader={form.program_id && form.year_level ? 'Blocks for this program & year' : 'Existing blocks'}
+                        emptyHint="No blocks here yet — type a name (e.g. Block A) to create one."
+                      />
+                    </div>
+                  </div>
 
-                <div className="form-group">
-                  <label style={styles.label}>End Time</label>
-                  <input
-                    type="time"
-                    value={form.end_time}
-                    onChange={e => setForm(p => ({ ...p, end_time: e.target.value }))}
-                    required
-                    style={styles.input}
-                  />
+                  <div>
+                    <label className="form-label">Building <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--reg-faint)' }}>(optional)</span></label>
+                    <ComboInput
+                      value={form.building}
+                      onChange={v => setForm(p => ({ ...p, building: v }))}
+                      options={buildingOptions}
+                      placeholder="Pick a building, or type a new one"
+                      menuHeader={selDept ? `Buildings in ${selDept.code || selDept.name} & shared` : 'Saved buildings'}
+                      emptyHint={selDept
+                        ? 'No buildings in this department yet — type a name, or add them in Rooms & Buildings.'
+                        : 'No saved buildings yet — type a name, or add them in Rooms & Buildings.'}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Room</label>
+                    <ComboInput
+                      value={form.room}
+                      onChange={v => setForm(p => ({ ...p, room: v }))}
+                      options={roomOptions}
+                      onPick={o => { if (o.building && o.building !== form.building) setForm(p => ({ ...p, building: o.building })); }}
+                      placeholder={selBuilding ? `Pick a room in ${selBuilding.name}, or type one` : 'Pick a room, or type one'}
+                      menuHeader={selBuilding ? `Rooms in ${selBuilding.name}` : (selDept ? 'Rooms in this department' : 'All rooms')}
+                      emptyHint={selBuilding
+                        ? 'No rooms in this building yet — type one here, or add rooms in Rooms & Buildings.'
+                        : 'No rooms defined yet — type one, or add them in Rooms & Buildings.'}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Start time</label>
+                    <input
+                      className="form-input"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      type="time"
+                      value={form.start_time}
+                      onChange={e => setForm(p => ({ ...p, start_time: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">End time</label>
+                    <input
+                      className="form-input"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      type="time"
+                      value={form.end_time}
+                      onChange={e => setForm(p => ({ ...p, end_time: e.target.value }))}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-                <button type="submit" disabled={saving} style={styles.btnSave(saving)}>
-                  {saving ? 'Saving...' : editId ? 'Update' : 'Save'}
-                </button>
-                <button type="button" onClick={() => { setShowForm(false); setEditId(null); setError(''); }} style={styles.btnCancel}>
+              <div className="sched-modal-foot">
+                <button
+                  type="button"
+                  className="btn-sec"
+                  onClick={() => { setShowForm(false); setEditId(null); setError(''); }}
+                >
                   Cancel
+                </button>
+                <button type="submit" className="btn-pri" disabled={saving}>
+                  {saving ? 'Saving…' : editId ? 'Update slot' : 'Save slot'}
                 </button>
               </div>
             </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Schedule table */}
-        {selectedTerm && (
-          loadingSchedules ? (
-            <p style={{ color: '#6b7280' }}>Loading schedules...</p>
-          ) : schedules.length === 0 ? (
-            <div style={styles.emptyState}>
-              <p style={{ fontWeight: 600 }}>No schedule slots posted for {termLabel}.</p>
-              <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                Click "Add Schedule Slot" to assign class times and rooms to teaching assignments.
-              </p>
+      {/* ── Schedule Table ── */}
+      {/* ── Room schedule modal ── */}
+      {roomView && (
+        <div className="sched-modal-back" onMouseDown={e => { if (e.target === e.currentTarget) setRoomView(null); }}>
+          <div className="sched-modal" role="dialog" aria-modal="true" aria-label={`Schedule for ${roomView.room.name}`}>
+            <div className="sched-modal-head">
+              <div>
+                <h4>{roomView.room.name}</h4>
+                <p>
+                  {roomView.building.name}{roomView.building.code ? ` · ${roomView.building.code}` : ''}
+                  {' '}
+                  <span className="sched-roomtype-chip" data-type={roomView.room.room_type}>
+                    <i className={`ti ${roomView.room.room_type === 'laboratory' ? 'ti-flask' : 'ti-presentation'}`} />
+                    {roomView.room.room_type_display || (roomView.room.room_type === 'laboratory' ? 'Laboratory' : 'Lecture room')}
+                  </span>
+                </p>
+              </div>
+              <button className="sched-modal-x" onClick={() => setRoomView(null)} aria-label="Close">
+                <i className="ti ti-x" />
+              </button>
             </div>
-          ) : (
-            <>
+            <div className="sched-modal-body">
               {(() => {
-                const totalPages = Math.ceil(schedules.length / PAGE_SIZE);
-                const start = (page - 1) * PAGE_SIZE;
-                const paged = schedules.slice(start, start + PAGE_SIZE);
-
+                const daysUsed = new Set(roomMeetings.map(s => s.day_of_week)).size;
+                const todayKey = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()];
+                const rtype = roomView.room.room_type;
                 return (
                   <>
-                    <p style={{ fontSize: '0.85rem', color: '#374151', marginBottom: '0.75rem' }}>
-                      Showing {start + 1} - {Math.min(start + PAGE_SIZE, schedules.length)} of{' '}
-                      {schedules.length} slot(s) &middot; {termLabel}
-                    </p>
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={styles.table}>
-                        <thead>
-                          <tr>
-                            {['Subject', 'Faculty', 'Day', 'Time', 'Room / Building', 'Actions'].map(h => (
-                              <th key={h} style={styles.th}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paged.map(s => (
-                            <tr key={s.id}>
-                              <td style={styles.td}>
-                                <strong style={{ color: '#1e3a5f' }}>{s.subject_code}</strong>
-                                <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>{s.subject_name}</div>
-                              </td>
-                              <td style={styles.td}>{s.faculty_name}</td>
-                              <td style={styles.td}>{DAY_LABELS[s.day_of_week] || s.day_display}</td>
-                              <td style={styles.td}>
-                                <span style={{ color: '#059669', fontWeight: 600, fontSize: '0.85rem' }}>
-                                  {formatTime(s.start_time)}  -  {formatTime(s.end_time)}
-                                </span>
-                              </td>
-                              <td style={styles.td}>
-                                <div>{s.room}</div>
-                                {inlineBuilding?.id === s.id ? (
-                                  <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', marginTop: '0.3rem' }}>
-                                    <input
-                                      autoFocus
-                                      value={inlineBuilding.value}
-                                      onChange={e => setInlineBuilding(p => ({ ...p, value: e.target.value }))}
-                                      onKeyDown={e => {
-                                        if (e.key === 'Enter') saveInlineBuilding();
-                                        if (e.key === 'Escape') setInlineBuilding(null);
-                                      }}
-                                      placeholder="e.g. IT Building"
-                                      style={styles.inlineBuildingInput}
-                                    />
-                                    <button
-                                      onClick={saveInlineBuilding}
-                                      disabled={savingBuilding}
-                                      style={styles.inlineSaveBtn}
-                                      title="Save"
-                                    >âœ“</button>
-                                    <button
-                                      onClick={() => setInlineBuilding(null)}
-                                      style={styles.inlineCancelBtn}
-                                      title="Cancel"
-                                    >x</button>
-                                  </div>
-                                ) : (
-                                  <div
-                                    onClick={() => setInlineBuilding({ id: s.id, value: s.building ?? '' })}
-                                    title="Click to set department building"
-                                    style={styles.inlineBuildingDisplay(!!s.building)}
-                                  >
-                                    {s.building || '+ Add building'}
-                                  </div>
-                                )}
-                              </td>
-                              <td style={styles.td}>
-                                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                  <button onClick={() => openEdit(s)} style={styles.btnEdit}>Edit</button>
-                                  <button onClick={() => handleDelete(s.id)} style={styles.btnDelete}>Delete</button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="sched-room-stats">
+                      <div className="srs"><span className="n">{roomMeetings.length}</span><span className="l">Weekly meetings</span></div>
+                      <div className="srs"><span className="n">{daysUsed}</span><span className="l">Days in use</span></div>
+                      <div className="srs"><span className="n free">{6 - daysUsed}</span><span className="l">Days free</span></div>
                     </div>
-
-                    {totalPages > 1 && (
-                      <div style={styles.pagination}>
-                        <button
-                          onClick={() => setPage(p => Math.max(1, p - 1))}
-                          disabled={page === 1}
-                          style={styles.pageBtn(false, page === 1)}
-                        >
-                          â† Prev
-                        </button>
-
-                        {buildPageNumbers(page, totalPages).map((item, i) =>
-                          item === '...' ? (
-                            <span key={`ellipsis-${i}`} style={styles.ellipsis}>...</span>
-                          ) : (
-                            <button
-                              key={item}
-                              onClick={() => setPage(item)}
-                              style={styles.pageBtn(item === page, false)}
-                            >
-                              {item}
-                            </button>
-                          )
-                        )}
-
-                        <button
-                          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                          disabled={page === totalPages}
-                          style={styles.pageBtn(false, page === totalPages)}
-                        >
-                          Next â†’
-                        </button>
-                      </div>
-                    )}
+                    <div className="sched-roomweek">
+                      {DAY_OPTIONS.map(d => {
+                        const daySlots = roomMeetings
+                          .filter(s => s.day_of_week === d.value)
+                          .sort((a, b) => a.start_time.localeCompare(b.start_time));
+                        const isToday = d.value === todayKey;
+                        return (
+                          <div className={`sched-rwday${daySlots.length ? '' : ' is-free'}${isToday ? ' today' : ''}`} key={d.value}>
+                            <div className="sched-rwday-lbl">
+                              {d.label}
+                              {isToday && <span className="sched-rwday-today">Today</span>}
+                            </div>
+                            <div className="sched-rwday-body">
+                              {daySlots.length === 0 ? (
+                                <span className="sched-rwday-free"><i className="ti ti-circle-dashed" /> Available all day</span>
+                              ) : daySlots.map(s => (
+                                <div className="sched-rwmeet" data-type={rtype} key={s.id}>
+                                  <span className="sched-rwmeet-time">{formatTime(s.start_time)} – {formatTime(s.end_time)}</span>
+                                  <div className="sched-rwmeet-info">
+                                    <div className="sched-rwmeet-course">
+                                      <b>{s.subject_code}</b> {s.subject_name}{s.section ? ` · Sec ${s.section}` : ''}
+                                    </div>
+                                    <div className="sched-rwmeet-fac"><i className="ti ti-user" /> {s.faculty_name}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </>
                 );
               })()}
-            </>
-          )
-        )}
-      </main>
-    </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!selectedTerm ? (
+        <div className="empty">
+          <i className="ti ti-calendar-off" />
+          <div className="t">Pick a term to begin</div>
+          <div className="d">Choose an academic term above to see and manage its class timetable.</div>
+        </div>
+      ) : loadingSchedules ? (
+        <p style={{ color: 'var(--reg-muted)' }}>Loading timetable…</p>
+      ) : viewMode === 'room' ? (
+        buildings.length === 0 ? (
+          <div className="empty">
+            <i className="ti ti-building-off" />
+            <div className="t">No rooms to browse yet</div>
+            <div className="d">Set up buildings and rooms in Rooms &amp; Buildings first — then you can open any room here to see its schedule.</div>
+          </div>
+        ) : (
+          <div className="sched-depts">
+            {deptGroups.filter(g => g.buildings.length > 0).map(g => {
+              const open = openDepts.has(g.key);
+              const allRooms = g.buildings.flatMap(b => b.rooms || []);
+              const labCount = allRooms.filter(r => r.room_type === 'laboratory').length;
+              const lecCount = allRooms.length - labCount;
+              const scheduled = g.buildings.reduce(
+                (sum, b) => sum + (b.rooms || []).reduce((s, r) => s + meetingsForRoom(r.name, b.name).length, 0), 0
+              );
+              return (
+                <div className="sched-dept-card" key={g.key}>
+                  <button className="sched-dept-btn" onClick={() => toggleDept(g.key)} aria-expanded={open}>
+                    <span className="sched-dept-l">
+                      <span className="sched-dept-ic"><i className="ti ti-building-community" /></span>
+                      <span className="sched-dept-info">
+                        <span className="sched-dept-nameline">
+                          <span className="sched-dept-name">{g.title}</span>
+                          {g.code && <span className="sched-dept-chip">{g.code}</span>}
+                        </span>
+                        <span className="sched-dept-meta">
+                          {g.buildings.length} building{g.buildings.length !== 1 ? 's' : ''} · {roomsIn(g)} room{roomsIn(g) !== 1 ? 's' : ''}
+                          {scheduled > 0
+                            ? ` · ${scheduled} weekly meeting${scheduled !== 1 ? 's' : ''}`
+                            : ' · no classes scheduled'}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="sched-dept-r">
+                      {lecCount > 0 && (
+                        <span className="sched-dept-tc" data-type="lecture" title={`${lecCount} lecture room${lecCount !== 1 ? 's' : ''}`}>
+                          <i className="ti ti-presentation" />{lecCount}
+                        </span>
+                      )}
+                      {labCount > 0 && (
+                        <span className="sched-dept-tc" data-type="laboratory" title={`${labCount} laborator${labCount !== 1 ? 'ies' : 'y'}`}>
+                          <i className="ti ti-flask" />{labCount}
+                        </span>
+                      )}
+                      <i className={`ti ti-chevron-${open ? 'up' : 'down'} sched-dept-chev`} />
+                    </span>
+                  </button>
+                  {open && (
+                    <div className="sched-dept-body">
+                      {g.buildings.map(b => (
+                        <div className="sched-bldrow" key={b.id}>
+                          <div className="sched-bldrow-name">
+                            <i className="ti ti-building" /> {b.name}{b.code ? ` · ${b.code}` : ''}
+                          </div>
+                          <div className="sched-roomchips">
+                            {b.rooms.length === 0 ? (
+                              <span className="sched-roomchips-empty">No rooms in this building.</span>
+                            ) : b.rooms.map(r => {
+                              const cnt = meetingsForRoom(r.name, b.name).length;
+                              return (
+                                <button
+                                  className="sched-roomchip"
+                                  data-type={r.room_type}
+                                  key={r.id}
+                                  onClick={() => setRoomView({ room: r, building: b })}
+                                  title={`${r.name} — view schedule`}
+                                >
+                                  <i className={`ti ${r.room_type === 'laboratory' ? 'ti-flask' : 'ti-presentation'}`} />
+                                  {r.name}
+                                  {cnt > 0 && <span className="sched-roomchip-n">{cnt}</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : schedules.length === 0 ? (
+        <div className="empty">
+          <i className="ti ti-calendar-plus" />
+          <div className="t">No classes scheduled yet</div>
+          <div className="d">
+            Nothing is on the timetable for {termLabel}. Use “Add schedule slot” to place a class with its day, time and room.
+          </div>
+        </div>
+      ) : classes.length === 0 ? (
+        <div className="empty">
+          <i className="ti ti-search-off" />
+          <div className="t">Nothing matches</div>
+          <div className="d">
+            No classes match your search{dayFilter ? ` on ${DAY_LABELS[dayFilter]}` : ''}. Clear the search or day filter to see everything.
+          </div>
+        </div>
+      ) : (
+        <>
+          <p style={{ fontSize: '.85rem', color: 'var(--reg-muted)', marginBottom: '.85rem' }}>
+            {classes.length} class{classes.length !== 1 ? 'es' : ''}{dayFilter ? ` meeting ${DAY_LABELS[dayFilter]}` : ''} · {termLabel}
+          </p>
+
+          <div className="sched-classes">
+            {pagedClasses.map(c => {
+              const byDay = {};
+              c.slots.forEach(s => { (byDay[s.day_of_week] = byDay[s.day_of_week] || []).push(s); });
+              return (
+                <div className="sched-class" key={c.taId}>
+                  <div className="sched-class-head">
+                    <div className="sched-class-id">
+                      <div className="sched-class-title">
+                        <span className="sched-class-code">{c.subject_code}</span>
+                        <span className="sched-class-name">{c.subject_name}</span>
+                        {c.section && <span className="sched-class-sec">Sec {c.section}</span>}
+                      </div>
+                      <div className="sched-class-fac"><i className="ti ti-user" /> {c.faculty_name}</div>
+                    </div>
+                    <div className="sched-class-actions">
+                      <button className="btn-sec" style={{ padding: '5px 10px', fontSize: 11 }} onClick={() => openAddMeeting(c)}>
+                        <i className="ti ti-plus" /> Meeting
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="sched-week">
+                    {DAY_OPTIONS.map(d => {
+                      const daySlots = byDay[d.value] || [];
+                      return (
+                        <div className={`sched-day${daySlots.length ? ' has' : ''}`} key={d.value}>
+                          <span className="sched-day-lbl">{d.label}</span>
+                          {daySlots.length === 0 ? (
+                            <span className="sched-day-empty">—</span>
+                          ) : daySlots.map(s => (
+                            <div className="sched-meet" key={s.id}>
+                              <div className="sched-meet-actions">
+                                <button className="sched-meet-btn" title="Edit meeting" onClick={() => openEdit(s)}><i className="ti ti-pencil" /></button>
+                                <button className="sched-meet-btn del" title="Delete meeting" onClick={() => handleDelete(s.id)}><i className="ti ti-x" /></button>
+                              </div>
+                              <div className="sched-meet-time">{formatTime(s.start_time)}<br />{formatTime(s.end_time)}</div>
+                              <div className="sched-meet-room"><i className="ti ti-door" /> {s.room}{s.building ? ` · ${s.building}` : ''}</div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pagination" style={{ marginTop: '1rem' }}>
+              <div className="count">Page {page} of {totalPages}</div>
+              <div className="controls">
+                <button disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
+                  <i className="ti ti-chevron-left" />
+                </button>
+                {buildPageNumbers(page, totalPages).map((item, i) =>
+                  item === '...' ? (
+                    <span key={`e-${i}`} style={{ color: 'var(--reg-faint)', padding: '0 2px', lineHeight: 2 }}>…</span>
+                  ) : (
+                    <button key={item} className={page === item ? 'active' : ''} onClick={() => setPage(item)}>
+                      {item}
+                    </button>
+                  )
+                )}
+                <button disabled={page === totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
+                  <i className="ti ti-chevron-right" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </>
   );
 }
-
-const styles = {
-  label: { display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#374151', marginBottom: '0.3rem' },
-  select: { width: '100%', maxWidth: 380, padding: '0.45rem 0.65rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' },
-  input: { width: '100%', padding: '0.45rem 0.65rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem', boxSizing: 'border-box' },
-  alertError: { background: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem' },
-  alertSuccess: { background: '#d1fae5', color: '#065f46', padding: '0.75rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem' },
-  emptyState: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem', textAlign: 'center', color: '#6b7280' },
-  formCard: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '1.25rem', marginBottom: '1.5rem' },
-  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' },
-  th: { textAlign: 'left', padding: '0.5rem 0.75rem', background: '#f9fafb', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#374151', fontSize: '0.82rem' },
-  td: { padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', color: '#1f2937', verticalAlign: 'middle' },
-  btnAdd: { background: '#1e3a5f', color: '#fff', border: 'none', padding: '0.5rem 1.25rem', borderRadius: 6, fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', whiteSpace: 'nowrap' },
-  btnSave: (disabled) => ({ background: '#059669', color: '#fff', border: 'none', padding: '0.5rem 1.25rem', borderRadius: 6, fontWeight: 600, fontSize: '0.9rem', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.7 : 1 }),
-  btnCancel: { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', padding: '0.5rem 1rem', borderRadius: 6, fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' },
-  btnEdit: { background: '#1e3a5f', color: '#fff', border: 'none', padding: '0.25rem 0.65rem', borderRadius: 4, fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' },
-  btnDelete: { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '0.25rem 0.65rem', borderRadius: 4, fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' },
-  pagination: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    gap: '0.35rem', marginTop: '1.25rem', flexWrap: 'wrap',
-  },
-  pageBtn: (active, disabled) => ({
-    minWidth: 36, padding: '0.35rem 0.65rem', borderRadius: 6,
-    border: active ? 'none' : '1px solid #d1d5db',
-    background: active ? '#1e3a5f' : disabled ? '#f3f4f6' : '#fff',
-    color: active ? '#fff' : disabled ? '#9ca3af' : '#374151',
-    fontWeight: active ? 700 : 500, fontSize: '0.85rem',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-  }),
-  ellipsis: { fontSize: '0.9rem', color: '#9ca3af', padding: '0 0.2rem', lineHeight: '2' },
-  inlineBuildingDisplay: (hasValue) => ({
-    fontSize: '0.78rem',
-    color: hasValue ? '#6b7280' : '#9ca3af',
-    cursor: 'pointer',
-    marginTop: '0.2rem',
-    textDecoration: 'underline dotted',
-    display: 'inline-block',
-  }),
-  inlineBuildingInput: {
-    fontSize: '0.8rem', padding: '0.2rem 0.4rem',
-    border: '1px solid #6b7280', borderRadius: 4,
-    width: 140, outline: 'none',
-  },
-  inlineSaveBtn: {
-    background: '#059669', color: '#fff', border: 'none',
-    borderRadius: 4, padding: '0.2rem 0.45rem', cursor: 'pointer',
-    fontSize: '0.85rem', fontWeight: 700,
-  },
-  inlineCancelBtn: {
-    background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db',
-    borderRadius: 4, padding: '0.2rem 0.45rem', cursor: 'pointer',
-    fontSize: '0.85rem',
-  },
-};
-
