@@ -121,6 +121,10 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Built React app (Vite output) — served by the SPA fallback in urls.py in
+# production. BASE_DIR is the backend/ dir; dist lives at <repo>/frontend/dist.
+FRONTEND_DIST = BASE_DIR.parent / 'frontend' / 'dist'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── Django REST Framework ─────────────────────────────────────────────────────
