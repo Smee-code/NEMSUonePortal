@@ -127,6 +127,7 @@ export default function RegistrarFaculty() {
   const [editForm, setEditForm] = useState(null);   // { id, full_name, student_id, email, contact_number, department, program, is_gec_faculty, rank }
   const [editing,  setEditing]  = useState(false);
   const [editErr,  setEditErr]  = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   function fetchFaculty() {
     setLoading(true);
@@ -219,6 +220,34 @@ export default function RegistrarFaculty() {
       );
     } finally {
       setEditing(false);
+    }
+  }
+
+  async function handleDelete(f) {
+    const ok = window.confirm(
+      `Delete faculty "${f.full_name}"?\n\n` +
+      'If this faculty has teaching load, encoded grades, or posted announcements, ' +
+      'the account will be deactivated (disabled) instead of deleted so records are kept. ' +
+      'Otherwise it is permanently removed.'
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const res = await api.delete(`/auth/registrar/faculty/${f.id}/`);
+      toast(res.data?.message || 'Faculty removed.', {
+        type: res.data?.status === 'deleted' ? 'success' : 'warn',
+      });
+      setSelected(null);
+      fetchFaculty();
+    } catch (err) {
+      const d = err.response?.data;
+      toast(
+        (d && (d.error || (typeof d === 'object' && Object.values(d).flat().join(' ')))) ||
+          'Failed to delete faculty.',
+        { type: 'error' }
+      );
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -374,6 +403,15 @@ export default function RegistrarFaculty() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <button className="btn-sec" onClick={() => openEdit(selected)}>
                   <i className="ti ti-edit" /> Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(selected)}
+                  disabled={deleting}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px',
+                    border: '1px solid var(--reg-red)', background: 'var(--reg-red-tint)', color: 'var(--reg-red)',
+                    font: "600 12.5px 'Inter',sans-serif", cursor: deleting ? 'default' : 'pointer' }}
+                >
+                  <i className="ti ti-trash" /> {deleting ? 'Deleting…' : 'Delete'}
                 </button>
                 <button className="fac-modal-x" onClick={() => setSelected(null)}>
                   <i className="ti ti-x" />

@@ -214,6 +214,27 @@ export default function AdminUserManagement() {
     } finally { setSaving(null); }
   }
 
+  async function handleDelete(u) {
+    const ok = window.confirm(
+      `Delete ${ROLE_LABEL[u.role] || u.role} "${u.full_name}"?\n\n` +
+      'If this account has linked records (grades, schedules, enrolments, documents, or ' +
+      'announcements), it will be deactivated instead of deleted so history is kept. ' +
+      'Otherwise it is permanently removed.'
+    );
+    if (!ok) return;
+    setError('');
+    try {
+      const res = await api.delete(`/auth/admin/users/${u.id}/`);
+      toast(res.data?.message || 'Account removed.', {
+        type: res.data?.status === 'deleted' ? 'success' : 'warn',
+      });
+      fetchUsers(offset);
+    } catch (err) {
+      const data = err.response?.data;
+      toast(data?.error || data?.detail || 'Failed to remove account.', { type: 'error' });
+    }
+  }
+
   const totalPages  = Math.ceil(total / PAGE_LIMIT);
   const currentPage = Math.floor(offset / PAGE_LIMIT) + 1;
 
@@ -371,8 +392,10 @@ export default function AdminUserManagement() {
                     <td style={{ width: 48 }}>
                       <RowMenu items={[
                         { icon: 'ti-pencil',   label: 'Edit account', onClick: () => openExpand(u) },
-                        'sep',
-                        { icon: 'ti-trash', label: 'Remove', danger: true, onClick: () => toast('Account removal is handled via direct admin action for safety.', { type: 'warn' }) },
+                        ...(isSelf ? [] : [
+                          'sep',
+                          { icon: 'ti-trash', label: 'Remove', danger: true, onClick: () => handleDelete(u) },
+                        ]),
                       ]} />
                     </td>
                   </tr>,

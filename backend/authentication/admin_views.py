@@ -43,6 +43,67 @@ def _audit(user, role, action, resource, ip, result='success', extra=None):
         logger.error('Audit log write failed', exc_info=True)
 
 
+def _user_has_history(user):
+    """True if deleting this user would destroy or orphan real records.
+
+    Covers the relations that matter for a faculty (teaching load, grades they
+    encoded, announcements they posted) and, for safety on any account, the
+    student-side records (grades, enrolments, document requests). When any
+    exist the account is deactivated instead of hard-deleted so nothing is lost.
+    """
+    from grades.models import TeachingAssignment, GradeRecord
+    from announcements.models import Announcement
+    from enrollment.models import EnrollmentRequest
+    from documents.models import DocumentRequest
+    return (
+        TeachingAssignment.objects.filter(faculty=user).exists()
+        or GradeRecord.objects.filter(encoded_by=user).exists()
+        or GradeRecord.objects.filter(student=user).exists()
+        or Announcement.objects.filter(posted_by=user).exists()
+        or EnrollmentRequest.objects.filter(student=user).exists()
+        or DocumentRequest.objects.filter(student=user).exists()
+    )
+
+
+def _delete_or_deactivate(user, request, *, kind):
+    """Smart-delete a user account (shared by the admin and registrar endpoints).
+
+    Hard-deletes the account when it has no linked records; otherwise deactivates
+    it (is_active=False) to preserve history. `kind` is 'faculty' or 'user' and
+    only shapes the audit action/message. Returns a DRF Response.
+    """
+    ip = get_client_ip(request)
+    label = user.full_name or user.institutional_email
+    if _user_has_history(user):
+        deactivated = False
+        if user.is_active:
+            user.is_active = False
+            user.save(update_fields=['is_active'])
+            deactivated = True
+        _audit(
+            request.user, request.user.role,
+            f'{kind}_account_deactivated', f'user:{user.id}', ip, 'success',
+            {'target_user': str(user.id), 'reason': 'has_linked_records'},
+        )
+        msg = (
+            f'{label} has linked records (grades, schedules, or announcements), '
+            'so the account was deactivated instead of deleted. It can no longer '
+            'log in and is hidden from active lists.'
+        ) if deactivated else (
+            f'{label} has linked records and was already deactivated.'
+        )
+        return Response({'status': 'deactivated', 'message': msg})
+
+    uid = str(user.id)
+    user.delete()
+    _audit(
+        request.user, request.user.role,
+        f'{kind}_account_deleted', f'user:{uid}', ip, 'success',
+        {'target_user': uid},
+    )
+    return Response({'status': 'deleted', 'message': f'{label} was permanently deleted.'})
+
+
 class AdminPagination(LimitOffsetPagination):
     default_limit = 20
     max_limit = 100
@@ -324,9 +385,18 @@ class RegistrarFacultyUpdateView(APIView):
         )
         return Response(AdminUserListSerializer(user).data)
 
+    def delete(self, request, pk):
+        """Smart-delete a faculty account: hard-delete when it has no linked
+        records, otherwise deactivate to preserve history."""
+        try:
+            user = User.objects.get(pk=pk, role='faculty')
+        except User.DoesNotExist:
+            return Response({'error': 'Faculty member not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return _delete_or_deactivate(user, request, kind='faculty')
+
 
 class AdminUserDetailView(APIView):
-    """GET + PATCH /api/auth/admin/users/<uuid:pk>/"""
+    """GET + PATCH + DELETE /api/auth/admin/users/<uuid:pk>/"""
     permission_classes = [IsAuthenticated, IsAdmin]
     throttle_classes   = [AdminUserManageThrottle]
 
@@ -412,6 +482,20 @@ class AdminUserDetailView(APIView):
             )
 
         return Response(AdminUserListSerializer(user).data)
+
+    def delete(self, request, pk):
+        """Smart-delete any account: hard-delete when it has no linked records,
+        otherwise deactivate to preserve history. An admin cannot delete self."""
+        user = self._get_user(pk)
+        if not user:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if user.id == request.user.id:
+            return Response(
+                {'error': 'You cannot delete your own account through this interface.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        kind = 'faculty' if user.role == 'faculty' else 'user'
+        return _delete_or_deactivate(user, request, kind=kind)
 
 
 # ── Audit log ─────────────────────────────────────────────────────────────────
