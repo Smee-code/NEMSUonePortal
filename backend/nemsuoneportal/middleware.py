@@ -19,14 +19,15 @@ class SecurityHeadersMiddleware:
         response['Permissions-Policy'] = (
             'geolocation=(), microphone=(), camera=(), payment=(), usb=()'
         )
-        # F-04: 'unsafe-inline' removed from style-src — all styles must be in
-        # external CSS files served from 'self'. This prevents CSS-based data exfiltration.
+        # The React SPA is built on inline styles and per-page <style> blocks, so
+        # style-src must allow 'unsafe-inline'. Google Fonts + the Tabler icon
+        # webfont are loaded from their CDNs. script-src stays strict ('self').
         response['Content-Security-Policy'] = (
             "default-src 'self'; "
             "script-src 'self'; "
-            "style-src 'self'; "
-            "img-src 'self' data:; "
-            "font-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; "
             "connect-src 'self'; "
             "frame-ancestors 'none';"
         )
