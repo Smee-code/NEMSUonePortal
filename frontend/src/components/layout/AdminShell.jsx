@@ -405,7 +405,12 @@ function AdminTopbar({ active, openDrawer, openNav, unread = 0, onBell }) {
   const [term, setTerm] = useState(null);
 
   useEffect(() => {
-    api.get('/enrollment/current-term/').then(r => setTerm(r.data)).catch(() => {});
+    const loadTerm = () =>
+      api.get('/enrollment/current-term/').then(r => setTerm(r.data)).catch(() => {});
+    loadTerm();
+    // AdminTerms dispatches 'term-changed' when the current term is switched.
+    window.addEventListener('term-changed', loadTerm);
+    return () => window.removeEventListener('term-changed', loadTerm);
   }, []);
 
   const termLabel = term

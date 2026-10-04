@@ -104,6 +104,8 @@ export default function AdminTerms() {
       const msg = editTarget ? 'Term updated.' : 'Term created.';
       setShowForm(false);
       toast(msg, { type: 'success' });
+      // Creating a term makes it current, so refresh the topbar chip too.
+      if (!editTarget) window.dispatchEvent(new Event('term-changed'));
       fetchTerms();
     } catch (err) {
       const data = err.response?.data;
@@ -113,6 +115,17 @@ export default function AdminTerms() {
           : 'Failed to save term.'
       );
     } finally { setSaving(false); }
+  }
+
+  async function setCurrentTerm(term) {
+    try {
+      await api.post(`/enrollment/admin/terms/${term.id}/set-current/`);
+      toast(`${term.semester_display} ${term.year} is now the current term.`, { type: 'success' });
+      window.dispatchEvent(new Event('term-changed'));  // refresh the topbar chip
+      fetchTerms();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to set current term.');
+    }
   }
 
   // Local YYYY-MM-DD for comparing against a term's end_date.
@@ -165,7 +178,7 @@ export default function AdminTerms() {
         <div className="page-head-l">
           <div className="eyebrow">Manage · {terms.length} terms</div>
           <h2>Academic <em>terms</em></h2>
-          <div className="sub">Manage semester windows and open or close enrollment. The current term is set automatically — whichever term has the latest start date.</div>
+          <div className="sub">Manage semester windows and open or close enrollment. A new term becomes current automatically; use “Set as current” on any card to switch.</div>
         </div>
         <div className="actions">
           <button className="btn-pri" onClick={openCreate}>
@@ -239,7 +252,7 @@ export default function AdminTerms() {
             </div>
             <div className="at-form-note">
               <i className="ti ti-info-circle" />
-              <span>The current term is set automatically — the term with the latest start date becomes current and enrollment can only be opened there.</span>
+              <span>A new term becomes the current term automatically. You can switch to any other term later with “Set as current.” Enrollment can only be opened on the current term.</span>
             </div>
             <div className="at-form-actions">
               <button type="button" className="btn-sec" onClick={() => setShowForm(false)}>Cancel</button>
@@ -280,6 +293,7 @@ export default function AdminTerms() {
                 </div>
                 <TermCardMenu items={[
                   { icon: 'ti-pencil', label: 'Edit', onClick: () => openEdit(t) },
+                  ...(!isCurrent ? [{ icon: 'ti-star', label: 'Set as current', onClick: () => setCurrentTerm(t) }] : []),
                   ...(canToggle ? [{
                     icon: t.enrollment_open ? 'ti-lock' : 'ti-lock-open',
                     label: t.enrollment_open ? 'Close enrollment' : 'Open enrollment',

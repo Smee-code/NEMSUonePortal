@@ -851,14 +851,12 @@ class EnrollmentTermStatusView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Enrollment can only be opened on the current term — the one with the
-        # latest start date. Closing a window on any term stays allowed.
+        # Enrollment can only be opened on the current term (is_active).
+        # Closing a window on any term stays allowed.
         if enrollment_open:
-            current = AcademicTerm.objects.order_by('-start_date', '-id').first()
-            if current and current.pk != term.pk:
+            if not term.is_active:
                 return Response(
-                    {'error': 'Enrollment can only be opened on the current term '
-                              '(the one with the latest start date).'},
+                    {'error': 'Enrollment can only be opened on the current term.'},
                     status=status.HTTP_409_CONFLICT,
                 )
             # A term whose end date has passed can no longer accept enrollment.
@@ -894,9 +892,10 @@ class AdminTermListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         with transaction.atomic():
             instance = serializer.save()
-            # The newest start date is always the current term; promoting it
-            # also closes any enrollment window left open on an older term.
-            AcademicTerm.sync_current()
+            # A newly added term becomes the current term, closing any enrollment
+            # window left open on the term it replaces. The admin can switch the
+            # current term afterwards via the set-current endpoint.
+            AcademicTerm.set_current(instance)
         instance.refresh_from_db()
         _audit(
             self.request.user, self.request.user.role,
@@ -914,12 +913,10 @@ class AdminTermDetailView(generics.RetrieveUpdateDestroyAPIView):
     http_method_names = ['get', 'patch', 'delete', 'head', 'options']
 
     def perform_update(self, serializer):
-        with transaction.atomic():
-            serializer.save()
-            # Editing a start date can change which term is newest, so re-derive
-            # the current term (and close any window orphaned on a demoted term).
-            AcademicTerm.sync_current()
-        serializer.instance.refresh_from_db()
+        # Editing a term (dates, year, semester) never changes which term is
+        # current — that is controlled only by creation, set-current, or the
+        # deletion of the current term. This keeps a manual selection stable.
+        serializer.save()
         _audit(
             self.request.user, self.request.user.role,
             'academic_term_updated', self.request.path,
@@ -940,9 +937,40 @@ class AdminTermDetailView(generics.RetrieveUpdateDestroyAPIView):
             get_client_ip(self.request), 'success',
             {'term_id': instance.pk, 'term': str(instance)},
         )
+        was_current = instance.is_active
         instance.delete()
-        # Deleting the current term promotes the next-newest one automatically.
-        AcademicTerm.sync_current()
+        # If the term just deleted was the current one, promote the next-newest
+        # so the system always has exactly one current term.
+        if was_current:
+            AcademicTerm.promote_newest()
+
+
+class AdminTermSetCurrentView(APIView):
+    """POST /api/enrollment/admin/terms/<pk>/set-current/ — admin override.
+
+    Makes the given term the single current term. Any term can be chosen,
+    including one that has already ended (useful for testing/demo); enrollment
+    still cannot be opened on an ended term.
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+    throttle_classes = [EnrollmentManageThrottle]
+
+    def post(self, request, pk):
+        try:
+            term = AcademicTerm.objects.get(pk=pk)
+        except AcademicTerm.DoesNotExist:
+            return Response({'error': 'Academic term not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        with transaction.atomic():
+            AcademicTerm.set_current(term)
+
+        _audit(
+            request.user, request.user.role,
+            'academic_term_set_current', request.path,
+            get_client_ip(request), 'success',
+            {'term_id': term.pk, 'term': str(term)},
+        )
+        return Response(AcademicTermSerializer(term).data)
 
 
 class AdminSubjectListCreateView(generics.ListCreateAPIView):

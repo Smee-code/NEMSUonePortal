@@ -63,6 +63,7 @@ urlpatterns = [
     # Admin — term & subject management
     path('admin/terms/', views.AdminTermListCreateView.as_view(), name='admin-terms'),
     path('admin/terms/<int:pk>/', views.AdminTermDetailView.as_view(), name='admin-term-detail'),
+    path('admin/terms/<int:pk>/set-current/', views.AdminTermSetCurrentView.as_view(), name='admin-term-set-current'),
     path('admin/subjects/', views.AdminSubjectListCreateView.as_view(), name='admin-subjects'),
     path('admin/subjects/<int:pk>/', views.AdminSubjectDetailView.as_view(), name='admin-subject-detail'),
 

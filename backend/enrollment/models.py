@@ -29,27 +29,35 @@ class AcademicTerm(models.Model):
         return f"{self.get_semester_display()} {self.year}"
 
     @classmethod
-    def sync_current(cls):
-        """Make the term with the latest start date the single current term.
+    def set_current(cls, term):
+        """Make `term` the single current term and close enrollment on all others.
 
-        'Current' is derived from the start date — the newest term always wins.
-        Every other term is demoted, and any enrollment window left open on a
-        superseded term is force-closed, so a window can only ever live on the
-        current term. Call this after any term is created, edited, or deleted.
-        Returns the current term (or None when no terms exist).
+        Every other term is demoted and any enrollment window left open on it is
+        force-closed, so a window can only ever live on the current term. The
+        given term's own enrollment_open is left untouched. Used both when a new
+        term is created (the newest becomes current) and when an admin manually
+        sets the current term.
+        """
+        cls.objects.exclude(pk=term.pk).filter(
+            models.Q(is_active=True) | models.Q(enrollment_open=True)
+        ).update(is_active=False, enrollment_open=False)
+        if not term.is_active:
+            cls.objects.filter(pk=term.pk).update(is_active=True)
+            term.is_active = True
+        return term
+
+    @classmethod
+    def promote_newest(cls):
+        """Fallback: make the term with the latest start date current.
+
+        Used to initialise the current term (one-time migration) and to pick a
+        replacement after the current term is deleted. Returns it, or None when
+        no terms remain.
         """
         latest = cls.objects.order_by('-start_date', '-id').first()
         if latest is None:
             return None
-        # Demote everyone else and close any stray open enrollment on them.
-        cls.objects.exclude(pk=latest.pk).filter(
-            models.Q(is_active=True) | models.Q(enrollment_open=True)
-        ).update(is_active=False, enrollment_open=False)
-        # Promote the newest term (leave its own enrollment_open untouched).
-        if not latest.is_active:
-            cls.objects.filter(pk=latest.pk).update(is_active=True)
-            latest.is_active = True
-        return latest
+        return cls.set_current(latest)
 
     def save(self, *args, **kwargs):
         # Safety invariant: only one term may carry is_active at the DB level.

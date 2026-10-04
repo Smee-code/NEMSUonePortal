@@ -18,24 +18,17 @@ class AcademicTermSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         from django.utils import timezone
-        # Enrollment may only be opened on the current term — the one with the
-        # latest start date — and never on a term that has already ended.
+        # Enrollment may only be opened on the current term (is_active), and
+        # never on a term that has already ended.
         enrollment_open = data.get(
             'enrollment_open', getattr(self.instance, 'enrollment_open', False)
         )
         if enrollment_open:
-            start_date = data.get('start_date', getattr(self.instance, 'start_date', None))
-            end_date = data.get('end_date', getattr(self.instance, 'end_date', None))
-
-            others = AcademicTerm.objects.all()
-            if self.instance is not None:
-                others = others.exclude(pk=self.instance.pk)
-            newest_other = others.order_by('-start_date', '-id').first()
-            if start_date and newest_other and newest_other.start_date > start_date:
+            if not getattr(self.instance, 'is_active', False):
                 raise serializers.ValidationError({
-                    'enrollment_open': 'Enrollment can only be opened on the current term '
-                                       '(the one with the latest start date).'
+                    'enrollment_open': 'Enrollment can only be opened on the current term.'
                 })
+            end_date = data.get('end_date', getattr(self.instance, 'end_date', None))
             if end_date and end_date < timezone.localdate():
                 raise serializers.ValidationError({
                     'enrollment_open': 'This term has already ended; enrollment cannot be opened.'
