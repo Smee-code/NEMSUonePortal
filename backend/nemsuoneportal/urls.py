@@ -27,7 +27,9 @@ def serve_spa(request, resource=''):
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # Django's built-in admin lives under /django-admin/ so the React app can own
+    # /admin/* (the registrar/admin panel uses client-side routes like /admin/dashboard).
+    path('django-admin/', admin.site.urls),
     path('api/auth/', include('authentication.urls')),
     path('api/enrollment/', include('enrollment.urls')),      # Sprint 3
     path('api/grades/', include('grades.urls')),              # Sprint 4
@@ -40,5 +42,5 @@ urlpatterns = [
 # non-static/media path. In local dev the Vite server serves the frontend, so
 # this only takes effect in a deployed build.
 urlpatterns += [
-    re_path(r'^(?!api/|admin/|static/|media/)(?P<resource>.*)$', serve_spa),
+    re_path(r'^(?!api/|django-admin/|static/|media/)(?P<resource>.*)$', serve_spa),
 ]
