@@ -7,6 +7,29 @@ from django.http import FileResponse, Http404
 from django.urls import include, path, re_path
 
 
+# Text asset types are served with an explicit charset=utf-8 so browsers on any
+# OS decode them as UTF-8 instead of guessing a locale codepage (mojibake guard).
+_UTF8_CONTENT_TYPES = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.mjs': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.svg': 'image/svg+xml; charset=utf-8',
+    '.webmanifest': 'application/manifest+json; charset=utf-8',
+    '.txt': 'text/plain; charset=utf-8',
+}
+
+
+def _spa_file_response(path):
+    """FileResponse that pins charset=utf-8 on text assets."""
+    response = FileResponse(open(path, 'rb'))
+    content_type = _UTF8_CONTENT_TYPES.get(path.suffix.lower())
+    if content_type:
+        response['Content-Type'] = content_type
+    return response
+
+
 def serve_spa(request, resource=''):
     """Serve the built React single-page app.
 
@@ -19,10 +42,10 @@ def serve_spa(request, resource=''):
         target = (dist / resource).resolve()
         # Guard against path traversal: the resolved path must stay inside dist.
         if str(target).startswith(str(dist.resolve())) and target.is_file():
-            return FileResponse(open(target, 'rb'))
+            return _spa_file_response(target)
     index = dist / 'index.html'
     if index.is_file():
-        return FileResponse(open(index, 'rb'))
+        return _spa_file_response(index)
     raise Http404('Frontend build not found — run `npm run build` in frontend/.')
 
 

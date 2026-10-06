@@ -1,0 +1,34 @@
+# Treat files as UTF-8 text and normalize line endings in the repo, so the same
+# bytes land on every OS and encoding can't drift between contributors.
+* text=auto eol=lf
+
+# Explicit text types (stored UTF-8, normalized to LF)
+*.py    text
+*.js    text
+*.jsx   text
+*.ts    text
+*.tsx   text
+*.css   text
+*.scss  text
+*.html  text
+*.json  text
+*.md    text
+*.txt   text
+*.csv   text
+*.svg   text
+*.yml   text
+*.yaml  text
+
+# Binary — never normalized or re-encoded
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.ico     binary
+*.pdf     binary
+*.sqlite3 binary
+*.woff    binary
+*.woff2   binary
+*.ttf     binary
+*.eot     binary
