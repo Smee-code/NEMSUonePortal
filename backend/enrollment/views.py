@@ -1142,14 +1142,17 @@ def _parse_csv_import(file_bytes: bytes, program) -> dict:
                 )
                 continue
 
+        # Codes are unique per program, so match on (program, code): importing a
+        # code used by another program creates this program's own copy rather
+        # than overwriting the other program's course.
         _, was_created = Subject.objects.update_or_create(
             code=code,
+            program=program,
             defaults={
                 'name': name,
                 'units': units,
                 'subject_type': subject_type,
                 'description': description,
-                'program': program,
                 'year_level': year_level,
                 'semester': semester,
                 'prerequisite': prerequisite,

@@ -111,7 +111,10 @@ class Subject(models.Model):
         ('minor', 'Minor Subject'),
     ]
 
-    code = models.CharField(max_length=20, unique=True)
+    # Course codes are unique PER PROGRAM, not globally: the same code (e.g. a
+    # shared GEC or a common minor) may exist in several programs' catalogs, each
+    # as that program's own copy. See Meta.constraints below.
+    code = models.CharField(max_length=20)
     name = models.CharField(max_length=200)
     units = models.DecimalField(max_digits=4, decimal_places=2)
     subject_type = models.CharField(
@@ -141,6 +144,19 @@ class Subject(models.Model):
 
     class Meta:
         ordering = ['code']
+        constraints = [
+            # One row per (program, code). Different programs may reuse a code.
+            models.UniqueConstraint(
+                fields=['program', 'code'],
+                name='uniq_subject_program_code',
+            ),
+            # Program-less (shared-catalog) courses still can't repeat a code.
+            models.UniqueConstraint(
+                fields=['code'],
+                condition=models.Q(program__isnull=True),
+                name='uniq_subject_code_when_no_program',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.code} — {self.name}"

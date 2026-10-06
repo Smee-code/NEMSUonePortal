@@ -105,6 +105,10 @@ class AdminSubjectSerializer(serializers.ModelSerializer):
             'semester', 'semester_display',
             'prerequisite', 'prerequisite_code', 'prerequisite_name',
         ]
+        # Drop DRF's auto UniqueTogether/Unique validators (from the per-program
+        # code constraint): validate() below enforces it with a clearer,
+        # field-scoped message the UI already surfaces.
+        validators = []
 
     def validate(self, attrs):
         prerequisite = attrs.get(
@@ -112,6 +116,19 @@ class AdminSubjectSerializer(serializers.ModelSerializer):
             getattr(self.instance, 'prerequisite', None),
         )
         program = attrs.get('program', getattr(self.instance, 'program', None))
+
+        # Course codes are unique per program (not globally), so the same code
+        # may exist in another program. Check only within this program.
+        code = (attrs.get('code') or getattr(self.instance, 'code', '') or '').strip()
+        if code:
+            dupes = Subject.objects.filter(code__iexact=code, program=program)
+            if self.instance:
+                dupes = dupes.exclude(pk=self.instance.pk)
+            if dupes.exists():
+                where = f'program {program.code}' if program else 'the shared catalog'
+                raise serializers.ValidationError({
+                    'code': f'A course with code "{code}" already exists in {where}.'
+                })
 
         if self.instance and prerequisite and prerequisite.pk == self.instance.pk:
             raise serializers.ValidationError({

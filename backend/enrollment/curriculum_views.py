@@ -174,9 +174,13 @@ class CurriculumSubjectView(APIView):
         d = serializer.validated_data
         code = d['code']
 
-        existing = Subject.objects.filter(code__iexact=code).first()
+        # Codes are unique per program, so only reuse a course already in THIS
+        # program's catalog; a matching code in another program is unrelated.
+        existing = Subject.objects.filter(
+            code__iexact=code, program=curriculum.program
+        ).first()
         if existing:
-            # Shared/identical only if placement matches; otherwise a different course.
+            # Reuse only if placement matches; otherwise it's a different course.
             if existing.year_level != d['year_level'] or existing.semester != d['semester']:
                 return Response(
                     {'error': f"Course {code} already exists at "
@@ -192,9 +196,11 @@ class CurriculumSubjectView(APIView):
             prereq = None
             pcode = (d.get('prerequisite_code') or '').strip().upper()
             if pcode:
-                prereq = Subject.objects.filter(code__iexact=pcode).first()
+                prereq = Subject.objects.filter(
+                    code__iexact=pcode, program=curriculum.program
+                ).first()
                 if not prereq:
-                    return Response({'error': f"Prerequisite {pcode} not found. Add it first."},
+                    return Response({'error': f"Prerequisite {pcode} not found in this program. Add it first."},
                                     status=status.HTTP_400_BAD_REQUEST)
             subject = Subject.objects.create(
                 code=code, name=d['name'], units=d['units'],
