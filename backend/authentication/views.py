@@ -129,6 +129,22 @@ class PublicDepartmentListView(APIView):
 
 # ── Login / Token ─────────────────────────────────────────────────────────────
 
+# One place to set the HttpOnly refresh-token cookie, so the login and refresh
+# views can never drift apart on its attributes. The `path` matters: a mismatched
+# path would create a duplicate cookie instead of overwriting the old one.
+def set_refresh_cookie(response, token):
+    response.set_cookie(
+        key='refresh_token',
+        value=token,
+        httponly=True,
+        secure=not settings.DEBUG,   # HTTPS-only in production
+        samesite='Strict',           # CSRF protection
+        max_age=7 * 24 * 60 * 60,   # 7 days — matches REFRESH_TOKEN_LIFETIME
+        path='/api/auth/token/refresh/',
+    )
+    return response
+
+
 class LoginView(TokenObtainPairView):
     """
     POST /api/auth/login/
@@ -166,15 +182,7 @@ class LoginView(TokenObtainPairView):
         _audit(user, user.role, 'login_success', request.path, ip, 'success')
 
         response = Response(data)
-        response.set_cookie(
-            key='refresh_token',
-            value=refresh_token,
-            httponly=True,
-            secure=not settings.DEBUG,   # HTTPS-only in production
-            samesite='Strict',           # CSRF protection
-            max_age=7 * 24 * 60 * 60,   # 7 days
-            path='/api/auth/token/refresh/',
-        )
+        set_refresh_cookie(response, refresh_token)
         return response
 
 
@@ -204,7 +212,17 @@ class CookieTokenRefreshView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        return Response({'access': serializer.validated_data['access']})
+        data = serializer.validated_data
+        response = Response({'access': data['access']})
+        # With ROTATE_REFRESH_TOKENS on, the serializer returns a new refresh
+        # token and blacklists the old one. Persist the new token to the cookie
+        # (same path overwrites the old one) so the next refresh uses a valid,
+        # non-blacklisted token. Without this the second refresh fails and the
+        # user is logged out. The token stays cookie-only (never in the body).
+        new_refresh = data.get('refresh')
+        if new_refresh:
+            set_refresh_cookie(response, new_refresh)
+        return response
 
 
 class LogoutView(APIView):
