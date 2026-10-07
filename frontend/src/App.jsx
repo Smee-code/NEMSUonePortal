@@ -28,10 +28,12 @@ import AnnouncementsPage from './pages/announcements/AnnouncementsPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUserManagement from './pages/admin/AdminUserManagement';
 import AdminPrograms from './pages/admin/AdminPrograms';
+import AdminBlocks from './pages/admin/AdminBlocks';
 import AdminSiteContent from './pages/admin/AdminSiteContent';
 import AdminSchedule from './pages/admin/AdminSchedule';
 import FacilitiesManager from './pages/facilities/FacilitiesManager';
 import AdminTerms from './pages/admin/AdminTerms';
+import AdminDocumentTypes from './pages/admin/AdminDocumentTypes';
 import AdminReports from './pages/admin/AdminReports';
 import AdminMidtermReopen from './pages/admin/AdminMidtermReopen';
 import AdminAuditLog from './pages/admin/AdminAuditLog';
@@ -43,9 +45,12 @@ import FacultyGradeEncoding from './pages/faculty/FacultyGradeEncoding';
 import FacultyProfile from './pages/faculty/FacultyProfile';
 import FacultyRoster from './pages/faculty/FacultyRoster';
 import FacultySchedule from './pages/faculty/FacultySchedule';
+import FacultyMySchedule from './pages/faculty/FacultyMySchedule';
 import RegistrarShell from './components/layout/RegistrarShell';
 import RegistrarDashboard from './pages/registrar/RegistrarDashboard';
 import RegistrarEnrollmentRequests from './pages/registrar/RegistrarEnrollmentRequests';
+import RegistrarAdmissions from './pages/registrar/RegistrarAdmissions';
+import RegistrarBlocks from './pages/registrar/RegistrarBlocks';
 import RegistrarRegistrations from './pages/registrar/RegistrarRegistrations';
 import RegistrarFaculty from './pages/registrar/RegistrarFaculty';
 import RegistrarGrades from './pages/registrar/RegistrarGrades';
@@ -103,6 +108,7 @@ export default function App() {
             <Route path="dashboard"  element={<FacultyDashboard />} />
             <Route path="grades"     element={<FacultyGradeEncoding />} />
             <Route path="schedule"   element={<FacultySchedule />} />
+            <Route path="timetable"  element={<FacultyMySchedule />} />
             <Route path="roster"     element={<FacultyRoster />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="profile"    element={<FacultyProfile />} />
@@ -114,7 +120,9 @@ export default function App() {
             <Route index                element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"     element={<RegistrarDashboard />} />
             <Route path="registrations" element={<RegistrarRegistrations />} />
+            <Route path="admissions"    element={<RegistrarAdmissions />} />
             <Route path="enrollment"    element={<RegistrarEnrollmentRequests />} />
+            <Route path="blocks"        element={<RegistrarBlocks />} />
             <Route path="grades"        element={<RegistrarGrades />} />
             <Route path="grades/student/:studentId" element={<RegistrarStudentGradeHistory />} />
             <Route path="students"      element={<RegistrarStudents />} />
@@ -133,8 +141,10 @@ export default function App() {
             <Route path="dashboard"    element={<AdminDashboard />} />
             <Route path="users"        element={<AdminUserManagement />} />
             <Route path="programs"     element={<AdminPrograms />} />
+            <Route path="blocks"       element={<AdminBlocks />} />
             <Route path="schedule"     element={<AdminSchedule />} />
             <Route path="facilities"   element={<FacilitiesManager />} />
+            <Route path="document-types" element={<AdminDocumentTypes />} />
             <Route path="landing"      element={<AdminSiteContent />} />
             <Route path="terms"        element={<AdminTerms />} />
             <Route path="reports"      element={<AdminReports />} />

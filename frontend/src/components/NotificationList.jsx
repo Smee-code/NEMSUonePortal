@@ -18,7 +18,7 @@ export default function NotificationList({ items = [], unreadCount = 0 }) {
     return (
       <div className="ntf-empty">
         <i className="ti ti-bell-off" />
-        <span>You're all caught up. No announcements yet.</span>
+        <span>You're all caught up. No notifications yet.</span>
       </div>
     );
   }

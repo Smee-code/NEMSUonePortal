@@ -4,7 +4,6 @@ import api from '../api/axios';
 import PasswordInput from '../components/PasswordInput';
 
 const EMPTY = {
-  last_name: '', first_name: '', middle_name: '',
   student_id: '', institutional_email: '',
   password: '', confirm: '',
 };
@@ -30,9 +29,6 @@ export default function SignUp() {
     setLoading(true);
     try {
       await api.post('/auth/register/', {
-        last_name:           form.last_name.trim(),
-        first_name:          form.first_name.trim(),
-        middle_name:         form.middle_name.trim(),
         student_id:          form.student_id.trim(),
         institutional_email: form.institutional_email.trim(),
         password:            form.password,
@@ -65,14 +61,13 @@ export default function SignUp() {
             <div style={iconCircle('#dcfce7')}>
               <i className="ti ti-clock-check" style={{ fontSize: 32, color: '#15803d' }} />
             </div>
-            <h2 style={hStyle}>Registration submitted</h2>
+            <h2 style={hStyle}>Account created</h2>
             <p style={pStyle}>
-              Thanks, {form.first_name || 'student'}. The Registrar's Office will verify your
-              student record and review your account. You'll receive an email once it's approved, and
-              you can log in after that.
+              Your NEMSUonePortal account is ready. You can now sign in with your Student ID
+              or institutional email and the password you just set.
             </p>
             <button type="button" onClick={() => navigate('/login')} style={primBtn(false)}>
-              Back to sign in
+              Go to sign in
             </button>
           </div>
         ) : (
@@ -82,26 +77,13 @@ export default function SignUp() {
                 <i className="ti ti-user-plus" style={{ fontSize: 28, color: '#3730a3' }} />
               </div>
               <p style={pStyle}>
-                For students already enrolled at NEMSU-Cantilan with a university-issued
-                Student ID. Your account is activated once the Registrar verifies it.
+                Enter the Student ID from your admission approval email, your institutional
+                email, and a password. Your name is already on file from your application.
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
-              <Field label="Last name">
-                <input style={inp} value={form.last_name} onChange={e => set('last_name', e.target.value)} required placeholder="Dela Cruz" autoFocus />
-              </Field>
-              <Field label="First name">
-                <input style={inp} value={form.first_name} onChange={e => set('first_name', e.target.value)} required placeholder="Juan" />
-              </Field>
-            </div>
-
-            <Field label="Middle name (optional)">
-              <input style={inp} value={form.middle_name} onChange={e => set('middle_name', e.target.value)} placeholder="Reyes" />
-            </Field>
-
             <Field label="Student ID">
-              <input style={{ ...inp, textTransform: 'uppercase', letterSpacing: '.03em' }} value={form.student_id} onChange={e => set('student_id', e.target.value)} required placeholder="2024-00001" autoComplete="off" />
+              <input style={{ ...inp, textTransform: 'uppercase', letterSpacing: '.03em' }} value={form.student_id} onChange={e => set('student_id', e.target.value)} required placeholder="2026-00001" autoComplete="off" autoFocus />
             </Field>
 
             <Field label="Institutional email">
@@ -120,7 +102,7 @@ export default function SignUp() {
             {error && <ErrMsg>{error}</ErrMsg>}
 
             <button type="submit" disabled={loading} style={primBtn(loading)}>
-              {loading ? 'Submitting…' : 'Submit registration'}
+              {loading ? 'Creating…' : 'Create account'}
             </button>
 
             <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: 12, color: '#6b7280' }}>

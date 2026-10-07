@@ -29,7 +29,7 @@ export default function SidebarRegistrar({ active }) {
         <SidebarLink to="/registrar/enrollment"    icon={<IcoClipboardCheck/>}   label="Enrollment Requests" active={active === 'enrollment'} />
         <SidebarLink to="/registrar/grades"        icon={<IcoUsers/>}            label="List of Students"   active={active === 'grades'} />
         <SidebarLink to="/registrar/faculty"       icon={<IcoUser/>}             label="Faculty"            active={active === 'faculty'} />
-        <SidebarLink to="/registrar/schedule"      icon={<IcoCalendar/>}         label="Class Schedules"    active={active === 'schedule'} />
+        <SidebarLink to="/registrar/schedule"      icon={<IcoCalendar/>}         label="Room Management"    active={active === 'schedule'} />
         <SidebarLink to="/registrar/documents"     icon={<IcoFileText/>}         label="Document Requests"  active={active === 'documents'} />
         <SidebarLink to="/registrar/academic-data" icon={<IcoDatabase/>}         label="Academic Data"      active={active === 'academic-data'} />
         <SidebarLink to="/registrar/announcements" icon={<IcoBell/>}             label="Announcements"      active={active === 'announcements'} />

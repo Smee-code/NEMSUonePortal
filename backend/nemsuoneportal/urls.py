@@ -58,6 +58,7 @@ urlpatterns = [
     path('api/grades/', include('grades.urls')),              # Sprint 4
     path('api/schedules/', include('schedules.urls')),        # Sprint 5
     path('api/announcements/', include('announcements.urls')),# Sprint 6
+    path('api/notifications/', include('announcements.notification_urls')),
     path('api/documents/', include('documents.urls')),        # Sprint 7
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

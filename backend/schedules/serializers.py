@@ -90,7 +90,8 @@ class ClassScheduleReadSerializer(serializers.ModelSerializer):
 
 class FacultySlotCreateSerializer(serializers.Serializer):
     teaching_assignment_id = serializers.IntegerField()
-    room = serializers.CharField(max_length=50)
+    # Room is optional — the registrar assigns rooms. Faculty may still pre-fill one.
+    room = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
     building = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
     day_of_week = serializers.ChoiceField(choices=[c[0] for c in ClassSchedule.DAY_CHOICES])
     start_time = serializers.TimeField()

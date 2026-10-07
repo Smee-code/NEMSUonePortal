@@ -61,7 +61,9 @@ class ClassSchedule(models.Model):
         on_delete=models.CASCADE,
         related_name='class_schedules',
     )
-    room = models.CharField(max_length=50)
+    # Blank room = not assigned yet. Faculty declare the day/time of a class and
+    # the registrar assigns the room afterwards.
+    room = models.CharField(max_length=50, blank=True, default='')
     building = models.CharField(max_length=100, blank=True, default='')
     day_of_week = models.CharField(max_length=10, choices=DAY_CHOICES)
     start_time = models.TimeField()

@@ -8,6 +8,7 @@ from .views import (
     FacultyScheduleSlotCreateView,
     FacultyScheduleSlotDeleteView,
     FacultyScheduleView,
+    ScheduleClassDeleteView,
     ScheduleDetailView,
     ScheduleListCreateView,
     StudentScheduleView,
@@ -23,6 +24,7 @@ urlpatterns = [
     path('facilities/buildings/<int:pk>/', FacilityBuildingDetailView.as_view(), name='facility-building-detail'),
     path('facilities/buildings/<int:building_id>/rooms/', FacilityRoomCreateView.as_view(), name='facility-room-create'),
     path('facilities/rooms/<int:pk>/', FacilityRoomDetailView.as_view(), name='facility-room-detail'),
+    path('class/<int:ta_id>/', ScheduleClassDeleteView.as_view(), name='schedule-class-delete'),
     path('', ScheduleListCreateView.as_view(), name='schedule-list-create'),
     path('<int:pk>/', ScheduleDetailView.as_view(), name='schedule-detail'),
 ]

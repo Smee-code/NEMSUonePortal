@@ -97,7 +97,7 @@ export default function StudentCurriculum() {
                 <div className="sc-hero-eyebrow">Degree progress</div>
                 <h3 className="sc-hero-code">{data.code}</h3>
                 <div className="sc-hero-sub">
-                  {data.program_name || data.program_code || 'Program'} · Effective {data.year_effective}
+                  {data.program_name || data.program_code || 'Program'}{data.year_effective ? ` · Effective ${data.year_effective}` : ''}
                 </div>
               </div>
               <div className="sc-hero-pct">

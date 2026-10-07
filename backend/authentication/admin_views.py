@@ -8,8 +8,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from django.core.mail import send_mail
 from django.conf import settings
+
+from nemsuoneportal.emails import send_branded_email
 
 from .models import AuditLog, User
 from .permissions import IsAdmin, IsRegistrarOrAdmin, get_client_ip
@@ -259,11 +260,7 @@ class RegistrationReviewView(APIView):
                 "If you believe this is a mistake, please contact the Registrar's Office."
             )
         try:
-            send_mail(
-                subject=subject, message=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.institutional_email], fail_silently=False,
-            )
+            send_branded_email(subject, body, [user.institutional_email], fail_silently=False)
         except Exception:
             logger.error('Failed to send registration decision email to %s',
                          user.institutional_email, exc_info=True)

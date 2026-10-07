@@ -392,7 +392,7 @@ class PendingEnrollmentListSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'middle_name', 'suffix', 'full_name',
             'email', 'contact_number', 'date_of_birth', 'sex',
             'program_name', 'program_code', 'department_name', 'department_code', 'year_level',
-            'status', 'status_display', 'remarks',
+            'status', 'status_display', 'remarks', 'assigned_student_id',
             'term_display', 'created_at', 'reviewed_at', 'reviewed_by_name', 'documents',
         ]
 

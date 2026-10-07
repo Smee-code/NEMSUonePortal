@@ -1,7 +1,7 @@
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mass_mail
+from nemsuoneportal.emails import send_branded_mass_email
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import LimitOffsetPagination
@@ -11,8 +11,8 @@ from rest_framework.request import Request
 from authentication.models import AuditLog, User
 from authentication.permissions import IsRegistrarOrAdmin, get_client_ip
 
-from .models import Announcement
-from .serializers import AnnouncementSerializer
+from .models import Announcement, Notification
+from .serializers import AnnouncementSerializer, NotificationSerializer
 from .throttles import (
     AnnouncementCreateThrottle,
     AnnouncementListThrottle,
@@ -63,7 +63,7 @@ def _send_announcement_email(announcement):
             (subject, body, settings.DEFAULT_FROM_EMAIL, [email])
             for email in emails
         )
-        send_mass_mail(datatuple, fail_silently=True)
+        send_branded_mass_email(datatuple, fail_silently=True)
     except Exception:
         logger.error('Failed to send announcement email notification', exc_info=True)
 
@@ -177,3 +177,14 @@ class AnnouncementDetailView(generics.RetrieveUpdateDestroyAPIView):
             get_client_ip(self.request), 'success',
             {'title': instance.title},
         )
+
+
+class NotificationListView(generics.ListAPIView):
+    """GET /api/notifications/ — the current user's personal notifications,
+    newest first. Scoped to the requester so each user sees only their own."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = NotificationSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return Notification.objects.filter(recipient=self.request.user)

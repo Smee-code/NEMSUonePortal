@@ -53,6 +53,7 @@ urlpatterns = [
 
     # Registrar + Admin — block management
     path('blocks/', views.BlockListView.as_view(), name='block-list'),
+    path('blocks/generate/', views.BlockGenerateView.as_view(), name='block-generate'),
     path('blocks/<int:pk>/', views.BlockDetailView.as_view(), name='block-detail'),
     path('block-expansion-requests/', views.BlockExpansionRequestListCreateView.as_view(), name='block-expansion-requests'),
     path('block-expansion-requests/<int:pk>/', views.BlockExpansionRequestDetailView.as_view(), name='block-expansion-request-detail'),

@@ -1,7 +1,7 @@
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
+from nemsuoneportal.emails import send_branded_email
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -67,13 +67,7 @@ def _invalidate_all_user_tokens(user):
 
 def _send_email(subject, body, recipient):
     try:
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[recipient],
-            fail_silently=False,
-        )
+        send_branded_email(subject, body, [recipient], fail_silently=False)
     except Exception:
         logger.error('Failed to send email to %s', recipient, exc_info=True)
 
@@ -90,18 +84,18 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        # Registrar validation replaces email-link verification for students.
-        # Acknowledge receipt; the approve/reject email follows after review.
+        # The applicant was already vetted at admission, so the account is active
+        # immediately — welcome them and point them to login.
         _send_email(
-            subject='NEMSUonePortal — registration received',
+            subject='NEMSUonePortal — your account is ready',
             body=(
                 f"Hello {user.full_name},\n\n"
-                "We've received your registration for NEMSUonePortal. "
-                "The Registrar's Office will verify your student record and review "
-                "your request.\n\n"
-                "You'll get another email once your account has been approved or "
-                "if any action is needed. You can log in after approval.\n\n"
-                "If you did not make this request, please contact the Registrar's Office."
+                f"Your NEMSUonePortal student account has been created. You can now log in "
+                f"with your Student ID ({user.student_id}) or your institutional email and "
+                f"the password you just set.\n\n"
+                f"{settings.FRONTEND_URL}/login\n\n"
+                "Welcome to NEMSU Cantilan!\n\n"
+                "If you did not create this account, please contact the Registrar's Office."
             ),
             recipient=user.institutional_email,
         )
@@ -110,8 +104,8 @@ class RegisterView(generics.CreateAPIView):
                get_client_ip(request), 'success')
 
         return Response(
-            {'message': 'Registration submitted. The Registrar will review your account '
-                        'and you will be notified by email once it is approved.'},
+            {'message': 'Account created. You can now log in with your Student ID or '
+                        'institutional email.'},
             status=status.HTTP_201_CREATED,
         )
 

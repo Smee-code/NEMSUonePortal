@@ -4,6 +4,26 @@ from django.conf import settings
 from django.db import models
 
 
+class DocumentType(models.Model):
+    """A document the registrar issues — the catalog students request from.
+    Managed by the admin (add / edit / deactivate), so the catalog isn't fixed
+    in code."""
+    code            = models.SlugField(max_length=50, unique=True)
+    name            = models.CharField(max_length=120)
+    description     = models.CharField(max_length=300, blank=True)
+    fee             = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    processing_days = models.CharField(max_length=30, blank=True)  # e.g. "1–2", "7–10"
+    is_active       = models.BooleanField(default=True)
+    sort_order      = models.PositiveSmallIntegerField(default=0)
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return self.name
+
+
 class DocumentRequest(models.Model):
     DOCTYPE_COE   = 'certificate_of_enrollment'
     DOCTYPE_TOR   = 'transcript_of_records'

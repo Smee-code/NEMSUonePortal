@@ -94,7 +94,7 @@ export default function RegistrarDashboard() {
 
   const goTo = [
     { icon: 'ti-users',          label: 'Students',        to: '/registrar/students' },
-    { icon: 'ti-calendar-event', label: 'Class schedules', to: '/registrar/schedule' },
+    { icon: 'ti-calendar-event', label: 'Room management', to: '/registrar/schedule' },
     { icon: 'ti-user-edit',      label: 'Faculty',         to: '/registrar/faculty'  },
     { icon: 'ti-database',       label: 'Academic data',   to: '/registrar/academic-data' },
   ];

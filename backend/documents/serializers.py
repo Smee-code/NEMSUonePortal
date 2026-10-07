@@ -1,14 +1,31 @@
 from rest_framework import serializers
 
-from .models import DocumentRequest
+from .models import DocumentRequest, DocumentType
+
+
+class DocumentTypeSerializer(serializers.ModelSerializer):
+    """The catalog entry — read by students, managed by the admin."""
+    class Meta:
+        model = DocumentType
+        fields = ['id', 'code', 'name', 'description', 'fee',
+                  'processing_days', 'is_active', 'sort_order']
+        read_only_fields = ['id', 'code']
+
+
+def _doc_type_display(obj):
+    """Friendly name for a request's document type (from the catalog, so admin-
+    added types resolve too), falling back to the built-in choice label."""
+    dt = DocumentType.objects.filter(code=obj.document_type).first()
+    return dt.name if dt else obj.get_document_type_display()
 
 
 class DocumentRequestStudentSerializer(serializers.ModelSerializer):
     """Read serializer for the student's own request history."""
-    document_type_display = serializers.CharField(
-        source='get_document_type_display', read_only=True
-    )
+    document_type_display = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    def get_document_type_display(self, obj):
+        return _doc_type_display(obj)
 
     class Meta:
         model = DocumentRequest
@@ -23,13 +40,16 @@ class DocumentRequestStudentSerializer(serializers.ModelSerializer):
 
 class DocumentRequestSubmitSerializer(serializers.Serializer):
     """Write serializer for submitting a new document request."""
-    document_type = serializers.ChoiceField(
-        choices=[c[0] for c in DocumentRequest.DOCUMENT_TYPE_CHOICES]
-    )
+    document_type = serializers.CharField()
     purpose = serializers.CharField(
         required=False, allow_blank=True, max_length=500
     )
     copies = serializers.IntegerField(default=1, min_value=1, max_value=5)
+
+    def validate_document_type(self, value):
+        if not DocumentType.objects.filter(code=value, is_active=True).exists():
+            raise serializers.ValidationError('That document is not available for request.')
+        return value
 
     def validate_purpose(self, value):
         return value.strip()
@@ -40,12 +60,13 @@ class RegistrarDocumentSerializer(serializers.ModelSerializer):
     student_name       = serializers.CharField(source='student.full_name', read_only=True)
     student_id_no      = serializers.CharField(source='student.student_id', read_only=True)
     student_email      = serializers.CharField(source='student.institutional_email', read_only=True)
-    document_type_display = serializers.CharField(
-        source='get_document_type_display', read_only=True
-    )
+    document_type_display = serializers.SerializerMethodField()
     status_display     = serializers.CharField(source='get_status_display', read_only=True)
     processed_by_name  = serializers.SerializerMethodField()
     next_statuses      = serializers.SerializerMethodField()
+
+    def get_document_type_display(self, obj):
+        return _doc_type_display(obj)
 
     class Meta:
         model = DocumentRequest

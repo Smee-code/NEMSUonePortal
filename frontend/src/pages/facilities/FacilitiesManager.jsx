@@ -82,7 +82,18 @@ const CSS = `
   .fx-bld-sub{font-size:11.5px;color:var(--fx-faint);margin-top:1px;}
   .fx-bld-code2{font-weight:600;color:var(--fx-muted);}
 
-  .fx-rack{padding:.9rem 1.1rem;display:flex;flex-wrap:wrap;gap:.55rem;align-items:center;}
+  .fx-rack{padding:1rem 1.1rem;display:flex;flex-direction:column;gap:1rem;align-items:flex-start;}
+  /* Room-type groups: each labelled and colour-keyed to its type. */
+  .fx-roomgroup{width:100%;}
+  .fx-roomgroup-h{display:flex;align-items:center;gap:8px;margin-bottom:.6rem;font-size:12.5px;font-weight:700;letter-spacing:.01em;}
+  .fx-roomgroup-h i{font-size:17px;}
+  .fx-roomgroup[data-type="lecture"] .fx-roomgroup-h{color:#284a7a;}
+  .fx-roomgroup[data-type="laboratory"] .fx-roomgroup-h{color:#0a6b48;}
+  .fx-roomgroup-ct{font-weight:700;font-size:10.5px;color:#fff;border-radius:999px;
+    min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;}
+  .fx-roomgroup[data-type="lecture"] .fx-roomgroup-ct{background:#284a7a;}
+  .fx-roomgroup[data-type="laboratory"] .fx-roomgroup-ct{background:#0a6b48;}
+  .fx-roomgroup-rooms{display:flex;flex-wrap:wrap;gap:.55rem;}
   .fx-room{display:inline-flex;align-items:center;gap:8px;border:1px solid;border-radius:8px;
     padding:7px 8px 7px 11px;font-size:13px;font-weight:600;line-height:1;}
   .fx-room i{font-size:15px;}
@@ -398,16 +409,32 @@ export default function FacilitiesManager() {
                       {b.rooms.length === 0 && addRoomFor !== b.id && (
                         <span className="fx-rack-empty">No rooms yet.</span>
                       )}
-                      {b.rooms.map(r => {
-                        const meta = TYPE_META[r.room_type] || TYPE_META.lecture;
+                      {/* Rooms grouped by type so Laboratories and Lecture rooms are clearly distinct. */}
+                      {ROOM_TYPES.map(t => {
+                        const roomsOfType = b.rooms.filter(r => (r.room_type || 'lecture') === t.value);
+                        if (roomsOfType.length === 0) return null;
                         return (
-                          <span className="fx-room" data-type={r.room_type} key={r.id} title={meta.label}>
-                            <i className={`ti ${meta.icon}`} />
-                            {r.name}
-                            <button className="fx-room-x" title="Remove room" onClick={() => deleteRoom(b, r)}>
-                              <i className="ti ti-x" />
-                            </button>
-                          </span>
+                          <div className="fx-roomgroup" data-type={t.value} key={t.value}>
+                            <div className="fx-roomgroup-h">
+                              <i className={`ti ${t.icon}`} />
+                              <span>{t.value === 'laboratory' ? 'Laboratories' : 'Lecture rooms'}</span>
+                              <span className="fx-roomgroup-ct">{roomsOfType.length}</span>
+                            </div>
+                            <div className="fx-roomgroup-rooms">
+                              {roomsOfType.map(r => {
+                                const meta = TYPE_META[r.room_type] || TYPE_META.lecture;
+                                return (
+                                  <span className="fx-room" data-type={r.room_type} key={r.id} title={meta.label}>
+                                    <i className={`ti ${meta.icon}`} />
+                                    {r.name}
+                                    <button className="fx-room-x" title="Remove room" onClick={() => deleteRoom(b, r)}>
+                                      <i className="ti ti-x" />
+                                    </button>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
                         );
                       })}
 

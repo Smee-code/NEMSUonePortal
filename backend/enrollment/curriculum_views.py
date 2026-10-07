@@ -254,6 +254,42 @@ class StudentCurriculumView(APIView):
                 .first()
             )
 
-        if curriculum is None:
-            return Response({'curriculum': None, 'subjects': []})
-        return Response(CurriculumDetailSerializer(curriculum).data)
+        if curriculum is not None:
+            return Response(CurriculumDetailSerializer(curriculum).data)
+
+        # No curated curriculum exists for this program yet — fall back to the
+        # program's own subject catalog so the student still sees their official
+        # course map. Each Subject already carries its year level + semester
+        # placement, which is all the year-by-year view needs. (Once the
+        # registrar builds a curriculum, the curated set takes over above.)
+        if user.program_id:
+            subjects = (
+                Subject.objects
+                .filter(program_id=user.program_id, is_active=True)
+                .select_related('prerequisite')
+                .order_by('year_level', 'semester', 'code')
+            )
+            if subjects.exists():
+                program = (
+                    Program.objects.select_related('department')
+                    .filter(pk=user.program_id).first()
+                )
+                return Response({
+                    'id': None,
+                    'program': user.program_id,
+                    'program_code': program.code if program else '',
+                    'program_name': program.name if program else '',
+                    'department_code': (
+                        program.department.code
+                        if program and program.department_id else ''
+                    ),
+                    'code': f'{program.code} Curriculum' if program else 'Curriculum',
+                    'year_effective': None,
+                    'is_active': True,
+                    'subject_count': subjects.count(),
+                    'label': f'{program.code} Curriculum' if program else 'Curriculum',
+                    'created_at': None,
+                    'subjects': CurriculumSubjectSerializer(subjects, many=True).data,
+                })
+
+        return Response({'curriculum': None, 'subjects': []})

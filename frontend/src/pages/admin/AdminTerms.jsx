@@ -10,7 +10,7 @@ const SEMESTER_CHOICES = [
 ];
 
 const EMPTY_FORM = {
-  year: '', semester: 'first',
+  start_year: '', semester: 'first',
   enrollment_open: false,
   start_date: '', end_date: '',
 };
@@ -85,7 +85,8 @@ export default function AdminTerms() {
   function openEdit(term) {
     setEditTarget(term);
     setForm({
-      year: term.year, semester: term.semester,
+      start_year: term.year ? String(term.year).split('-')[0] : '',
+      semester: term.semester,
       enrollment_open: term.enrollment_open,
       start_date: term.start_date, end_date: term.end_date,
     });
@@ -94,12 +95,21 @@ export default function AdminTerms() {
 
   async function saveForm(e) {
     e.preventDefault();
+    const sy = parseInt(form.start_year, 10);
+    if (!(sy >= 2000 && sy <= 2100)) {
+      setFormError('Enter a valid start year (e.g. 2026).');
+      return;
+    }
     setSaving(true); setFormError('');
+    // The admin picks only the start year; the academic year is formed as
+    // "YYYY-(YYYY+1)" (e.g. 2026 → "2026-2027") for the backend.
+    const { start_year, ...rest } = form;
+    const payload = { ...rest, year: `${sy}-${sy + 1}` };
     try {
       if (editTarget) {
-        await api.patch(`/enrollment/admin/terms/${editTarget.id}/`, form);
+        await api.patch(`/enrollment/admin/terms/${editTarget.id}/`, payload);
       } else {
-        await api.post('/enrollment/admin/terms/', form);
+        await api.post('/enrollment/admin/terms/', payload);
       }
       const msg = editTarget ? 'Term updated.' : 'Term created.';
       setShowForm(false);
@@ -207,15 +217,29 @@ export default function AdminTerms() {
             <div className="at-form-row">
               <div className="at-form-field">
                 <label className="at-form-label">Academic Year</label>
-                <input
-                  className="at-form-input"
-                  placeholder="e.g. 2025-2026"
-                  value={form.year}
-                  onChange={e => setForm(f => ({ ...f, year: e.target.value }))}
-                  required
-                  pattern="\d{4}-\d{4}"
-                  title="Format: YYYY-YYYY (e.g. 2025-2026)"
-                />
+                <div className="at-year-pair">
+                  <input
+                    className="at-form-input at-year-start"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="2026"
+                    value={form.start_year}
+                    onChange={e => setForm(f => ({ ...f, start_year: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                    required
+                    aria-label="Start year"
+                    title="Enter the start year — the end year fills in automatically."
+                  />
+                  <span className="at-year-dash">–</span>
+                  <input
+                    className="at-form-input at-year-end"
+                    type="text"
+                    value={/^\d{4}$/.test(form.start_year) ? Number(form.start_year) + 1 : ''}
+                    placeholder="2027"
+                    readOnly
+                    tabIndex={-1}
+                    aria-label="End year (set automatically)"
+                  />
+                </div>
               </div>
               <div className="at-form-field">
                 <label className="at-form-label">Semester</label>
@@ -362,6 +386,12 @@ const CSS = `
   .at-form-field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px}
   .at-form-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--adm-muted);font-weight:600}
   .at-form-input{padding:9px 12px;border:1px solid var(--adm-line);background:#fff;font:13px/1.4 'Inter',sans-serif;color:var(--adm-ink);outline:none}
+  /* Academic year = editable start year – read-only end year */
+  .at-year-pair{display:flex;align-items:center;gap:8px}
+  .at-year-pair .at-form-input{flex:1;min-width:0;text-align:center;font-variant-numeric:tabular-nums}
+  .at-year-dash{color:var(--adm-muted);font-weight:600;flex-shrink:0}
+  .at-year-end{background:var(--adm-warm);color:var(--adm-muted);cursor:default}
+  .at-year-end::placeholder{color:var(--adm-faint)}
   .at-form-input:focus{border-color:var(--adm-ink)}
   .at-form-toggle-row{display:flex;align-items:center;gap:.75rem;padding:.5rem 0}
   .at-form-toggle-label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--adm-ink);cursor:pointer;font-weight:500}

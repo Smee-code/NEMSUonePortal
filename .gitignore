@@ -84,3 +84,6 @@ nemsuoneportal.zip
 landing_design_temp.txt
 reg_ref.html
 *.zip
+
+# Sensitive deployment credentials — never commit
+SUPERUSER.txt

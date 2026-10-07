@@ -26,6 +26,7 @@ export default function StudentEnrollment() {
   const [submitting, setSubmitting]     = useState(false);
   const [submitError, setSubmitError]   = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [historyModal, setHistoryModal] = useState(null); // a past enrollment to view
 
   useEffect(() => { load(); }, []);
 
@@ -45,7 +46,9 @@ export default function StudentEnrollment() {
   const term        = offered?.term;
   const termLabel   = term ? term.label : 'No active term';
   const currentEnrollment = history.find(h => h.academic_term.id === term?.id);
-  const pastEnrollments   = history.filter(h => h.academic_term.id !== term?.id);
+  // Rejected requests aren't shown on the page — the student is told why by a
+  // notification + email, and can simply enroll again below.
+  const pastEnrollments   = history.filter(h => h.academic_term.id !== term?.id && h.status !== 'rejected');
   const courses     = offered?.courses || [];
   const eligible    = courses.filter(c => c.eligible);
   const blocked     = courses.filter(c => !c.eligible);
@@ -89,15 +92,19 @@ export default function StudentEnrollment() {
         )}
       </div>
 
-      {/* ── Current enrollment (COR) ── */}
-      {currentEnrollment && <CurrentEnrollment enr={currentEnrollment} user={user} />}
+      {/* ── Current enrollment (COR) — rejected requests are hidden here; the
+             student is notified of a rejection and can just enroll again. ── */}
+      {currentEnrollment && currentEnrollment.status !== 'rejected' && (
+        <CurrentEnrollment enr={currentEnrollment} user={user} />
+      )}
 
-      {/* ── Enroll panel (only when not already enrolled this term) ── */}
-      {!currentEnrollment && (
+      {/* ── Enroll panel (when not enrolled this term, or after a rejection) ── */}
+      {(!currentEnrollment || currentEnrollment.status === 'rejected') && (
         <EnrollPanel
           offered={offered} term={term} termLabel={termLabel}
           eligible={eligible} blocked={blocked} eligibleUnits={eligibleUnits}
           submitting={submitting} submitError={submitError} submitSuccess={submitSuccess}
+          isResubmit={false}
           onSubmit={handleSubmit}
         />
       )}
@@ -116,10 +123,85 @@ export default function StudentEnrollment() {
       ) : (
         <div className="se-tl">
           {pastEnrollments.map((req, i) => (
-            <TimelineRow key={req.id} req={req} last={i === pastEnrollments.length - 1} />
+            <TimelineRow key={req.id} req={req} last={i === pastEnrollments.length - 1}
+              onOpen={() => setHistoryModal(req)} />
           ))}
         </div>
       )}
+
+      {historyModal && (
+        <HistoryModal enr={historyModal} onClose={() => setHistoryModal(null)} />
+      )}
+    </div>
+  );
+}
+
+/* ── Enrollment history detail modal ─────────────────────────── */
+function HistoryModal({ enr, onClose }) {
+  const meta = STATUS_META[enr.status] ?? STATUS_META.pending;
+  const subjects = enr.subjects ?? [];
+  return (
+    <div className="se-overlay" onClick={onClose}>
+      <div className="se-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="se-modal-head">
+          <div>
+            <div className="se-modal-eyebrow">Enrollment record</div>
+            <div className="se-modal-term">
+              {enr.academic_term.semester_display} {enr.academic_term.year}
+            </div>
+            <div className="se-modal-meta">
+              {enr.year_level_display}
+              {enr.program_code ? ` · ${enr.program_code}` : ''}
+              {enr.block_name ? ` · ${enr.block_name}` : ''}
+              {enr.student_type_display ? ` · ${enr.student_type_display}` : ''}
+            </div>
+          </div>
+          <button className="se-modal-x" onClick={onClose} aria-label="Close"><i className="ti ti-x" /></button>
+        </div>
+
+        <div className="se-modal-body">
+          <div className="se-modal-bh">
+            <h4>Enrolled subjects</h4>
+            <span className={`se-status se-status--${meta.cls}`}>{meta.label}</span>
+          </div>
+          {subjects.length > 0 ? (
+            <div className="table-wrap">
+              <table className="se-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 110 }}>Code</th>
+                    <th>Descriptive title</th>
+                    <th className="num" style={{ width: 80 }}>Units</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subjects.map(s => (
+                    <tr key={s.id || s.code}>
+                      <td className="se-code">{s.code}</td>
+                      <td className="se-title">{s.name}</td>
+                      <td className="num">{fmtUnits(s.units)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={2}>Total academic load</td>
+                    <td className="num">{fmtUnits(enr.total_units)} units</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : (
+            <div className="stu-empty"><i className="ti ti-clipboard-list" /><p>No subjects recorded for this term.</p></div>
+          )}
+          {enr.remarks && (
+            <div className="se-remarks" style={{ marginTop: '1rem' }}>
+              <i className="ti ti-message-2" />
+              <span><strong>Registrar remarks:</strong> {enr.remarks}</span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -213,18 +295,19 @@ function CurrentEnrollment({ enr, user }) {
 }
 
 /* ── Enroll panel ────────────────────────────────────────────── */
-function EnrollPanel({ offered, term, termLabel, eligible, blocked, eligibleUnits, submitting, submitError, submitSuccess, onSubmit }) {
+function EnrollPanel({ offered, term, termLabel, eligible, blocked, eligibleUnits, submitting, submitError, submitSuccess, isResubmit, onSubmit }) {
   if (submitSuccess || offered?.already_submitted) {
     return (
       <div className="se-submitted">
         <i className="ti ti-circle-check" />
-        <h3>Enrollment submitted</h3>
+        <h3>Enrollment {isResubmit ? 'resubmitted' : 'submitted'}</h3>
         <p>The registrar will review your enrollment and finalize your courses. You’ll be notified of the outcome.</p>
       </div>
     );
   }
   if (!term) return <ClosedNotice title="Enrollment is closed." desc="There’s no term open for enrollment right now. Please check back later." />;
   if (!term.enrollment_open) return <ClosedNotice title="Enrollment is closed." desc="Enrollment for this term isn’t open yet. Please check back later or contact the registrar." />;
+  if (offered?.blocks_full) return <ClosedNotice title="Slots are full." desc="This program is no longer accepting students for your year level this term — all blocks are full. Please contact the registrar's office." icon="ti-users-group" />;
   if (!offered?.program || !offered?.year_level) {
     return <ClosedNotice title="Your record isn’t set up yet." desc="Your program and year level haven’t been set. Please contact the registrar’s office to enroll." icon="ti-user-question" />;
   }
@@ -235,9 +318,11 @@ function EnrollPanel({ offered, term, termLabel, eligible, blocked, eligibleUnit
     <div className="se-cor">
       <div className="se-cor-top">
         <div>
-          <div className="se-cor-eyebrow">Enroll — {termLabel}</div>
+          <div className="se-cor-eyebrow">{isResubmit ? 'Resubmit' : 'Enroll'} — {termLabel}</div>
           <h3 className="se-cor-term">{offered.program.code} · <em>{yearLabel}</em></h3>
-          <div className="se-cor-sub">These courses are offered for your year level this semester. The registrar reviews your enrollment before it’s final.</div>
+          <div className="se-cor-sub">{isResubmit
+            ? 'Your previous request was rejected (see the registrar’s remarks above). Review the courses and resubmit — the registrar will review it again.'
+            : 'These courses are offered for your year level this semester. The registrar reviews your enrollment before it’s final.'}</div>
         </div>
       </div>
 
@@ -296,7 +381,7 @@ function EnrollPanel({ offered, term, termLabel, eligible, blocked, eligibleUnit
             <strong>{fmtUnits(eligibleUnits)}</strong> units
           </div>
           <button className="btn-pri" disabled={submitting || eligible.length === 0} onClick={onSubmit}>
-            {submitting ? 'Submitting…' : 'Submit enrollment'}
+            {submitting ? 'Submitting…' : isResubmit ? 'Resubmit enrollment' : 'Submit enrollment'}
           </button>
         </div>
       </div>
@@ -317,7 +402,7 @@ function ClosedNotice({ title, desc, icon = 'ti-calendar-off' }) {
 }
 
 /* ── History timeline row ────────────────────────────────────── */
-function TimelineRow({ req, last }) {
+function TimelineRow({ req, last, onOpen }) {
   const meta = STATUS_META[req.status] ?? STATUS_META.pending;
   return (
     <div className="se-tl-item">
@@ -325,7 +410,8 @@ function TimelineRow({ req, last }) {
         <span className={`se-tl-dot se-tl-dot--${meta.cls}`} />
         {!last && <span className="se-tl-line" />}
       </div>
-      <div className="se-tl-card">
+      <button type="button" className="se-tl-card se-tl-card--clickable" onClick={onOpen}
+        title="View enrolled subjects for this term">
         <div className="se-tl-main">
           <div className="se-tl-term">
             {req.academic_term.semester_display} {req.academic_term.year}
@@ -343,7 +429,8 @@ function TimelineRow({ req, last }) {
           <div className="se-tl-num"><strong>{fmtUnits(req.total_units)}</strong><span>units</span></div>
         </div>
         <span className={`se-status se-status--${meta.cls}`}>{meta.label}</span>
-      </div>
+        <i className="ti ti-chevron-right se-tl-chev" />
+      </button>
     </div>
   );
 }
@@ -450,6 +537,30 @@ const CSS = `
   .se-tl-num{text-align:center;}
   .se-tl-num strong{display:block;font-weight:500;font-size:20px;color:var(--ink);line-height:1;}
   .se-tl-num span{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+
+  /* Clickable history card → opens the detail modal */
+  .se-tl-card--clickable{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;
+    transition:border-color .12s,box-shadow .12s;}
+  .se-tl-card--clickable:hover{border-color:var(--ink);box-shadow:0 2px 12px rgba(10,22,40,.07);}
+  .se-tl-card--clickable:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+  .se-tl-chev{font-size:18px;color:var(--faint);flex-shrink:0;}
+  .se-tl-card--clickable:hover .se-tl-chev{color:var(--ink);}
+
+  /* Enrollment history detail modal */
+  .se-overlay{position:fixed;inset:0;background:rgba(10,22,40,.5);display:flex;align-items:center;
+    justify-content:center;padding:1.5rem;z-index:1000;}
+  .se-modal{background:#fff;border:1px solid var(--line);width:100%;max-width:620px;max-height:85vh;
+    overflow:auto;box-shadow:0 20px 60px rgba(10,22,40,.25);}
+  .se-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;
+    padding:1.5rem 1.75rem;border-bottom:1px solid var(--line-soft);}
+  .se-modal-eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:.5rem;}
+  .se-modal-term{font-family:'Inter',sans-serif;font-weight:500;font-size:22px;color:var(--ink);letter-spacing:-.01em;line-height:1.1;}
+  .se-modal-meta{font-size:12px;color:var(--muted);margin-top:.5rem;}
+  .se-modal-x{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;line-height:1;padding:4px;flex-shrink:0;}
+  .se-modal-x:hover{color:var(--ink);}
+  .se-modal-body{padding:1.25rem 1.75rem 1.75rem;}
+  .se-modal-bh{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.9rem;}
+  .se-modal-bh h4{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0;}
 
   @media(max-width:620px){
     .se-cor-term{font-size:23px;}

@@ -26,16 +26,23 @@ export default function useNotifications(userId) {
     try { setSeen(Number(localStorage.getItem(key)) || 0); } catch { setSeen(0); }
   }, [key]);
 
-  // Fetch the announcements the user can see.
+  // Fetch the announcements the user can see, plus their personal notifications
+  // (e.g. a posted grade), and merge both into one newest-first feed.
   useEffect(() => {
     let alive = true;
-    api.get('/announcements/')
-      .then(r => {
-        if (!alive) return;
-        const list = Array.isArray(r.data) ? r.data : (r.data?.results || []);
-        setItems(list);
-      })
-      .catch(() => { /* leave empty on failure */ });
+    const unwrap = r => (Array.isArray(r.data) ? r.data : (r.data?.results || []));
+    Promise.all([
+      api.get('/announcements/').then(unwrap).catch(() => []),
+      api.get('/notifications/').then(unwrap).catch(() => []),
+    ]).then(([announcements, notifications]) => {
+      if (!alive) return;
+      const merged = [...announcements, ...notifications].sort((a, b) => {
+        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return tb - ta;
+      });
+      setItems(merged);
+    });
     return () => { alive = false; };
   }, []);
 

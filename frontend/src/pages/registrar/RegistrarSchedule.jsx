@@ -133,6 +133,8 @@ const CSS = `
 .sched-class-fac{font-size:12.5px;color:var(--reg-ink-2);margin-top:4px;display:flex;align-items:center;gap:6px;}
 .sched-class-fac i{font-size:14px;color:var(--reg-faint);}
 .sched-class-actions{display:flex;gap:.4rem;flex-shrink:0;}
+.sched-del-class:hover{border-color:var(--reg-red);color:var(--reg-red);}
+.sched-del-class:hover i{color:var(--reg-red);}
 .sched-week{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:.9rem 1.1rem;}
 .sched-day{border:1px solid var(--reg-line-soft);border-radius:9px;min-height:78px;padding:7px 8px;
   display:flex;flex-direction:column;gap:5px;background:#fbfcfe;}
@@ -144,6 +146,20 @@ const CSS = `
 .sched-meet-time{font-size:11.5px;font-weight:700;color:#284a7a;line-height:1.2;}
 .sched-meet-room{font-size:10.5px;color:#5c73a0;margin-top:2px;display:flex;align-items:center;gap:3px;line-height:1.2;word-break:break-word;}
 .sched-meet-room i{font-size:12px;flex-shrink:0;}
+.sched-meet.no-room{background:var(--reg-amber-tint,#fdf3e2);border-color:#f0dcae;}
+.sched-meet-assign{border:none;background:none;cursor:pointer;font-weight:700;color:var(--reg-warm,#b8860b);padding:0;font-family:inherit;}
+.sched-meet-assign:hover{text-decoration:underline;}
+.sched-needroom-banner{display:flex;align-items:center;gap:9px;padding:.7rem 1rem;margin-bottom:.85rem;
+  background:var(--reg-amber-tint,#fdf3e2);border:1px solid #f0dcae;border-radius:8px;font-size:13px;color:var(--reg-ink-2);}
+.sched-needroom-banner i{font-size:17px;color:var(--reg-warm,#b8860b);flex-shrink:0;}
+.sched-time-ro{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:10px 12px;border:1px solid var(--reg-line);
+  background:var(--reg-warm,#faf7f0);font-size:14px;font-weight:600;color:var(--reg-ink);}
+.sched-time-ro i{font-size:16px;color:var(--reg-faint);}
+.sched-time-note{flex-basis:100%;font-size:11.5px;font-weight:400;color:var(--reg-muted);}
+.sched-ro-summary{border:1px solid var(--reg-line);background:var(--reg-warm,#faf7f0);padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
+.sched-ro-row{display:flex;gap:10px;align-items:baseline;font-size:13px;}
+.sched-ro-k{flex:0 0 68px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--reg-muted);font-weight:600;}
+.sched-ro-v{color:var(--reg-ink);font-weight:600;min-width:0;}
 .sched-meet-actions{position:absolute;top:4px;right:4px;display:flex;gap:2px;opacity:0;transition:opacity .12s;}
 .sched-meet:hover .sched-meet-actions,.sched-meet:focus-within .sched-meet-actions{opacity:1;}
 .sched-meet-btn{background:rgba(255,255,255,.9);border:1px solid #dce4f1;border-radius:4px;cursor:pointer;
@@ -410,6 +426,8 @@ export default function RegistrarSchedule() {
   const [showForm,       setShowForm]       = useState(false);
   const [form,           setForm]           = useState(EMPTY_FORM);
   const [editId,         setEditId]         = useState(null);
+  // When set, the modal assigns the room to EVERY slot of a class at once.
+  const [assignSlots,    setAssignSlots]    = useState(null);
 
   const [dayFilter,       setDayFilter]       = useState('');   // '' = all days
   const [viewMode,        setViewMode]        = useState('class');  // 'class' | 'room'
@@ -465,7 +483,9 @@ export default function RegistrarSchedule() {
 
   function openCreate() {
     refreshBuildings();
-    setForm(EMPTY_FORM);
+    // Brand-new class has no faculty-declared time yet, so seed a sensible
+    // default (the registrar no longer enters times — faculty do on declare).
+    setForm({ ...EMPTY_FORM, start_time: '07:00', end_time: '08:30' });
     setEditId(null);
     setError('');
     setShowForm(true);
@@ -514,6 +534,34 @@ export default function RegistrarSchedule() {
       end_time:   sched.end_time,
     });
     setEditId(sched.id);
+    setAssignSlots(null);
+    setError('');
+    setShowForm(true);
+  }
+
+  // Assign a room to the WHOLE class in one go — applies the room/building to
+  // every meeting slot of this class (all its days).
+  function openAssignClass(cls) {
+    refreshBuildings();
+    const slots = cls.slots || [];
+    const s0 = slots[0] || {};
+    const withRoom = slots.find(s => s.room) || s0;   // prefill from an already-roomed slot if any
+    const co = cohortFromSlot(s0);
+    setForm({
+      department: deptOfFaculty(s0.faculty_id),
+      subject_id: s0.subject_id != null ? String(s0.subject_id) : '',
+      faculty_id: s0.faculty_id ? String(s0.faculty_id) : '',
+      program_id: co.program_id,
+      year_level: co.year_level,
+      block_name: co.block_name,
+      room:       withRoom.room || '',
+      building:   withRoom.building || '',
+      days:       [...new Set(slots.map(s => s.day_of_week))],
+      start_time: s0.start_time || '',
+      end_time:   s0.end_time || '',
+    });
+    setEditId(null);
+    setAssignSlots(slots.map(s => s.id));
     setError('');
     setShowForm(true);
   }
@@ -534,8 +582,10 @@ export default function RegistrarSchedule() {
       room:       s0.room || '',
       building:   s0.building || '',
       days:       [],
-      start_time: '',
-      end_time:   '',
+      // Inherit the faculty's meeting time from the existing class (registrar
+      // doesn't enter times); fall back to a default if somehow missing.
+      start_time: s0.start_time || '07:00',
+      end_time:   s0.end_time || '08:30',
     });
     setEditId(null);
     setError('');
@@ -558,22 +608,85 @@ export default function RegistrarSchedule() {
       await api.delete(`/schedules/${id}/`);
       toast('Schedule deleted.', { type: 'success' });
       reloadSchedules();
-    } catch {
-      toast('Failed to delete schedule.', { type: 'error' });
+    } catch (err) {
+      const st = err.response?.status;
+      if (st === 404) {   // already gone — resync the view
+        toast('That slot was already removed.', { type: 'success' });
+        reloadSchedules();
+        return;
+      }
+      const msg = st === 429
+        ? 'Too many schedule changes too quickly — please wait a moment and try again.'
+        : (err.response?.data?.error || err.response?.data?.detail || 'Failed to delete schedule.');
+      toast(msg, { type: 'error' });
+    }
+  }
+
+  async function handleDeleteClass(c) {
+    const n = c.slots?.length ?? 0;
+    if (!await confirm({
+      title: 'Delete this class schedule?',
+      message: `This removes all ${n} meeting${n !== 1 ? 's' : ''} for ${c.subject_code}${c.faculty_name ? ` · ${c.faculty_name}` : ''}. This cannot be undone.`,
+      confirmText: 'Delete all',
+    })) return;
+    setError('');
+    try {
+      await api.delete(`/schedules/class/${c.taId}/`);
+      toast('Class schedule deleted.', { type: 'success' });
+      reloadSchedules();
+    } catch (err) {
+      const st = err.response?.status;
+      if (st === 404) { toast('That class schedule was already removed.', { type: 'success' }); reloadSchedules(); return; }
+      const msg = st === 429
+        ? 'Too many schedule changes too quickly — please wait a moment and try again.'
+        : (err.response?.data?.error || 'Failed to delete class schedule.');
+      toast(msg, { type: 'error' });
     }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    if (!form.subject_id) { setError('Please select a subject.'); return; }
+
+    // Assign-whole-class mode: apply the room/building to every slot at once.
+    if (assignSlots && assignSlots.length) {
+      if (!form.room.trim()) { setError('Please choose or enter a room.'); return; }
+      setSaving(true);
+      try {
+        const results = await Promise.allSettled(
+          assignSlots.map(id => api.patch(`/schedules/${id}/`, { room: form.room.trim(), building: form.building.trim() }))
+        );
+        const failed = results.filter(r => r.status === 'rejected');
+        if (failed.length) {
+          const msgs = failed.map(r => {
+            const d = r.reason?.response?.data;
+            return d?.non_field_errors
+              ? (Array.isArray(d.non_field_errors) ? d.non_field_errors.join(' ') : d.non_field_errors)
+              : (d?.error || 'could not be saved.');
+          });
+          setError(`Some meetings couldn’t be assigned — ${[...new Set(msgs)].join(' | ')}`);
+          reloadSchedules();
+          return;
+        }
+        toast('Room assigned to all meetings of this class.', { type: 'success' });
+        setShowForm(false); setAssignSlots(null); reloadSchedules();
+      } catch {
+        toast('Failed to assign room.', { type: 'error' });
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (!form.subject_id) { setError('Please select a course.'); return; }
     if (!form.faculty_id) { setError('Please select the faculty (instructor) for this class.'); return; }
     if (!form.program_id) { setError('Please select the program.'); return; }
     if (!form.year_level) { setError('Please select the year level.'); return; }
     if (!form.block_name.trim()) { setError('Please choose or enter the block.'); return; }
     if (!form.days.length) { setError('Please select at least one meeting day.'); return; }
     if (!form.room.trim()) { setError('Please choose or enter a room.'); return; }
-    if (!form.start_time || !form.end_time) { setError('Start time and end time are required.'); return; }
+    // Times are not entered here any more (faculty set them on declare); they
+    // are carried through from the slot / existing class / a default.
 
     setSaving(true);
     try {
@@ -616,8 +729,12 @@ export default function RegistrarSchedule() {
           });
         }
         if (failedMsgs.length) {
-          toast(added ? `Updated · ${added} day${added > 1 ? 's' : ''} added.` : 'Updated.', { type: 'success' });
-          setError(`Some added days couldn’t be saved — ${failedMsgs.join(' | ')}`);
+          // Partial save: don't flash a green success toast next to the error —
+          // the banner spells out what saved and what still needs fixing.
+          const savedNote = added
+            ? `Saved the slot and added ${added} day${added > 1 ? 's' : ''}, but `
+            : 'Saved the slot, but ';
+          setError(`${savedNote}some added days couldn’t be saved — ${failedMsgs.join(' | ')}`);
           reloadSchedules();
           return;   // keep the modal open so the conflicts can be fixed
         }
@@ -638,7 +755,7 @@ export default function RegistrarSchedule() {
       const okCount = form.days.length - failed.length;
 
       if (failed.length) {
-        if (okCount > 0) { toast(`${okCount} day${okCount > 1 ? 's' : ''} saved.`, { type: 'success' }); reloadSchedules(); }
+        if (okCount > 0) reloadSchedules();
         const msgs = failed.map(({ day, r }) => {
           const data = r.reason?.response?.data;
           const detail = data?.non_field_errors
@@ -646,7 +763,10 @@ export default function RegistrarSchedule() {
             : (data?.error || 'could not be saved.');
           return `${DAY_LABELS[day] || day}: ${detail}`;
         });
-        setError(`Some days could not be saved — ${msgs.join(' | ')}`);
+        // No green success toast on a partial save — fold the saved count into
+        // the error banner so a conflict never reads as a success.
+        const savedNote = okCount > 0 ? `${okCount} day${okCount > 1 ? 's' : ''} saved, but ` : '';
+        setError(`${savedNote}some days could not be saved — ${msgs.join(' | ')}`);
         return;   // keep the modal open so the conflicts can be fixed
       }
 
@@ -719,6 +839,7 @@ export default function RegistrarSchedule() {
   const classCount    = classesAll.length;
   const uniqueFaculty = new Set(schedules.map(s => s.faculty_name)).size;
   const uniqueRooms   = new Set(schedules.map(s => s.room).filter(Boolean)).size;
+  const needRoomCount = schedules.filter(s => !s.room).length;
 
   // Building/room pickers: catalog suggestions with free-text fallback.
   const selDept = departments.find(d => String(d.id) === String(form.department)) || null;
@@ -732,6 +853,14 @@ export default function RegistrarSchedule() {
     }
     return (a.full_name || '').localeCompare(b.full_name || '');
   }).map(f => ({ value: String(f.id), label: f.full_name, sublabel: f.department_code || '' }));
+
+  // Courses for the searchable picker — label by code + name so you can type
+  // either and filter instead of scrolling the whole catalog.
+  const subjectOptions = subjects.map(s => ({
+    value: String(s.id),
+    label: `${s.code} – ${s.name}`,
+    sublabel: s.year_level_display || '',
+  }));
 
   // Buildings + rooms scoped to the chosen department (its own buildings + shared).
   const scopedBuildings = selDept
@@ -799,13 +928,15 @@ export default function RegistrarSchedule() {
           <div className="eyebrow">
             Records{termLabel ? ` · ${termLabel}` : ''}
           </div>
-          <h2>Class <em>schedules</em></h2>
+          <h2>Room <em>management</em></h2>
           <div className="sub">
-            View and manage class schedules across all subjects, sections, and rooms for the active term.
+            Assign rooms to the classes faculty have declared this term, and see which rooms are in use.
           </div>
         </div>
         <div className="actions">
-          {selectedTerm && (
+          {/* Classes are created by faculty when they declare their load; the
+              registrar only assigns rooms (via each meeting's Assign room / edit). */}
+          {false && (
             <button className="btn-pri" onClick={openCreate}>
               <i className="ti ti-plus" /> Add schedule slot
             </button>
@@ -882,13 +1013,11 @@ export default function RegistrarSchedule() {
           className="sched-modal-back"
           onMouseDown={e => { if (e.target === e.currentTarget) { setShowForm(false); setEditId(null); setError(''); } }}
         >
-          <div className="sched-modal" role="dialog" aria-modal="true" aria-label={editId ? 'Edit schedule slot' : 'Add schedule slot'}>
+          <div className="sched-modal" role="dialog" aria-modal="true" aria-label="Assign room">
             <div className="sched-modal-head">
               <div>
-                <h4>{editId ? 'Edit schedule slot' : 'Add schedule slot'}</h4>
-                <p>{editId
-                  ? 'Update the class, instructor, time and room for this slot.'
-                  : 'Choose the subject and its instructor, then set the day, time and room.'}</p>
+                <h4>Assign room</h4>
+                <p>The course, instructor, block, day(s) and time are set by the faculty. You only assign the building and room for this class.</p>
               </div>
               <button
                 type="button"
@@ -905,110 +1034,28 @@ export default function RegistrarSchedule() {
                 {error && <div className="sched-modal-err">{error}</div>}
                 <div className="sched-form-grid">
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">
-                      Department
-                      <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--reg-faint)' }}> · narrows the instructor, building &amp; room lists below</span>
-                    </label>
-                    <select
-                      className="form-select"
-                      style={{ width: '100%' }}
-                      value={form.department}
-                      onChange={e => setForm(p => ({ ...p, department: e.target.value }))}
-                    >
-                      <option value="">All departments</option>
-                      {departments.map(d => (
-                        <option key={d.id} value={d.id}>{d.name}{d.code ? ` (${d.code})` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Subject</label>
-                    <select
-                      className="form-select"
-                      style={{ width: '100%' }}
-                      value={form.subject_id}
-                      onChange={e => {
-                        const sid = e.target.value;
-                        const subj = subjects.find(x => String(x.id) === String(sid));
-                        setForm(p => ({
-                          ...p,
-                          subject_id: sid,
-                          program_id: subj && subj.program != null ? String(subj.program) : p.program_id,
-                          year_level: subj && subj.year_level != null ? String(subj.year_level) : p.year_level,
-                        }));
-                      }}
-                      required
-                    >
-                      <option value="">- Select subject -</option>
-                      {subjects.map(s => (
-                        <option key={s.id} value={s.id}>{s.code} – {s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Faculty (instructor)</label>
-                    <SearchSelect
-                      options={facultyOptions}
-                      value={form.faculty_id}
-                      onChange={id => setForm(p => ({ ...p, faculty_id: id }))}
-                      placeholder={selDept ? `Search faculty · ${selDept.code || selDept.name} shown first` : 'Search faculty by name…'}
-                    />
-                  </div>
-
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">
-                      Day(s)
-                      <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--reg-faint)' }}> · pick one or more (a meeting is created for each)</span>
-                    </label>
-                    <div className="sched-days">
-                      {DAY_OPTIONS.map(d => (
-                        <button
-                          type="button"
-                          key={d.value}
-                          className={`sched-day-btn${form.days.includes(d.value) ? ' on' : ''}`}
-                          onClick={() => toggleDay(d.value)}
-                          aria-pressed={form.days.includes(d.value)}
-                        >
-                          {DAY_LABELS[d.value]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">
-                      Block
-                      <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--reg-faint)' }}> · the student cohort this class is for (prevents double-booking a block)</span>
-                    </label>
-                    <div className="sched-cohort">
-                      <select
-                        className="form-select"
-                        value={form.program_id}
-                        onChange={e => setForm(p => ({ ...p, program_id: e.target.value }))}
-                      >
-                        <option value="">Program…</option>
-                        {programs.map(pr => (
-                          <option key={pr.id} value={pr.id}>{pr.code ? `${pr.code} — ${pr.name}` : pr.name}</option>
-                        ))}
-                      </select>
-                      <select
-                        className="form-select"
-                        value={form.year_level}
-                        onChange={e => setForm(p => ({ ...p, year_level: e.target.value }))}
-                      >
-                        <option value="">Year…</option>
-                        {YEAR_LEVELS.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
-                      </select>
-                      <ComboInput
-                        value={form.block_name}
-                        onChange={v => setForm(p => ({ ...p, block_name: v }))}
-                        options={blockOptions}
-                        placeholder="Block, e.g. Block A"
-                        menuHeader={form.program_id && form.year_level ? 'Blocks for this program & year' : 'Existing blocks'}
-                        emptyHint="No blocks here yet — type a name (e.g. Block A) to create one."
-                      />
+                    <label className="form-label">Class <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--reg-faint)' }}>· declared by the faculty</span></label>
+                    <div className="sched-ro-summary">
+                      <div className="sched-ro-row">
+                        <span className="sched-ro-k">Course</span>
+                        <span className="sched-ro-v">{(() => { const s = subjects.find(x => String(x.id) === String(form.subject_id)); return s ? `${s.code} — ${s.name}` : '—'; })()}</span>
+                      </div>
+                      <div className="sched-ro-row">
+                        <span className="sched-ro-k">Faculty</span>
+                        <span className="sched-ro-v">{facultyList.find(f => String(f.id) === String(form.faculty_id))?.full_name || '—'}</span>
+                      </div>
+                      <div className="sched-ro-row">
+                        <span className="sched-ro-k">Block</span>
+                        <span className="sched-ro-v">{[
+                          programs.find(pr => String(pr.id) === String(form.program_id))?.code,
+                          YEAR_LEVELS.find(y => String(y.value) === String(form.year_level))?.label,
+                          form.block_name,
+                        ].filter(Boolean).join(' · ') || '—'}</span>
+                      </div>
+                      <div className="sched-ro-row">
+                        <span className="sched-ro-k">Day(s)</span>
+                        <span className="sched-ro-v">{form.days.length ? form.days.map(d => DAY_LABELS[d] || d).join(', ') : '—'}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -1041,28 +1088,15 @@ export default function RegistrarSchedule() {
                     />
                   </div>
 
-                  <div>
-                    <label className="form-label">Start time</label>
-                    <input
-                      className="form-input"
-                      style={{ width: '100%', boxSizing: 'border-box' }}
-                      type="time"
-                      value={form.start_time}
-                      onChange={e => setForm(p => ({ ...p, start_time: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label">End time</label>
-                    <input
-                      className="form-input"
-                      style={{ width: '100%', boxSizing: 'border-box' }}
-                      type="time"
-                      value={form.end_time}
-                      onChange={e => setForm(p => ({ ...p, end_time: e.target.value }))}
-                      required
-                    />
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Meeting time</label>
+                    <div className="sched-time-ro">
+                      <i className="ti ti-clock" />
+                      {form.start_time && form.end_time
+                        ? <span>{formatTime(form.start_time)} – {formatTime(form.end_time)}</span>
+                        : <span>Not set yet</span>}
+                      <span className="sched-time-note">Set by the faculty when they declare the class — you only assign the room.</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1076,7 +1110,7 @@ export default function RegistrarSchedule() {
                   Cancel
                 </button>
                 <button type="submit" className="btn-pri" disabled={saving}>
-                  {saving ? 'Saving…' : editId ? 'Update slot' : 'Save slot'}
+                  {saving ? 'Saving…' : 'Save room'}
                 </button>
               </div>
             </form>
@@ -1254,7 +1288,7 @@ export default function RegistrarSchedule() {
           <i className="ti ti-calendar-plus" />
           <div className="t">No classes scheduled yet</div>
           <div className="d">
-            Nothing is on the timetable for {termLabel}. Use “Add schedule slot” to place a class with its day, time and room.
+            Nothing is on the timetable for {termLabel}. Classes appear here once faculty declare their teaching load with a day and time — then you assign each one a room.
           </div>
         </div>
       ) : classes.length === 0 ? (
@@ -1271,6 +1305,12 @@ export default function RegistrarSchedule() {
             {classes.length} class{classes.length !== 1 ? 'es' : ''}{dayFilter ? ` meeting ${DAY_LABELS[dayFilter]}` : ''} · {termLabel}
           </p>
 
+          {needRoomCount > 0 && (
+            <div className="sched-needroom-banner">
+              <i className="ti ti-alert-triangle" />
+              <span><strong>{needRoomCount}</strong> faculty meeting{needRoomCount !== 1 ? 's' : ''} {needRoomCount !== 1 ? 'have' : 'has'} no room yet — click <strong>Assign room</strong> on a meeting to set it.</span>
+            </div>
+          )}
           <div className="sched-classes">
             {pagedClasses.map(c => {
               const byDay = {};
@@ -1287,8 +1327,13 @@ export default function RegistrarSchedule() {
                       <div className="sched-class-fac"><i className="ti ti-user" /> {c.faculty_name}</div>
                     </div>
                     <div className="sched-class-actions">
-                      <button className="btn-sec" style={{ padding: '5px 10px', fontSize: 11 }} onClick={() => openAddMeeting(c)}>
-                        <i className="ti ti-plus" /> Meeting
+                      <button className="btn-pri" style={{ padding: '5px 10px', fontSize: 11 }}
+                        onClick={() => openAssignClass(c)} title="Assign a room to all meetings of this class">
+                        <i className="ti ti-door" /> Assign room
+                      </button>
+                      <button className="btn-sec sched-del-class" style={{ padding: '5px 10px', fontSize: 11 }}
+                        onClick={() => handleDeleteClass(c)} title="Delete this instructor's whole class schedule">
+                        <i className="ti ti-trash" /> Delete
                       </button>
                     </div>
                   </div>
@@ -1302,13 +1347,19 @@ export default function RegistrarSchedule() {
                           {daySlots.length === 0 ? (
                             <span className="sched-day-empty">—</span>
                           ) : daySlots.map(s => (
-                            <div className="sched-meet" key={s.id}>
+                            <div className={`sched-meet${s.room ? '' : ' no-room'}`} key={s.id}>
                               <div className="sched-meet-actions">
                                 <button className="sched-meet-btn" title="Edit meeting" onClick={() => openEdit(s)}><i className="ti ti-pencil" /></button>
                                 <button className="sched-meet-btn del" title="Delete meeting" onClick={() => handleDelete(s.id)}><i className="ti ti-x" /></button>
                               </div>
                               <div className="sched-meet-time">{formatTime(s.start_time)}<br />{formatTime(s.end_time)}</div>
-                              <div className="sched-meet-room"><i className="ti ti-door" /> {s.room}{s.building ? ` · ${s.building}` : ''}</div>
+                              {s.room ? (
+                                <div className="sched-meet-room"><i className="ti ti-door" /> {s.room}{s.building ? ` · ${s.building}` : ''}</div>
+                              ) : (
+                                <button type="button" className="sched-meet-room sched-meet-assign" onClick={() => openEdit(s)} title="Assign a room">
+                                  <i className="ti ti-alert-triangle" /> Assign room
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>

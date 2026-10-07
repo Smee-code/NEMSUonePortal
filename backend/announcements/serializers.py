@@ -1,7 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Announcement
+from .models import Announcement, Notification
 
 
 class AnnouncementSerializer(serializers.ModelSerializer):
@@ -46,3 +46,18 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         if not stripped:
             raise serializers.ValidationError('Body cannot be blank.')
         return stripped
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Shaped to match the topbar bell, which renders announcements and personal
+    notifications from one list (id, title, body, target_display, created_at)."""
+    target_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = ['id', 'title', 'body', 'category', 'target_display', 'link', 'created_at', 'read_at']
+
+    def get_target_display(self, obj):
+        return Notification.CATEGORY_LABELS.get(
+            obj.category, obj.category.capitalize() if obj.category else '',
+        )

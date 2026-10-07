@@ -110,7 +110,6 @@ function LoginForm({ onClose, toSignup }) {
 
 function SignupForm({ onClose, toLogin }) {
   const [form, setForm] = useState({
-    last_name: '', first_name: '', middle_name: '',
     student_id: '', institutional_email: '', password: '', confirm: '',
   });
   const [error, setError] = useState('');
@@ -126,9 +125,6 @@ function SignupForm({ onClose, toLogin }) {
     setLoading(true);
     try {
       await api.post('/auth/register/', {
-        last_name: form.last_name.trim(),
-        first_name: form.first_name.trim(),
-        middle_name: form.middle_name.trim(),
         student_id: form.student_id.trim(),
         institutional_email: form.institutional_email.trim(),
         password: form.password,
@@ -148,14 +144,13 @@ function SignupForm({ onClose, toLogin }) {
   if (done) {
     return (
       <div className="authm-body authm-done">
-        <div className="authm-done-ic"><i className="ti ti-clock-check" /></div>
-        <h2>Registration submitted</h2>
+        <div className="authm-done-ic"><i className="ti ti-circle-check" /></div>
+        <h2>Account created</h2>
         <p>
-          Thanks, {form.first_name || 'student'}. The Registrar's Office will verify your student
-          record and review your account. You'll receive an email once it's approved, and you can log
-          in after that.
+          Your NEMSUonePortal account is ready. You can now sign in with your Student ID or
+          institutional email and the password you just set.
         </p>
-        <button type="button" className="authm-submit" onClick={toLogin}>Back to sign in</button>
+        <button type="button" className="authm-submit" onClick={toLogin}>Go to sign in</button>
       </div>
     );
   }
@@ -165,25 +160,11 @@ function SignupForm({ onClose, toLogin }) {
       <div className="authm-head">
         <img src="/logo.png" alt="" className="authm-logo" />
         <h2>Create your account</h2>
-        <p>For students already enrolled at NEMSU-Cantilan with a Student ID.</p>
+        <p>Enter the Student ID from your admission approval email, your institutional email, and a password. Your name is already on file from your application.</p>
       </div>
-
-      <div className="authm-grid">
-        <div>
-          <label className="authm-label">Last name</label>
-          <input className="authm-input" required autoFocus value={form.last_name} onChange={e => set('last_name', e.target.value)} placeholder="Dela Cruz" />
-        </div>
-        <div>
-          <label className="authm-label">First name</label>
-          <input className="authm-input" required value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="Juan" />
-        </div>
-      </div>
-
-      <label className="authm-label">Middle name (optional)</label>
-      <input className="authm-input" value={form.middle_name} onChange={e => set('middle_name', e.target.value)} placeholder="Reyes" />
 
       <label className="authm-label">Student ID</label>
-      <input className="authm-input" required value={form.student_id} onChange={e => set('student_id', e.target.value)} placeholder="2024-00001" autoComplete="off" style={{ textTransform: 'uppercase' }} />
+      <input className="authm-input" required autoFocus value={form.student_id} onChange={e => set('student_id', e.target.value)} placeholder="2026-00001" autoComplete="off" style={{ textTransform: 'uppercase' }} />
 
       <label className="authm-label">Institutional email</label>
       <input className="authm-input" type="email" required value={form.institutional_email} onChange={e => set('institutional_email', e.target.value)} placeholder="jdelacruz@nemsu.edu.ph" />
@@ -202,7 +183,7 @@ function SignupForm({ onClose, toLogin }) {
       {error && <div className="authm-err">{error}</div>}
 
       <button type="submit" className="authm-submit" disabled={loading}>
-        {loading ? 'Submitting…' : 'Submit registration'}
+        {loading ? 'Creating…' : 'Create account'}
       </button>
 
       <div className="authm-switch">

@@ -12,11 +12,13 @@ import NotificationList from '../NotificationList';
 const SB_ITEMS = [
   { key:'dashboard',    icon:'ti-layout-dashboard', label:'Dashboard',           section:'overview', to:'/registrar/dashboard' },
   { key:'registrations',icon:'ti-user-check',       label:'Registration Requests', section:'workflow', to:'/registrar/registrations' },
+  { key:'admissions',   icon:'ti-user-plus',        label:'Admissions',          section:'workflow',  to:'/registrar/admissions', badgeKey:'admissions' },
   { key:'enrollment',   icon:'ti-clipboard-check',  label:'Enrollment Requests', section:'workflow',  to:'/registrar/enrollment', badgeKey:'enrollment' },
   { key:'documents',    icon:'ti-file-text',        label:'Document Requests',   section:'workflow',  to:'/registrar/documents',  badgeKey:'documents' },
   { key:'students',     icon:'ti-users',            label:'List of Students',    section:'records',   to:'/registrar/students' },
   { key:'faculty',      icon:'ti-user-edit',        label:'Faculty',             section:'records',   to:'/registrar/faculty' },
-  { key:'schedule',     icon:'ti-calendar-event',   label:'Class Schedules',     section:'records',   to:'/registrar/schedule' },
+  { key:'schedule',     icon:'ti-calendar-event',   label:'Room Management',     section:'records',   to:'/registrar/schedule' },
+  { key:'blocks',       icon:'ti-layout-grid',      label:'Block Management',    section:'records',   to:'/registrar/blocks' },
   { key:'facilities',   icon:'ti-building-community',label:'Rooms & Buildings',   section:'records',   to:'/registrar/facilities' },
   { key:'academic-data',icon:'ti-database',         label:'Academic Data',       section:'records',   to:'/registrar/academic-data' },
   { key:'announcements',icon:'ti-bell',             label:'Announcements',       section:'records',   to:'/registrar/announcements' },
@@ -214,7 +216,7 @@ export default function RegistrarShell() {
   const { user } = useAuth();
   const { items: notifs, unreadCount, markSeen } = useNotifications(user?.id);
   const [currentTerm, setCurrentTerm] = useState(null);
-  const [badges, setBadges]           = useState({ enrollment: 0, documents: 0 });
+  const [badges, setBadges]           = useState({ enrollment: 0, documents: 0, admissions: 0 });
   const [toasts, setToasts]           = useState([]);
   const [navOpen, setNavOpen]         = useState(false);
   const location                      = useLocation();
@@ -227,10 +229,12 @@ export default function RegistrarShell() {
     Promise.allSettled([
       api.get('/enrollment/requests/?status=pending&page_size=1'),
       api.get('/documents/counts/'),
-    ]).then(([enrRes, docRes]) => {
+      api.get('/enrollment/pending/?status=pending'),
+    ]).then(([enrRes, docRes, admRes]) => {
       setBadges({
         enrollment: enrRes.status === 'fulfilled' ? (enrRes.value.data?.count ?? 0) : 0,
         documents:  docRes.status === 'fulfilled' ? (docRes.value.data?.submitted ?? 0) : 0,
+        admissions: admRes.status === 'fulfilled' ? (Array.isArray(admRes.value.data) ? admRes.value.data.length : (admRes.value.data?.count ?? 0)) : 0,
       });
     });
   }, []);

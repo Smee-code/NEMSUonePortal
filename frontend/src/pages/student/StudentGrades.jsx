@@ -71,10 +71,13 @@ export default function StudentGrades() {
   );
 
   /* ── Identify current term records ─────────────────────────── */
+  // Match the EXACT active term (same year AND semester). Matching on year
+  // alone wrongly pulled in the other semester of the same academic year.
+  const activeDisplay = currentTerm ? `${currentTerm.semester_display} ${currentTerm.year}` : null;
   const currentTermKey = currentTerm
     ? termList.find(t =>
-        t.year === currentTerm.year ||
-        t.display?.includes(currentTerm.semester_display)
+        t.display === activeDisplay ||
+        (t.year === currentTerm.year && t.semester === currentTerm.semester)
       )?.display
     : termList[0]?.display;
 
@@ -88,6 +91,9 @@ export default function StudentGrades() {
   const currentGraded  = currentRecords.filter(g => g.grade != null && !isNaN(parseFloat(g.grade)));
   const currentGwa     = wGpa(currentGraded);
   const currentUnits   = currentRecords.reduce((s, r) => s + parseFloat(r.subject_units || 0), 0);
+  const currentPosted  = currentRecords.some(r =>
+    r.midterm_grade != null || r.final_grade != null || (r.grade && !isNaN(parseFloat(r.grade)))
+  );
 
   const totalUnitsEarned = allGraded
     .filter(g => parseFloat(g.grade) <= 3.0)
@@ -196,11 +202,17 @@ export default function StudentGrades() {
           {/* ── Current term grades ─────────────────────────── */}
           {currentRecords.length > 0 && (
             <>
-              <div className="gr-sec">
+              <div className="gr-sec gr-sec--now">
                 <h4>Current term<span>{termLabel}{currentTerm?.block_code ? ` · ${currentTerm.block_code}` : ''}</span></h4>
               </div>
-              <div className="table-wrap" style={{ marginBottom: '2.25rem' }}>
-                <table className="gr-table">
+              {!currentPosted && (
+                <div className="gr-pending-note">
+                  <i className="ti ti-clock" />
+                  <span>Your grades for this term haven’t been posted yet — they’ll appear here once your instructors submit them.</span>
+                </div>
+              )}
+              <div className="table-wrap" style={{ marginBottom: '2.75rem' }}>
+                <table className="gr-table gr-table--now">
                   <thead>
                     <tr>
                       <th style={{ width: 120 }}>Code</th>
@@ -237,15 +249,15 @@ export default function StudentGrades() {
           {/* ── Grade history ───────────────────────────────── */}
           {historyTerms.length > 0 && (
             <>
-              <div className="gr-sec">
+              <div className="gr-sec gr-sec--quiet">
                 <h4>Grade history<span>{historyTerms.length} completed term{historyTerms.length !== 1 ? 's' : ''}</span></h4>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
-                {historyTerms.map((term, i) => {
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                {historyTerms.map((term) => {
                   const termGpa = wGpa(term.records);
                   const termUnits = term.records.reduce((s, r) => s + parseFloat(r.subject_units || 0), 0);
                   return (
-                    <TermHistorySection key={term.display} term={term} gpa={termGpa} totalUnits={termUnits} defaultOpen={i === 0} />
+                    <TermHistorySection key={term.display} term={term} gpa={termGpa} totalUnits={termUnits} defaultOpen={false} />
                   );
                 })}
               </div>
@@ -306,9 +318,20 @@ const GH_CSS = `
   .gr-sec h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;line-height:1.3;}
   .gr-sec h4 span{display:block;font-family:'Inter',sans-serif;font-weight:400;font-size:20px;color:var(--ink);
     text-transform:none;letter-spacing:-.01em;margin-top:4px;}
+  /* Current term = focal; its eyebrow carries the gold accent. */
+  .gr-sec--now h4{color:var(--gold);}
+  .gr-sec--now h4 span{font-size:23px;font-weight:500;color:var(--ink);}
+  /* Grade history = quiet, recedes beneath the current term. */
+  .gr-sec--quiet{margin-top:2.75rem;margin-bottom:.75rem;}
+  .gr-sec--quiet h4 span{font-size:14px;font-weight:500;color:var(--ink-2);}
+  .gr-pending-note{display:flex;align-items:center;gap:9px;background:var(--warm);border:1px solid var(--line);
+    border-left:3px solid var(--gold);padding:.8rem 1.1rem;margin-bottom:1rem;font-size:13px;color:var(--ink-2);line-height:1.5;}
+  .gr-pending-note i{font-size:17px;color:var(--gold);flex-shrink:0;}
 
   /* grade table */
   .gr-table{width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--line);background:#fff;}
+  /* Current-term table: raised, gold-accented focal panel. */
+  .gr-table--now{border-top:3px solid var(--gold);box-shadow:0 10px 30px -18px rgba(10,22,40,.4);}
   .gr-table thead th{background:var(--warm);text-align:left;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
     color:var(--muted);font-weight:600;padding:12px 16px;border-bottom:1px solid var(--line);}
   .gr-table th.num,.gr-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
@@ -327,19 +350,19 @@ const GH_CSS = `
   .gr-tag--fail{background:var(--red-tint);color:var(--red);}
   .gr-tag--pend{background:var(--cool-2);color:var(--muted);}
 
-  /* history accordion */
-  .gh-term{border:1px solid var(--line);background:#fff;}
-  .gh-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.1rem 1.4rem;cursor:pointer;
-    background:#fff;transition:background .12s;}
-  .gh-head:hover{background:var(--warm);}
-  .gh-head.is-open{border-bottom:1px solid var(--line);}
-  .gh-head-l{display:flex;align-items:center;gap:1.1rem;min-width:0;}
-  .gh-gwa{display:flex;flex-direction:column;align-items:center;justify-content:center;width:62px;height:52px;flex-shrink:0;
-    background:var(--warm);border:1px solid var(--line-soft);}
-  .gh-gwa b{font-size:20px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;}
-  .gh-gwa span{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:3px;}
-  .gh-term-name{font-weight:500;font-size:18px;color:var(--ink);letter-spacing:-.005em;}
-  .gh-term-meta{font-size:11.5px;color:var(--muted);margin-top:3px;}
+  /* history accordion — intentionally quiet: lighter border, smaller type */
+  .gh-term{border:1px solid var(--line-soft);background:var(--warm);}
+  .gh-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 1.2rem;cursor:pointer;
+    background:transparent;transition:background .12s;}
+  .gh-head:hover{background:#fff;}
+  .gh-head.is-open{border-bottom:1px solid var(--line-soft);background:#fff;}
+  .gh-head-l{display:flex;align-items:center;gap:.9rem;min-width:0;}
+  .gh-gwa{display:flex;flex-direction:column;align-items:center;justify-content:center;width:50px;height:42px;flex-shrink:0;
+    background:#fff;border:1px solid var(--line-soft);}
+  .gh-gwa b{font-size:16px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;}
+  .gh-gwa span{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:3px;}
+  .gh-term-name{font-weight:500;font-size:15px;color:var(--ink-2);letter-spacing:-.005em;}
+  .gh-term-meta{font-size:11px;color:var(--muted);margin-top:2px;}
   .gh-head-r{display:flex;align-items:center;gap:1rem;flex-shrink:0;}
   .gh-chev{color:var(--muted);font-size:15px;transition:transform .15s;}
   .gh-chev.is-open{transform:rotate(180deg);}

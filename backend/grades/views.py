@@ -2,7 +2,7 @@ import logging
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.conf import settings
-from django.core.mail import send_mass_mail
+from nemsuoneportal.emails import send_branded_mass_email
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import generics, status
@@ -20,6 +20,7 @@ from authentication.permissions import (
     IsStudent,
     get_client_ip,
 )
+from announcements.models import Notification
 from enrollment.models import AcademicTerm, Block, EnrollmentSubject, Program, Subject
 from enrollment.terms import current_academic_year, regular_term_date_range
 from .models import GradeRecord, MidtermReopenRequest, TeachingAssignment
@@ -101,6 +102,49 @@ class FacultyTeachingLoadView(generics.ListAPIView):
         return qs
 
 
+def auto_roster_block_students(assignment):
+    """Fill the class roster automatically from registrar-approved enrollments.
+
+    Every student approved into this class's block (and enrolled in this
+    subject) gets a GradeRecord, so the faculty never has to add them by hand.
+    Idempotent: existing records are kept (and re-linked to this assignment if
+    they were created before it existed); only missing ones are created.
+    """
+    if not assignment.block_id:
+        return
+    from enrollment.models import EnrollmentSubject
+    student_ids = set(
+        EnrollmentSubject.objects.filter(
+            subject=assignment.subject,
+            enrollment__block_id=assignment.block_id,
+            enrollment__academic_term=assignment.academic_term,
+            enrollment__status='approved',
+        ).values_list('enrollment__student_id', flat=True)
+    )
+    if not student_ids:
+        return
+    # Attach any pre-existing record for these students/subject/term to this
+    # assignment (e.g. one made before the faculty declared the class).
+    GradeRecord.objects.filter(
+        subject=assignment.subject,
+        academic_term=assignment.academic_term,
+        student_id__in=student_ids,
+    ).exclude(teaching_assignment=assignment).update(teaching_assignment=assignment)
+    existing = set(
+        GradeRecord.objects.filter(teaching_assignment=assignment)
+        .values_list('student_id', flat=True)
+    )
+    to_create = [
+        GradeRecord(
+            student_id=sid, subject=assignment.subject,
+            academic_term=assignment.academic_term, teaching_assignment=assignment,
+        )
+        for sid in student_ids if sid not in existing
+    ]
+    if to_create:
+        GradeRecord.objects.bulk_create(to_create, ignore_conflicts=True)
+
+
 class FacultyStudentGradeListView(APIView):
     """GET /api/grades/faculty/students/?assignment=<id>
     Returns enrolled students with their current grade for the assignment (G-07 audited)."""
@@ -126,9 +170,12 @@ class FacultyStudentGradeListView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # The roster is the set of students the instructor added to this course
-        # (one GradeRecord per student in the course), not the old subject-selection
-        # enrollment. Grades are encoded on these same records.
+        # Auto-fill the roster from registrar-approved block enrollments so the
+        # faculty doesn't add students by hand.
+        auto_roster_block_students(assignment)
+
+        # The roster is the set of students in this course (one GradeRecord each):
+        # the approved block cohort above, plus anyone the instructor added.
         records = (
             GradeRecord.objects
             .filter(teaching_assignment=assignment)
@@ -229,23 +276,16 @@ class GradeEncodeView(APIView):
                         status=status.HTTP_409_CONFLICT,
                     )
 
-            # Stage locks: a submitted NUMERIC grade is locked (needs an admin reopen for
-            # the midterm). INC stays editable so it can be completed later.
-            if stage == 'midterm' and record.midterm_submitted and not record.midterm_is_inc:
+            # Hard lock only once the course grade is FINALIZED — i.e. the final
+            # grade is submitted (and not INC). A final can only be submitted after
+            # the midterm is in, so this means both stages are done. Until then the
+            # faculty may re-edit a submitted midterm directly from the grade sheet
+            # (no admin reopen); only a finalized grade needs an admin reopen.
+            finalized = record.final_submitted and not record.final_is_inc
+            if finalized:
                 return Response(
-                    {'error': 'This midterm grade is locked. Request an admin reopen to change it.'},
-                    status=status.HTTP_409_CONFLICT,
-                )
-            if stage == 'final' and record.final_submitted and not record.final_is_inc:
-                return Response(
-                    {'error': 'This final grade is locked and can no longer be changed.'},
-                    status=status.HTTP_409_CONFLICT,
-                )
-            # Changing a dropped student back requires the midterm stage to be open,
-            # since DRP is captured with the midterm submission.
-            if st == 'drp' and record.midterm_submitted and not record.midterm_is_inc:
-                return Response(
-                    {'error': 'Midterms are locked. Request an admin reopen to change this student.'},
+                    {'error': 'This grade is finalized (midterm and final submitted). '
+                              'Request an admin reopen to change it.'},
                     status=status.HTTP_409_CONFLICT,
                 )
 
@@ -360,7 +400,7 @@ class GradeSubmitView(APIView):
 
             # Records to mark for this stage: dropped students are settled by the midterm
             # submission; everyone else who is ready and not already submitted.
-            to_mark, notify = [], []
+            to_mark, notify, notify_students = [], [], []
             for r in roster:
                 if getattr(r, already):
                     continue
@@ -377,12 +417,14 @@ class GradeSubmitView(APIView):
                     r.submitted_at = now
                 r.recompute_grade()
                 to_mark.append(r)
-                # Notify registered, non-dropped students (dropped students aren't emailed).
+                # Notify registered, non-dropped students. In-app covers everyone
+                # (no email needed); the email goes only to those with a real inbox.
                 s = r.student
-                email = (getattr(s, 'institutional_email', '') or '').strip()
-                if (not r.is_dropped and s and not getattr(s, 'is_placeholder', False)
-                        and email and 'placeholder' not in email.lower()):
-                    notify.append((email, s.full_name or 'Student'))
+                if not r.is_dropped and s and not getattr(s, 'is_placeholder', False):
+                    notify_students.append(s)
+                    email = (getattr(s, 'institutional_email', '') or '').strip()
+                    if email and 'placeholder' not in email.lower():
+                        notify.append((email, s.full_name or 'Student'))
 
             count = len(to_mark)
             if count == 0:
@@ -432,9 +474,29 @@ class GradeSubmitView(APIView):
                     settings.DEFAULT_FROM_EMAIL,
                     [email],
                 ) for (email, name) in notify]
-                send_mass_mail(messages, fail_silently=True)
+                send_branded_mass_email(messages, fail_silently=True)
         except Exception:
             logger.warning('Failed to send grade-posted notification emails', exc_info=True)
+
+        # In-app notification (topbar bell) for each student — best-effort, and
+        # covers students without an email too. The grade itself stays in-app for
+        # privacy; the notice only says it's available to view.
+        try:
+            if notify_students:
+                stage_word = 'midterm' if stage == 'midterm' else 'final'
+                Notification.push(
+                    notify_students,
+                    title=f'{stage_word.capitalize()} grade posted — {assignment.subject.code}',
+                    body=(
+                        f'Your {stage_word} grade for {assignment.subject.code} - '
+                        f'{assignment.subject.name} ({assignment.academic_term}) is now '
+                        f'available. Open "My Grades" to view it.'
+                    ),
+                    category='grade',
+                    link='/student/grades',
+                )
+        except Exception:
+            logger.warning('Failed to create grade-posted in-app notifications', exc_info=True)
 
         return Response({'message': f'{count} {stage} grade(s) submitted successfully.'})
 
@@ -509,7 +571,8 @@ class AdminMidtermReopenListView(generics.ListAPIView):
 
 class AdminMidtermReopenReviewView(APIView):
     """PATCH /api/grades/admin/midterm-reopen/<pk>/ — approve or reject.
-    Approval reopens the whole subject's midterms (only where finals aren't in yet)."""
+    Approval reopens ALL submitted grades for the subject — both midterm and
+    final — so the faculty can correct any of them."""
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def patch(self, request, pk):
@@ -531,13 +594,18 @@ class AdminMidtermReopenReviewView(APIView):
         reopened = 0
         with transaction.atomic():
             if new_status == 'approved':
-                # Unlock midterms for the class — but never for students whose finals
-                # are already submitted (their grade is fully settled).
+                # Unlock ALL submitted grades for the class — both midterm and
+                # final — so the faculty can correct any of them.
+                from django.db.models import Q
                 reopened = GradeRecord.objects.select_for_update().filter(
                     teaching_assignment=req.teaching_assignment,
-                    midterm_submitted=True,
-                    final_submitted=False,
-                ).update(midterm_submitted=False, midterm_submitted_at=None)
+                ).filter(
+                    Q(midterm_submitted=True) | Q(final_submitted=True)
+                ).update(
+                    midterm_submitted=False, midterm_submitted_at=None,
+                    final_submitted=False, final_submitted_at=None,
+                    is_submitted=False, submitted_at=None,
+                )
             req.status = new_status
             req.admin_note = note
             req.reviewed_by = request.user
@@ -997,8 +1065,11 @@ class FacultyTeachingAssignmentCreateView(APIView):
         subject = serializer.validated_data['subject_id']
         term = serializer.validated_data.get('academic_term')
         term_semester = serializer.validated_data.get('term_semester')
-        block = serializer.validated_data.get('block')
-        section = serializer.validated_data.get('section', '')
+        block = serializer.validated_data['block']
+        # The block's name doubles as the section label (mirrors the registrar
+        # one-step assign flow), so the subject+term+section uniqueness key
+        # treats two blocks of the same subject as two distinct courses.
+        section = block.name
         ip = get_client_ip(request)
 
         if term is None:
@@ -1007,7 +1078,11 @@ class FacultyTeachingAssignmentCreateView(APIView):
                     {'error': 'Please select First Term or Second Term.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            academic_year = current_academic_year()
+            # Resolve the year from the current (active) term so a declaration
+            # lands in the term the rest of the app treats as current — not a
+            # date-derived guess that can disagree with the registrar's choice.
+            active_term = AcademicTerm.objects.filter(is_active=True).first()
+            academic_year = active_term.year if active_term else current_academic_year()
             start_date, end_date = regular_term_date_range(academic_year, term_semester)
             term, _ = AcademicTerm.objects.get_or_create(
                 year=academic_year,
@@ -1015,7 +1090,8 @@ class FacultyTeachingAssignmentCreateView(APIView):
                 defaults={
                     'start_date': start_date,
                     'end_date': end_date,
-                    'is_active': True,
+                    # A faculty declaration must never change which term is current.
+                    'is_active': False,
                     'enrollment_open': False,
                 },
             )
@@ -1025,6 +1101,12 @@ class FacultyTeachingAssignmentCreateView(APIView):
                 {'error': f'{subject.code} is not available in the selected term ({term.get_semester_display()}).'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Optional meeting schedule declared by the faculty (room assigned later
+        # by the registrar). Same time applied to each selected day.
+        days = serializer.validated_data.get('days') or []
+        start_time = serializer.validated_data.get('start_time')
+        end_time = serializer.validated_data.get('end_time')
 
         try:
             with transaction.atomic():
@@ -1036,6 +1118,22 @@ class FacultyTeachingAssignmentCreateView(APIView):
                     section=section,
                     assigned_by=request.user,
                 )
+                if days:
+                    from schedules.models import ClassSchedule
+                    from schedules.views import _check_conflicts
+                    from rest_framework.exceptions import ValidationError as DRFValidationError
+                    clash = []
+                    for day in days:
+                        # room='' → room clash is skipped; faculty/block clashes still apply.
+                        clash.extend(_check_conflicts('', day, start_time, end_time, assignment))
+                    if clash:
+                        raise DRFValidationError({'non_field_errors': clash})
+                    ClassSchedule.objects.bulk_create([
+                        ClassSchedule(
+                            teaching_assignment=assignment, room='', building='',
+                            day_of_week=day, start_time=start_time, end_time=end_time,
+                        ) for day in days
+                    ])
         except IntegrityError:
             sec = f' section {section}' if section else ''
             return Response(
@@ -1043,10 +1141,17 @@ class FacultyTeachingAssignmentCreateView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        # Auto-fill the roster from students already approved into this block,
+        # so the class starts with its enrolled students (no manual adding).
+        try:
+            auto_roster_block_students(assignment)
+        except Exception:
+            logger.warning('Failed to auto-roster on teaching-assignment declare', exc_info=True)
+
         _audit(
             request.user, request.user.role,
             'teaching_assignment_self_declared', f'assignment:{assignment.id}',
-            ip, 'success', {'subject': subject.code, 'term': str(term)},
+            ip, 'success', {'subject': subject.code, 'term': str(term), 'slots': len(days)},
         )
 
         return Response(

@@ -1,7 +1,7 @@
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
+from nemsuoneportal.emails import send_branded_email
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.pagination import LimitOffsetPagination
@@ -10,12 +10,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authentication.models import AuditLog
-from authentication.permissions import IsRegistrarOrAdmin, IsStudent, get_client_ip
+from authentication.permissions import IsAdmin, IsRegistrarOrAdmin, IsStudent, get_client_ip
 
-from .models import DocumentRequest
+from .models import DocumentRequest, DocumentType
 from .serializers import (
     DocumentRequestStudentSerializer,
     DocumentRequestSubmitSerializer,
+    DocumentTypeSerializer,
     RegistrarDocumentSerializer,
     RegistrarStatusUpdateSerializer,
 )
@@ -72,10 +73,9 @@ def _send_status_email(doc_req):
             f'Track your request at: {settings.FRONTEND_URL}',
         ]
 
-        send_mail(
+        send_branded_email(
             subject,
             '\n'.join(body_lines),
-            settings.DEFAULT_FROM_EMAIL,
             [doc_req.student.institutional_email],
             fail_silently=True,
         )
@@ -301,3 +301,57 @@ class AdminDocumentReportView(APIView):
             'by_status': by_status,
             'avg_turnaround_days': avg_turnaround_days,
         })
+
+
+# ── Document catalog (types) ────────────────────────────────────────────────────
+
+class DocumentTypeListView(generics.ListAPIView):
+    """GET /api/documents/types/ — the active catalog, for students and the
+    request form."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = DocumentTypeSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return DocumentType.objects.filter(is_active=True)
+
+
+class AdminDocumentTypeListCreateView(generics.ListCreateAPIView):
+    """GET (all, including inactive) / POST — the admin manages the catalog."""
+    permission_classes = [IsAuthenticated, IsAdmin]
+    serializer_class = DocumentTypeSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return DocumentType.objects.all()
+
+    def perform_create(self, serializer):
+        from django.utils.text import slugify
+        name = serializer.validated_data.get('name', '')
+        base = slugify(name) or 'document'
+        code = base
+        i = 2
+        while DocumentType.objects.filter(code=code).exists():
+            code = f'{base}-{i}'
+            i += 1
+        obj = serializer.save(code=code)
+        _audit(self.request.user, self.request.user.role, 'document_type_created',
+               f'doctype:{obj.id}', get_client_ip(self.request), 'success', {'name': obj.name})
+
+
+class AdminDocumentTypeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET / PATCH / DELETE a single document type (admin)."""
+    permission_classes = [IsAuthenticated, IsAdmin]
+    serializer_class = DocumentTypeSerializer
+    queryset = DocumentType.objects.all()
+    http_method_names = ['get', 'patch', 'delete', 'head', 'options']
+
+    def perform_update(self, serializer):
+        obj = serializer.save()
+        _audit(self.request.user, self.request.user.role, 'document_type_updated',
+               f'doctype:{obj.id}', get_client_ip(self.request), 'success', {'name': obj.name})
+
+    def perform_destroy(self, instance):
+        _audit(self.request.user, self.request.user.role, 'document_type_deleted',
+               f'doctype:{instance.id}', get_client_ip(self.request), 'success', {'name': instance.name})
+        instance.delete()

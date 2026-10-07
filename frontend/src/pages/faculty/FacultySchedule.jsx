@@ -26,6 +26,15 @@ const TERM_OPTIONS = [
   { value: 'second', label: 'Second Term' },
 ];
 
+const DECLARE_DAYS = [
+  { value: 'monday', label: 'Mon' },
+  { value: 'tuesday', label: 'Tue' },
+  { value: 'wednesday', label: 'Wed' },
+  { value: 'thursday', label: 'Thu' },
+  { value: 'friday', label: 'Fri' },
+  { value: 'saturday', label: 'Sat' },
+];
+
 const EMPTY_SLOT = { day_of_week: 'monday', start_time: '07:00', end_time: '08:30', room: '' };
 
 function createSlotRows(count = 1, base = EMPTY_SLOT) {
@@ -60,7 +69,7 @@ export default function FacultyTeachingLoad() {
   const [termsReady, setTermsReady] = useState(false);
 
   const [showDeclare, setShowDeclare] = useState(false);
-  const [declareForm, setDeclareForm] = useState({ term_semester: '', department_id: '', program_id: '', year_level: '', subject_id: '', block_id: '', section: '' });
+  const [declareForm, setDeclareForm] = useState({ term_semester: '', department_id: '', program_id: '', year_level: '', subject_id: '', block_id: '', days: [], start_time: '', end_time: '' });
   const [declareError, setDeclareError] = useState('');
   const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [declaring, setDeclaring] = useState(false);
@@ -85,11 +94,15 @@ export default function FacultyTeachingLoad() {
       setDepartments(departmentsRes.data);
       setPrograms(programsRes.data);
       const currentParts = getCurrentRegularTermParts();
-      const current = currentParts
+      const dateCurrent = currentParts
         ? termsRes.data.find(t => t.year === currentParts.year && t.semester === currentParts.semester)
         : null;
       const active = termsRes.data.find(t => t.is_active);
-      if (current || active) setSelectedTerm(String((current || active).id));
+      // Default to the registrar-set current term (the one shown in the header)
+      // so the Teaching Load matches the rest of the app; fall back to the
+      // date-based term only when no term is marked active.
+      const defaultTerm = active || dateCurrent;
+      if (defaultTerm) setSelectedTerm(String(defaultTerm.id));
       setTermsReady(true);
     }).catch(() => { setPageError('Failed to load terms and curriculum filters.'); setTermsReady(true); setLoading(false); });
   }, []);
@@ -118,7 +131,7 @@ export default function FacultyTeachingLoad() {
     const selectedTermObj = terms.find(t => String(t.id) === selectedTerm);
     const currentParts = getCurrentRegularTermParts();
     const defaultSemester = selectedTermObj?.semester || currentParts?.semester || '';
-    setDeclareForm({ term_semester: defaultSemester, department_id: '', program_id: '', year_level: '', subject_id: '', block_id: '', section: '' });
+    setDeclareForm({ term_semester: defaultSemester, department_id: '', program_id: '', year_level: '', subject_id: '', block_id: '', days: [], start_time: '', end_time: '' });
     setDeclareSubjects([]);
     setDeclareBlocks([]);
     setDeclareError('');
@@ -130,12 +143,30 @@ export default function FacultyTeachingLoad() {
       setDeclareError('Please select a term, department, program, year level, and subject.');
       return;
     }
+    if (!declareForm.block_id) {
+      setDeclareError('Please select a block for this assignment.');
+      return;
+    }
+    // Schedule is optional, but if any part is filled they must all be.
+    const hasSched = declareForm.days.length > 0 || declareForm.start_time || declareForm.end_time;
+    if (hasSched) {
+      if (declareForm.days.length === 0) { setDeclareError('Pick at least one meeting day, or clear the time to skip the schedule.'); return; }
+      if (!declareForm.start_time || !declareForm.end_time) { setDeclareError('Enter both a start and end time for the schedule.'); return; }
+      if (declareForm.start_time >= declareForm.end_time) { setDeclareError('End time must be after the start time.'); return; }
+    }
     setDeclaring(true);
     setDeclareError('');
     try {
-      const payload = { subject_id: Number(declareForm.subject_id), term_semester: declareForm.term_semester };
-      if (declareForm.block_id) payload.block_id = Number(declareForm.block_id);
-      if (declareForm.section.trim()) payload.section = declareForm.section.trim();
+      const payload = {
+        subject_id: Number(declareForm.subject_id),
+        term_semester: declareForm.term_semester,
+        block_id: Number(declareForm.block_id),
+      };
+      if (hasSched) {
+        payload.days = declareForm.days;
+        payload.start_time = declareForm.start_time;
+        payload.end_time = declareForm.end_time;
+      }
       const res = await api.post('/grades/faculty/assignments/', payload);
       setShowDeclare(false);
       const targetTerm = res.data?.term_id ? String(res.data.term_id) : selectedTerm;
@@ -386,7 +417,7 @@ export default function FacultyTeachingLoad() {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: '1.75rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '.85rem', marginBottom: '1.75rem' }}>
           {load.map(ta => {
             const taId = ta.teaching_assignment_id;
             const sortedSlots = [...(ta.slots || [])].sort((a, b) =>
@@ -424,18 +455,25 @@ export default function FacultyTeachingLoad() {
                 <div className="tl-slots-section">
                   <div className="tl-slots-row">
                     {sortedSlots.map(slot => (
-                      <div key={slot.id} className="tl-slot-chip">
-                        <span className="tl-slot-day">{DAY_LABELS[slot.day_of_week]}</span>
-                        <span className="tl-slot-time">{formatTime(slot.start_time)}–{formatTime(slot.end_time)}</span>
-                        {slot.room && <span className="tl-slot-room">{slot.room}</span>}
-                        <button
-                          className="tl-slot-x"
-                          disabled={deletingSlot === slot.id}
-                          onClick={() => handleDeleteSlot(slot.id)}
-                          title="Remove slot"
-                        >
-                          {deletingSlot === slot.id ? '…' : <i className="ti ti-x" />}
-                        </button>
+                      <div key={slot.id} className="tl-meeting">
+                        <div className="tl-meeting-top">
+                          <span className="tl-meeting-day">{slot.day_display || DAY_LABELS[slot.day_of_week]}</span>
+                          <span className="tl-meeting-time">{formatTime(slot.start_time)}–{formatTime(slot.end_time)}</span>
+                          <button
+                            className="tl-meeting-x"
+                            disabled={deletingSlot === slot.id}
+                            onClick={() => handleDeleteSlot(slot.id)}
+                            title="Remove this meeting"
+                          >
+                            {deletingSlot === slot.id ? '…' : <i className="ti ti-x" />}
+                          </button>
+                        </div>
+                        <div className={`tl-meeting-room${slot.room ? '' : ' pending'}`}>
+                          <i className={`ti ${slot.room ? 'ti-door' : 'ti-map-pin'}`} />
+                          <span>{slot.room
+                            ? `${slot.room}${slot.building ? ` · ${slot.building}` : ''}`
+                            : 'Room to be assigned by the registrar'}</span>
+                        </div>
                       </div>
                     ))}
                     {sortedSlots.length === 0 && <span className="tl-noslots"><i className="ti ti-alert-triangle" /> No schedule slots yet — students can’t see this class.</span>}
@@ -639,40 +677,62 @@ export default function FacultyTeachingLoad() {
             </div>
 
             <div className="tl-modal-field">
-              <label className="tl-modal-label">
-                Block <span style={{ fontWeight: 400, color: 'var(--faint)', fontSize: 12 }}>(optional)</span>
-              </label>
+              <label className="tl-modal-label">Block</label>
               <select
                 className="tl-modal-select"
                 value={declareForm.block_id}
                 onChange={e => setDeclareForm(f => ({ ...f, block_id: e.target.value }))}
                 disabled={!declareForm.program_id || !declareForm.year_level || blocksLoading}
               >
-                <option value="">{blocksLoading ? 'Loading blocks…' : 'No block assigned'}</option>
+                <option value="">{blocksLoading ? 'Loading blocks…' : 'Select a block'}</option>
                 {declareBlocks.map(b => (
                   <option key={b.id} value={b.id}>
                     {b.name} - {b.enrolled_count}/{b.capacity} students{b.is_full ? ' (Full)' : ''}
                   </option>
                 ))}
               </select>
-              {declareForm.program_id && declareForm.year_level && !blocksLoading && declareBlocks.length === 0 && (
-                <div className="tl-help-text">No blocks found. Blocks are created automatically when enrollments are approved.</div>
-              )}
+              <div className="tl-help-text">
+                {declareForm.program_id && declareForm.year_level && !blocksLoading && declareBlocks.length === 0
+                  ? 'No blocks found. Blocks are created automatically when enrollments are approved.'
+                  : 'The block is the student cohort you teach. Same subject taught to two blocks = two courses.'}
+              </div>
             </div>
 
             <div className="tl-modal-field">
               <label className="tl-modal-label">
-                Section <span style={{ fontWeight: 400, color: 'var(--faint)', fontSize: 12 }}>(as in your class list, e.g. 1A)</span>
+                Schedule <span style={{ fontWeight: 400, color: 'var(--faint)', fontSize: 12 }}>(optional — the registrar assigns the room)</span>
               </label>
-              <input
-                className="tl-modal-select"
-                type="text"
-                value={declareForm.section}
-                onChange={e => setDeclareForm(f => ({ ...f, section: e.target.value }))}
-                placeholder="e.g. 1A"
-                maxLength={30}
-              />
-              <div className="tl-help-text">Same subject taught to two sections = two courses. Leave blank if you handle only one section.</div>
+              <div className="tl-day-row">
+                {DECLARE_DAYS.map(d => {
+                  const on = declareForm.days.includes(d.value);
+                  return (
+                    <button type="button" key={d.value}
+                      className={`tl-day-btn${on ? ' on' : ''}`}
+                      onClick={() => setDeclareForm(f => ({
+                        ...f,
+                        days: on ? f.days.filter(x => x !== d.value) : [...f.days, d.value],
+                      }))}>
+                      {d.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="tl-time-row">
+                <div>
+                  <span className="tl-time-lbl">Start</span>
+                  <input type="time" className="tl-modal-select" value={declareForm.start_time}
+                    onChange={e => setDeclareForm(f => ({ ...f, start_time: e.target.value }))} />
+                </div>
+                <div>
+                  <span className="tl-time-lbl">End</span>
+                  <input type="time" className="tl-modal-select" value={declareForm.end_time}
+                    onChange={e => setDeclareForm(f => ({ ...f, end_time: e.target.value }))} />
+                </div>
+              </div>
+              <div className="tl-help-text">
+                Set the day(s) and time you teach this class. Leave blank to add the schedule later.
+                The room is assigned by the registrar.
+              </div>
             </div>
 
             {declareError && <div className="tl-form-err" style={{ marginBottom: '.75rem' }}>{declareError}</div>}
@@ -722,13 +782,14 @@ const CSS = `
     font-size: 13px; margin-bottom: 1rem; border-left: 3px solid #dc2626;
   }
 
-  /* Assignment card (compact) */
+  /* Course card */
   .tl-card {
     background: #fff;
     border: 1px solid var(--line);
-    padding: .9rem 1.1rem;
+    padding: 1.15rem 1.3rem;
+    transition: border-color .15s, box-shadow .15s;
   }
-  .tl-card + .tl-card { border-top: none; }
+  .tl-card:hover { border-color: var(--line); box-shadow: 0 1px 3px rgba(16,24,40,.05); }
   .tl-card--noslot { border-left: 3px solid var(--amber); }
   .tl-card-head {
     display: flex;
@@ -754,29 +815,34 @@ const CSS = `
   .tl-btn-remove:hover:not(:disabled) { background: #fee2e2; border-color: #fca5a5; color: var(--red); }
   .tl-btn-remove:disabled { opacity: .6; cursor: default; }
 
-  /* Slots (compact inline pills) */
-  .tl-slots-section { border-top: 1px solid var(--line-soft); padding-top: .7rem; margin-top: .75rem; }
-  .tl-slots-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
-  .tl-slot-chip {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: #f0fdf4; border: 1px solid #bbf7d0;
-    padding: 4px 6px 4px 10px; font-size: 12px; line-height: 1.2;
+  /* Weekly meetings — the focal element: day/time with the room status */
+  .tl-slots-section { border-top: 1px solid var(--line-soft); padding-top: .9rem; margin-top: .9rem; }
+  .tl-slots-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: stretch; }
+  .tl-meeting {
+    display: flex; flex-direction: column; gap: 6px;
+    background: var(--warm); border: 1px solid var(--line);
+    padding: 9px 13px; min-width: 176px;
   }
-  .tl-slot-day { font-weight: 700; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; font-size: 11px; }
-  .tl-slot-time { font-weight: 600; color: var(--green); font-variant-numeric: tabular-nums; }
-  .tl-slot-room { color: var(--muted); }
-  .tl-slot-x {
-    background: none; border: none; color: var(--faint); font-size: 14px;
-    cursor: pointer; line-height: 1; padding: 0 0 0 2px; display: inline-flex;
+  .tl-meeting-top { display: flex; align-items: baseline; gap: 10px; }
+  .tl-meeting-day { font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: .01em; }
+  .tl-meeting-time { font-size: 13.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: auto; }
+  .tl-meeting-x {
+    background: none; border: none; color: var(--faint); font-size: 13px;
+    cursor: pointer; line-height: 1; padding: 0; display: inline-flex; align-self: center;
+    transition: color .15s;
   }
-  .tl-slot-x:hover:not(:disabled) { color: var(--red); }
-  .tl-slot-x:disabled { opacity: .5; cursor: default; }
-  .tl-noslots { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--amber); font-weight: 500; }
+  .tl-meeting-x:hover:not(:disabled) { color: var(--red); }
+  .tl-meeting-x:disabled { opacity: .5; cursor: default; }
+  .tl-meeting-room { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+  .tl-meeting-room i { font-size: 15px; color: var(--muted); }
+  .tl-meeting-room.pending { color: var(--amber); }
+  .tl-meeting-room.pending i { color: var(--amber); }
+  .tl-noslots { display: inline-flex; align-items: center; align-self: center; gap: 6px; font-size: 12.5px; color: var(--amber); font-weight: 500; }
   .tl-noslots i { font-size: 14px; }
   .tl-btn-add-slot {
-    display: inline-flex; align-items: center; gap: 4px;
+    display: inline-flex; align-items: center; align-self: center; gap: 4px;
     background: none; border: 1px dashed var(--line); color: var(--muted);
-    padding: 4px 10px; font-size: 12px; cursor: pointer;
+    padding: 7px 12px; font-size: 12px; cursor: pointer;
     transition: border-color .15s, color .15s;
   }
   .tl-btn-add-slot:hover { border-color: var(--ink); color: var(--ink); }
@@ -842,4 +908,13 @@ const CSS = `
   }
   .tl-modal-select:focus { border-color: var(--ink); }
   .tl-modal-select:disabled { background: var(--warm); color: var(--faint); cursor: not-allowed; }
+  .tl-day-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tl-day-btn { padding: 6px 12px; font-size: 12px; font-weight: 600; border: 1px solid var(--line);
+    background: #fff; color: var(--muted); cursor: pointer; border-radius: 4px; }
+  .tl-day-btn:hover { border-color: var(--ink); }
+  .tl-day-btn.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .tl-time-row { display: flex; gap: .75rem; margin-top: .6rem; }
+  .tl-time-row > div { flex: 1; }
+  .tl-time-lbl { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; margin-bottom: 4px; }
 `;

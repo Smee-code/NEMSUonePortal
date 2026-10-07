@@ -230,13 +230,31 @@ class FacultyAssignmentCreateSerializer(serializers.Serializer):
     block_id = serializers.PrimaryKeyRelatedField(
         queryset=Block.objects.all(),
         source='block',
-        required=False,
-        allow_null=True,
     )
-    section = serializers.CharField(max_length=30, required=False, allow_blank=True, default='')
+    # Optional meeting schedule declared by the faculty. If given, a room-less
+    # ClassSchedule slot is created per day (same time) for the registrar to
+    # assign rooms to. Omit to just declare the course and add slots later.
+    days = serializers.ListField(
+        child=serializers.ChoiceField(choices=['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']),
+        required=False, default=list,
+    )
+    start_time = serializers.TimeField(required=False, allow_null=True)
+    end_time = serializers.TimeField(required=False, allow_null=True)
 
-    def validate_section(self, value):
-        return (value or '').strip()
+    def validate(self, data):
+        days = data.get('days') or []
+        start = data.get('start_time')
+        end = data.get('end_time')
+        if days or start is not None or end is not None:
+            if not days:
+                raise serializers.ValidationError({'days': 'Pick at least one meeting day.'})
+            if start is None or end is None:
+                raise serializers.ValidationError('Enter both a start and end time for the schedule.')
+            if start >= end:
+                raise serializers.ValidationError({'end_time': 'End time must be after the start time.'})
+            # De-duplicate while preserving order.
+            data['days'] = list(dict.fromkeys(days))
+        return data
 
 
 class RegistrarGradeSerializer(serializers.ModelSerializer):

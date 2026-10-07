@@ -44,12 +44,20 @@ def _audit(user, role, action, resource, ip, result='success', extra=None):
 def _check_conflicts(room, day_of_week, start_time, end_time, teaching_assignment, exclude_id=None):
     """Returns list of conflict error strings. Empty = no conflicts."""
     overlap = Q(start_time__lt=end_time) & Q(end_time__gt=start_time)
-    qs = ClassSchedule.objects.filter(overlap, day_of_week=day_of_week)
+    # Scope the clash check to the same academic term: a room/instructor/block
+    # booked in a past semester must not block the current one. Schedules are
+    # per-term, so each new semester starts with a clean slate.
+    qs = ClassSchedule.objects.filter(
+        overlap,
+        day_of_week=day_of_week,
+        teaching_assignment__academic_term=teaching_assignment.academic_term,
+    )
     if exclude_id is not None:
         qs = qs.exclude(id=exclude_id)
 
     errors = []
-    if qs.filter(room__iexact=room).exists():
+    # Only a real (assigned) room can clash — unassigned slots (room='') never do.
+    if room and qs.filter(room__iexact=room).exists():
         errors.append(f'Room "{room}" is already occupied on {day_of_week} during this time slot.')
     if qs.filter(teaching_assignment__faculty=teaching_assignment.faculty).exists():
         errors.append(
@@ -170,8 +178,14 @@ class StudentScheduleView(APIView):
             if not term:
                 return Response([])
 
-        # Scope (RBAC / A01): the student's classes are the courses a professor
-        # has added them to — one GradeRecord per roster membership — for this term.
+        # Scope (RBAC / A01): a class is the student's if EITHER a professor added
+        # them to it (a GradeRecord roster membership) OR it is scheduled for the
+        # block (cohort) the student is approved into this term. Classes are now
+        # scheduled per block, so block membership alone should surface the
+        # timetable even before any roster is encoded. Keyed by assignment id so
+        # the two sources are unioned without duplicates.
+        ta_map = {}
+
         records = (
             GradeRecord.objects
             .filter(
@@ -185,14 +199,30 @@ class StudentScheduleView(APIView):
                 'teaching_assignment__faculty',
             )
         )
-
-        seen = set()
-        result = []
         for rec in records:
-            ta = rec.teaching_assignment
-            if ta.id in seen:
-                continue
-            seen.add(ta.id)
+            ta_map.setdefault(rec.teaching_assignment_id, rec.teaching_assignment)
+
+        block_ids = list(
+            EnrollmentRequest.objects
+            .filter(
+                student=request.user,
+                academic_term=term,
+                status='approved',
+                block__isnull=False,
+            )
+            .values_list('block_id', flat=True)
+        )
+        if block_ids:
+            block_tas = (
+                TeachingAssignment.objects
+                .filter(academic_term=term, block_id__in=block_ids)
+                .select_related('subject', 'faculty')
+            )
+            for ta in block_tas:
+                ta_map.setdefault(ta.id, ta)
+
+        result = []
+        for ta in ta_map.values():
             subject = ta.subject
             slots_qs = ClassSchedule.objects.filter(teaching_assignment=ta)
             result.append({
@@ -239,8 +269,22 @@ class FacultyScheduleView(APIView):
 
         result = []
         for ta in ta_qs:
-            # Roster size = students the instructor added to this course.
-            student_count = GradeRecord.objects.filter(teaching_assignment=ta).count()
+            # Student count = the students in this class: anyone the instructor
+            # rostered (a GradeRecord) UNION the block cohort approved-enrolled
+            # into the class's block for the term. Classes are block-based, so the
+            # block cohort should show even before any roster is encoded.
+            student_ids = set(
+                GradeRecord.objects.filter(teaching_assignment=ta).values_list('student_id', flat=True)
+            )
+            if ta.block_id:
+                student_ids |= set(
+                    EnrollmentRequest.objects.filter(
+                        block_id=ta.block_id,
+                        academic_term=ta.academic_term,
+                        status='approved',
+                    ).values_list('student_id', flat=True)
+                )
+            student_count = len(student_ids)
 
             result.append({
                 'teaching_assignment_id': ta.id,
@@ -267,6 +311,13 @@ class ScheduleListCreateView(generics.ListCreateAPIView):
     POST /api/schedules/ — create with room + faculty conflict detection"""
     permission_classes = [IsRegistrarOrAdmin]
     throttle_classes = [RegistrarScheduleManageThrottle]
+
+    def get_throttles(self):
+        # Only writes (create) count against the management quota — listing and
+        # the reloads after every add/edit/delete must not exhaust it.
+        if self.request.method == 'POST':
+            return [RegistrarScheduleManageThrottle()]
+        return []
 
     def get_serializer_class(self):
         return ClassScheduleWriteSerializer if self.request.method == 'POST' else ClassScheduleReadSerializer
@@ -318,6 +369,12 @@ class ScheduleDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsRegistrarOrAdmin]
     throttle_classes = [RegistrarScheduleManageThrottle]
     http_method_names = ['get', 'patch', 'delete', 'head', 'options']
+
+    def get_throttles(self):
+        # Only writes (edit/delete) count against the management quota.
+        if self.request.method in ('PATCH', 'DELETE'):
+            return [RegistrarScheduleManageThrottle()]
+        return []
 
     def get_serializer_class(self):
         return ClassScheduleWriteSerializer if self.request.method == 'PATCH' else ClassScheduleReadSerializer
@@ -374,6 +431,35 @@ class ScheduleDetailView(generics.RetrieveUpdateDestroyAPIView):
             {'subject': instance.teaching_assignment.subject.code},
         )
         instance.delete()
+
+
+class ScheduleClassDeleteView(APIView):
+    """DELETE /api/schedules/class/<ta_id>/ — remove ALL schedule slots for one
+    class (a teaching assignment / instructor) in a single action."""
+    permission_classes = [IsRegistrarOrAdmin]
+    throttle_classes = [RegistrarScheduleManageThrottle]
+
+    def delete(self, request, ta_id):
+        qs = ClassSchedule.objects.select_related(
+            'teaching_assignment__subject', 'teaching_assignment__faculty',
+        ).filter(teaching_assignment_id=ta_id)
+        first = qs.first()
+        if first is None:
+            return Response(
+                {'error': 'No schedule slots found for this class.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        subject = first.teaching_assignment.subject.code
+        faculty = first.teaching_assignment.faculty.full_name if first.teaching_assignment.faculty_id else ''
+        count = qs.count()
+        qs.delete()
+        _audit(
+            request.user, request.user.role,
+            'schedule_class_deleted', f'teaching_assignment:{ta_id}',
+            get_client_ip(request), 'success',
+            {'subject': subject, 'faculty': faculty, 'slots': count},
+        )
+        return Response({'message': f'Removed {count} schedule slot(s) for {subject}.'})
 
 
 # ── Faculty — self-service schedule slots ─────────────────────────────────────

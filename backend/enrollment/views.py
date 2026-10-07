@@ -5,7 +5,7 @@ import os
 from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError, transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework import generics, status
@@ -24,7 +24,7 @@ from authentication.permissions import (
     get_client_ip,
 )
 
-from announcements.models import Announcement
+from announcements.models import Announcement, Notification
 
 from .academics import eligible_offered
 from .models import AcademicTerm, Block, BlockExpansionRequest, Curriculum, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
@@ -193,6 +193,16 @@ class AcademicTermListView(generics.ListAPIView):
         role = self.request.user.role
         if role in ('registrar', 'admin'):
             return AcademicTerm.objects.all().order_by('-year', 'semester')
+        if role == 'faculty':
+            # Faculty need every term they actually teach in (so the Teaching
+            # Load page defaults to their current declared courses and they can
+            # view past loads), plus the active term so they can declare for it.
+            return (
+                AcademicTerm.objects
+                .filter(Q(is_active=True) | Q(teaching_assignments__faculty=self.request.user))
+                .distinct()
+                .order_by('-year', 'semester')
+            )
         qs = AcademicTerm.objects.filter(is_active=True)
         if role == 'student':
             qs = qs.filter(enrollment_open=True)
@@ -274,9 +284,59 @@ class ProgramListView(generics.ListAPIView):
 
 # ── Block assignment ───────────────────────────────────────────────────────────
 
+def block_label(i):
+    """Canonical block name for 0-based index i.
+
+    0..25 -> 'Block A'..'Block Z', then 'Block 1A','Block 1B'..'Block 1Z',
+    'Block 2A'..  (so the 27th block is 'Block 1A', matching the registrar's
+    expectation that names continue past Z as 1A, 1B, …)."""
+    if i < 26:
+        return f"Block {chr(65 + i)}"
+    return f"Block {i // 26}{chr(65 + i % 26)}"
+
+
+def program_year_block_status(program, academic_term, year_level):
+    """Capacity snapshot for one (program, term, year level) cohort.
+
+    'used' counts every non-rejected enrollment request (pending + approved) so
+    that pending submissions also consume slots — this is what makes the cohort
+    go 'full' before the registrar even approves, so no more students get in.
+    When no blocks have been set up yet, the cohort is treated as not full
+    (unlimited) so programs without configured blocks still enroll normally.
+    """
+    from django.db.models import Count, Sum
+    agg = Block.objects.filter(
+        program=program, academic_term=academic_term, year_level=year_level,
+    ).aggregate(total=Sum('capacity'), n=Count('id'))
+    total_capacity = agg['total'] or 0
+    has_blocks = (agg['n'] or 0) > 0
+    used = EnrollmentRequest.objects.filter(
+        program=program, academic_term=academic_term, year_level=year_level,
+    ).exclude(status=EnrollmentRequest.STATUS_REJECTED).count()
+    return {
+        'has_blocks': has_blocks,
+        'total_capacity': total_capacity,
+        'used': used,
+        'available': max(0, total_capacity - used),
+        'is_full': has_blocks and used >= total_capacity,
+    }
+
+
+def _block_order_key(block):
+    """Logical fill order: A..Z, then 1A..1Z, 2A..  so a student always fills
+    Block A first, then B, and so on. A plain string sort would put 'Block 1A'
+    before 'Block A'; unrecognized names sort last, by name."""
+    import re
+    m = re.match(r'^(?:block\s+)?(\d*)\s*([a-z])$', (block.name or '').strip(), re.IGNORECASE)
+    if m:
+        prefix = int(m.group(1)) if m.group(1) else 0
+        return (0, prefix * 26 + (ord(m.group(2).upper()) - 65), '')
+    return (1, 0, block.name or '')
+
+
 def _assign_block(enrollment):
-    """Assign the student to a block with available slots, creating a new one if needed.
-    Must be called inside transaction.atomic()."""
+    """Assign the student to the FIRST block (A, then B, …) that still has an
+    open slot. Must be called inside transaction.atomic()."""
     blocks = list(
         Block.objects
         .select_for_update()
@@ -285,8 +345,8 @@ def _assign_block(enrollment):
             academic_term=enrollment.academic_term,
             year_level=enrollment.year_level,
         )
-        .order_by('name')
     )
+    blocks.sort(key=_block_order_key)
 
     for block in blocks:
         if block.available_slots > 0:
@@ -294,19 +354,52 @@ def _assign_block(enrollment):
             enrollment.save(update_fields=['block'])
             return
 
-    count = len(blocks)
-    block_name = f"Block {chr(65 + count)}" if count < 26 else f"Block {count + 1}"
+    # No open slot. If the registrar has configured blocks, respect the cap and
+    # leave this one unassigned (the submit-time gate should have blocked it) so
+    # we never silently exceed capacity. Only bootstrap a first block when none
+    # exist yet (a program whose blocks were never set up).
+    if blocks:
+        return
     block = Block.objects.create(
         program=enrollment.program,
         academic_term=enrollment.academic_term,
         year_level=enrollment.year_level,
-        name=block_name,
+        name=block_label(0),
     )
     enrollment.block = block
     enrollment.save(update_fields=['block'])
 
 
 # ── Student ────────────────────────────────────────────────────────────────────
+
+def _reopen_rejected_enrollment(enrollment, *, year_level, program, student_type, subjects):
+    """Reopen a previously REJECTED enrollment request in place.
+
+    Reuses the existing row — so unique_together(student, academic_term) is never
+    violated and no delete/insert is needed — resetting it to a clean pending
+    state, stamping a fresh submitted_at (so it re-enters the registrar's queue),
+    and replacing its subjects. Manages its own transaction.
+    """
+    with transaction.atomic():
+        enrollment.status = EnrollmentRequest.STATUS_PENDING
+        enrollment.year_level = year_level
+        enrollment.program = program
+        enrollment.student_type = student_type
+        enrollment.remarks = ''
+        enrollment.block = None
+        enrollment.processed_at = None
+        enrollment.processed_by = None
+        enrollment.submitted_at = timezone.now()
+        enrollment.save(update_fields=[
+            'status', 'year_level', 'program', 'student_type', 'remarks',
+            'block', 'processed_at', 'processed_by', 'submitted_at',
+        ])
+        EnrollmentSubject.objects.filter(enrollment=enrollment).delete()
+        EnrollmentSubject.objects.bulk_create([
+            EnrollmentSubject(enrollment=enrollment, subject=s) for s in subjects
+        ])
+    return enrollment
+
 
 class EnrollmentSubmitView(APIView):
     """POST /api/enrollment/submit/"""
@@ -331,16 +424,53 @@ class EnrollmentSubmitView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Duplicate-submission check done here (not serializer) so we can audit it (A09)
-        if EnrollmentRequest.objects.filter(student=request.user, academic_term=term).exists():
+        # One request per student per term (unique_together). A pending/approved
+        # request still blocks, but a previously REJECTED one is reopened in place
+        # so the student can fix and resubmit. Checked here (not the serializer)
+        # so we can audit it (A09).
+        existing = (
+            EnrollmentRequest.objects
+            .filter(student=request.user, academic_term=term)
+            .first()
+        )
+        if existing and existing.status != EnrollmentRequest.STATUS_REJECTED:
             _audit(
                 request.user, request.user.role,
                 'enrollment_duplicate_attempt', request.path, ip, 'failure',
-                {'term': str(term)},
+                {'term': str(term), 'status': existing.status},
             )
             return Response(
                 {'error': 'You have already submitted an enrollment request for this term.'},
                 status=status.HTTP_409_CONFLICT,
+            )
+
+        # Capacity gate: if the registrar configured blocks for this program +
+        # year level and every slot is taken, the cohort is full — stop accepting.
+        if program_year_block_status(serializer.validated_data['program_id'], term, year_level)['is_full']:
+            _audit(request.user, request.user.role, 'enrollment_full_blocked',
+                   request.path, ip, 'failure', {'term': str(term), 'year_level': year_level})
+            return Response(
+                {'error': 'Slots are full — this program is not accepting more students for this '
+                          'year level this term. Please contact the registrar.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if existing:  # status == rejected -> reopen and resubmit
+            _reopen_rejected_enrollment(
+                existing,
+                year_level=year_level,
+                program=serializer.validated_data['program_id'],
+                student_type=serializer.validated_data.get('student_type', 'regular'),
+                subjects=subjects,
+            )
+            _audit(
+                request.user, request.user.role,
+                'enrollment_resubmitted', request.path, ip, 'success',
+                {'term': str(term), 'subject_count': len(subjects)},
+            )
+            return Response(
+                {'message': 'Enrollment request resubmitted successfully.', 'id': str(existing.id)},
+                status=status.HTTP_200_OK,
             )
 
         try:
@@ -395,6 +525,33 @@ class StudentEnrollmentHistoryView(generics.ListAPIView):
         )
 
 
+def student_enrollment_year_level(student, active_term=None):
+    """The year level a continuing student should enroll in for the active term.
+
+    It advances from the student's registered year level as they complete
+    academic years: finishing BOTH semesters of a year level (approved
+    enrollments in earlier terms) promotes them to the next year. A failed
+    course is still caught per-course by the prerequisite check, so advancing
+    the year never lets a student into a course whose prerequisite is unmet.
+    """
+    base = student.year_level or 1
+    qs = EnrollmentRequest.objects.filter(
+        student=student, status=EnrollmentRequest.STATUS_APPROVED,
+    )
+    if active_term is not None:
+        qs = qs.exclude(academic_term=active_term)
+    sems = {}
+    for yl, sem in qs.values_list('year_level', 'academic_term__semester'):
+        if yl:
+            sems.setdefault(yl, set()).add(sem)
+    if sems:
+        top = max(sems)
+        inferred = top + 1 if {'first', 'second'} <= sems[top] else top
+    else:
+        inferred = base
+    return max(inferred, base)
+
+
 class StudentOfferedCoursesView(APIView):
     """GET /api/enrollment/offered/ — for a continuing student: the courses
     offered for their program + year level in the active term, each marked
@@ -405,12 +562,17 @@ class StudentOfferedCoursesView(APIView):
         student = request.user
         term = AcademicTerm.objects.filter(is_active=True).first()
         program = student.program
-        year_level = student.year_level
+        # Year level advances as the student completes years (not a static field).
+        year_level = student_enrollment_year_level(student, term)
 
+        # A rejected request does NOT count as "already submitted" — the student
+        # may fix and resubmit it, so the enrollment form stays available.
         already = bool(term and EnrollmentRequest.objects.filter(
-            student=student, academic_term=term).exists())
+            student=student, academic_term=term,
+        ).exclude(status=EnrollmentRequest.STATUS_REJECTED).exists())
 
         courses = []
+        block_status = None
         if term and program and year_level:
             for row in eligible_offered(student, program, year_level, term.semester):
                 s = row['subject']
@@ -421,6 +583,11 @@ class StudentOfferedCoursesView(APIView):
                     'eligible': row['eligible'],
                     'blocked_reason': row['blocked_reason'],
                 })
+            st = program_year_block_status(program, term, year_level)
+            block_status = {
+                'has_blocks': st['has_blocks'], 'is_full': st['is_full'],
+                'available': st['available'], 'total_capacity': st['total_capacity'],
+            }
 
         return Response({
             'term': {
@@ -430,6 +597,8 @@ class StudentOfferedCoursesView(APIView):
             'program': {'id': program.id, 'name': program.name, 'code': program.code} if program else None,
             'year_level': year_level,
             'already_submitted': already,
+            'blocks_full': bool(block_status and block_status['is_full']),
+            'block_status': block_status,
             'courses': courses,
         })
 
@@ -455,22 +624,50 @@ class ContinuingEnrollmentSubmitView(APIView):
         if not (student.program_id and student.year_level):
             return Response({'error': 'Your program and year level aren’t set yet — please contact the registrar.'},
                             status=status.HTTP_400_BAD_REQUEST)
-        if EnrollmentRequest.objects.filter(student=student, academic_term=term).exists():
+        # Year level advances as the student completes academic years.
+        year_level = student_enrollment_year_level(student, term)
+        # A pending/approved request blocks; a rejected one is reopened in place.
+        existing = EnrollmentRequest.objects.filter(student=student, academic_term=term).first()
+        if existing and existing.status != EnrollmentRequest.STATUS_REJECTED:
             return Response({'error': 'You have already submitted an enrollment request for this term.'},
                             status=status.HTTP_409_CONFLICT)
 
+        # Capacity gate: once the registrar's blocks for this program + year level
+        # are all full, the cohort stops accepting new students.
+        if program_year_block_status(student.program, term, year_level)['is_full']:
+            _audit(student, student.role, 'enrollment_full_blocked', request.path, ip, 'failure',
+                   {'term': str(term), 'year_level': year_level})
+            return Response({'error': 'Slots are full — this program is not accepting more students for '
+                                      'your year level this term. Please contact the registrar.'},
+                            status=status.HTTP_409_CONFLICT)
+
         eligible = [r['subject'] for r in
-                    eligible_offered(student, student.program, student.year_level, term.semester)
+                    eligible_offered(student, student.program, year_level, term.semester)
                     if r['eligible']]
         if not eligible:
             return Response({'error': 'No eligible courses are available for you this term — please contact the registrar.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        if existing:  # status == rejected -> reopen and resubmit
+            _reopen_rejected_enrollment(
+                existing,
+                year_level=year_level,
+                program=student.program,
+                student_type='continuing',
+                subjects=eligible,
+            )
+            _audit(student, student.role, 'enrollment_resubmitted', request.path, ip, 'success',
+                   {'term': str(term), 'subject_count': len(eligible), 'type': 'continuing'})
+            return Response({
+                'message': 'Enrollment resubmitted. The registrar will review it.',
+                'id': str(existing.id), 'subject_count': len(eligible),
+            }, status=status.HTTP_200_OK)
+
         try:
             with transaction.atomic():
                 enrollment = EnrollmentRequest.objects.create(
                     student=student, academic_term=term,
-                    program=student.program, year_level=student.year_level,
+                    program=student.program, year_level=year_level,
                     student_type='continuing',
                 )
                 EnrollmentSubject.objects.bulk_create([
@@ -581,7 +778,134 @@ class RegistrarReviewView(APIView):
             {'enrollment_id': str(enrollment.id), 'student': str(enrollment.student.id)},
         )
 
+        # On approval, tell the student their enrollment is approved for the term —
+        # both by email and as an in-app notification (best-effort; a failure here
+        # never fails the approval itself).
+        if new_status == EnrollmentRequest.STATUS_APPROVED:
+            self._materialize_rosters(enrollment)
+            self._notify_approved(enrollment)
+        elif new_status == EnrollmentRequest.STATUS_REJECTED:
+            self._notify_rejected(enrollment)
+
         return Response({'message': f'Enrollment request {enrollment.status}.'})
+
+    @staticmethod
+    def _notify_rejected(enrollment):
+        term = str(enrollment.academic_term)
+        student = enrollment.student
+        remarks = (enrollment.remarks or '').strip()
+        summary = (
+            f'Your enrollment request for {term} was not approved. '
+            + (f'Registrar’s note: {remarks} ' if remarks else '')
+            + 'Open "My Enrollment" to review and submit again.'
+        )
+
+        # Email
+        try:
+            email = (getattr(student, 'institutional_email', '') or '').strip()
+            if (student and not getattr(student, 'is_placeholder', False)
+                    and email and 'placeholder' not in email.lower()):
+                from nemsuoneportal.emails import send_branded_email
+                body = (
+                    f'Hi {student.full_name or "Student"},\n\n'
+                    f'Your enrollment request for {term} was not approved by the registrar.\n'
+                    + (f'\nReason: {remarks}\n' if remarks else '')
+                    + '\nPlease log in to NEMSUonePortal, open "My Enrollment", review your '
+                    'courses and submit your enrollment again.\n\n'
+                    '— NEMSU Cantilan Campus'
+                )
+                send_branded_email(
+                    f'Your enrollment for {term} was not approved', body, [email],
+                    fail_silently=True,
+                )
+        except Exception:
+            logger.warning('Failed to send enrollment-rejected email', exc_info=True)
+
+        # In-app notification (topbar bell)
+        try:
+            Notification.push(
+                [student],
+                title=f'Enrollment not approved — {term}',
+                body=summary,
+                category='enrollment',
+                link='/student/enrollment',
+            )
+        except Exception:
+            logger.warning('Failed to create enrollment-rejected notification', exc_info=True)
+
+    @staticmethod
+    def _materialize_rosters(enrollment):
+        """On approval, add the student to the roster (a GradeRecord) of every
+        class already declared for their block + enrolled subjects, so faculty
+        see them without adding anyone by hand. Best-effort."""
+        if not enrollment.block_id:
+            return
+        try:
+            from grades.models import TeachingAssignment, GradeRecord
+            subject_ids = list(
+                EnrollmentSubject.objects.filter(enrollment=enrollment)
+                .values_list('subject_id', flat=True)
+            )
+            if not subject_ids:
+                return
+            tas = TeachingAssignment.objects.filter(
+                academic_term=enrollment.academic_term,
+                block_id=enrollment.block_id,
+                subject_id__in=subject_ids,
+            )
+            for ta in tas:
+                GradeRecord.objects.get_or_create(
+                    student=enrollment.student,
+                    subject_id=ta.subject_id,
+                    academic_term=enrollment.academic_term,
+                    defaults={'teaching_assignment': ta},
+                )
+        except Exception:
+            logger.warning('Failed to materialize rosters on enrollment approval', exc_info=True)
+
+    @staticmethod
+    def _notify_approved(enrollment):
+        term = str(enrollment.academic_term)
+        student = enrollment.student
+        block = enrollment.block.name if enrollment.block_id else ''
+        summary = (
+            f'Your enrollment for {term} has been approved'
+            + (f' — you are in {block}.' if block else '.')
+            + ' Open "My Enrollment" to view your Certificate of Registration.'
+        )
+
+        # Email
+        try:
+            email = (getattr(student, 'institutional_email', '') or '').strip()
+            if (student and not getattr(student, 'is_placeholder', False)
+                    and email and 'placeholder' not in email.lower()):
+                from nemsuoneportal.emails import send_branded_email
+                body = (
+                    f'Hi {student.full_name or "Student"},\n\n'
+                    f'Good news — your enrollment for {term} has been approved'
+                    + (f' and you have been assigned to {block}.' if block else '.')
+                    + '\n\nLog in to NEMSUonePortal and open "My Enrollment" to view your '
+                    'Certificate of Registration and class schedule.\n\n'
+                    '— NEMSU Cantilan Campus'
+                )
+                send_branded_email(
+                    f'Your enrollment for {term} is approved', body, [email],
+                    fail_silently=True,
+                )
+        except Exception:
+            logger.warning('Failed to send enrollment-approved email', exc_info=True)
+
+        # In-app notification (topbar bell)
+        try:
+            Notification.push(
+                [student],
+                title=f'Enrollment approved — {term}',
+                body=summary,
+                category='enrollment',
+                link='/student/enrollment',
+            )
+        except Exception:
+            logger.warning('Failed to create enrollment-approved notification', exc_info=True)
 
 
 class EnrollmentBlockAssignView(APIView):
@@ -638,13 +962,36 @@ class RegistrarPendingEnrollmentListView(generics.ListAPIView):
         return qs
 
 
+def _generate_student_id(pending):
+    """Next unused Student ID in the form '<year>-00001'.
+
+    Year is the admission term's starting year (e.g. '2026-2027' -> 2026), else the
+    current calendar year. Uniqueness is checked against both existing User IDs and
+    already-assigned admission IDs."""
+    from authentication.models import User
+    year = None
+    if pending.academic_term_id and pending.academic_term.year:
+        year = pending.academic_term.year.split('-')[0]
+    year = (year or str(timezone.now().year)).strip()
+    prefix = f'{year}-'
+    nums = []
+    for sid in User.objects.filter(student_id__startswith=prefix).values_list('student_id', flat=True):
+        tail = sid[len(prefix):]
+        if tail.isdigit():
+            nums.append(int(tail))
+    for sid in PendingEnrollment.objects.filter(assigned_student_id__startswith=prefix).values_list('assigned_student_id', flat=True):
+        tail = sid[len(prefix):]
+        if tail.isdigit():
+            nums.append(int(tail))
+    nxt = (max(nums) + 1) if nums else 1
+    return f'{prefix}{nxt:05d}'
+
+
 class RegistrarPendingEnrollmentReviewView(APIView):
     """
     PATCH /api/enrollment/pending/<uuid>/review/ — approve or reject a freshman/
-    transferee admission application. Reviewed by the registrar/admin. Approval does
-    NOT create an account or activation link — the applicant is only notified that
-    they qualify for the entrance exam; the student ID and account come later, after
-    they are enrolled.
+    transferee admission application (registrar/admin). On approval a Student ID is
+    assigned and emailed; the applicant uses it to create their portal account.
     """
     permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
 
@@ -665,6 +1012,9 @@ class RegistrarPendingEnrollmentReviewView(APIView):
         serializer.is_valid(raise_exception=True)
         new_status = serializer.validated_data['status']
 
+        if new_status == 'approved' and not pending.assigned_student_id:
+            pending.assigned_student_id = _generate_student_id(pending)
+
         pending.status      = new_status
         pending.remarks     = serializer.validated_data.get('remarks', '')
         pending.reviewed_by = request.user
@@ -676,10 +1026,12 @@ class RegistrarPendingEnrollmentReviewView(APIView):
         _audit(
             request.user, request.user.role,
             f'pre_enrollment_{new_status}', request.path, ip, 'success',
-            {'pre_enrollment_id': str(pending.id), 'email': pending.email},
+            {'pre_enrollment_id': str(pending.id), 'email': pending.email,
+             'assigned_student_id': pending.assigned_student_id or None},
         )
 
-        return Response({'message': f'Application {new_status}.'})
+        return Response({'message': f'Application {new_status}.',
+                         'assigned_student_id': pending.assigned_student_id or None})
 
 
 class PublicPreEnrollUploadView(APIView):
@@ -749,8 +1101,7 @@ class RegistrarPreEnrollFollowupView(APIView):
         if not message:
             return Response({'error': 'Message is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        from django.conf import settings as _settings
-        from django.core.mail import send_mail
+        from nemsuoneportal.emails import send_branded_email
         subject = f"Follow-up on Your NEMSU Cantilan Pre-Enrollment Application (Ref: {pending.reference_number})"
         body = (
             f"Dear {pending.full_name},\n\n"
@@ -760,13 +1111,7 @@ class RegistrarPreEnrollFollowupView(APIView):
             f"— NEMSU Cantilan Registrar's Office"
         )
         try:
-            send_mail(
-                subject=subject,
-                message=body,
-                from_email=_settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[pending.email],
-                fail_silently=False,
-            )
+            send_branded_email(subject, body, [pending.email], fail_silently=False)
         except Exception:
             logger.error('Failed to send follow-up email to %s', pending.email, exc_info=True)
             return Response({'error': 'Failed to send email. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -784,8 +1129,8 @@ def _send_admission_decision_email(pending, decision):
     Notify a freshman/transferee applicant of the registrar/admin's decision.
     Approval does NOT create an account — it only invites them to the entrance exam.
     """
+    from nemsuoneportal.emails import send_branded_email
     from django.conf import settings as _settings
-    from django.core.mail import send_mail
     import logging
     _logger = logging.getLogger('security')
 
@@ -793,16 +1138,18 @@ def _send_admission_decision_email(pending, decision):
     program = pending.program.name if pending.program_id else 'your chosen program'
 
     if decision == 'approved':
-        subject = "NEMSU Cantilan — You Qualify for the Entrance Examination"
+        subject = "NEMSU Cantilan — Admission Approved · Create Your Account"
+        signup_url = f"{_settings.FRONTEND_URL}/signup"
         body = (
             f"Dear {pending.full_name},\n\n"
             f"Your application (Ref: {pending.reference_number}) for {program} has been "
-            f"reviewed and approved by {dept}.\n\n"
-            f"You are now qualified to take the college entrance examination. Please wait "
-            f"for the schedule and further instructions from the department, and bring the "
-            f"original copies of your submitted documents on exam day.\n\n"
-            f"Please note: you are not yet officially enrolled. Your student ID and portal "
-            f"account will be issued once you have completed enrollment.\n\n"
+            f"reviewed and approved by {dept}. Welcome to NEMSU Cantilan!\n\n"
+            f"Your Student ID is: {pending.assigned_student_id}\n\n"
+            f"Use this Student ID to create your NEMSUonePortal account. Click “Sign up” "
+            f"on the portal and enter your Student ID, your institutional email, and a "
+            f"password — your name is already on file, so you won’t need to re-enter it.\n\n"
+            f"{signup_url}\n\n"
+            f"Keep your Student ID safe; you’ll use it to log in and throughout your studies.\n\n"
             f"— NEMSU Cantilan Admissions"
         )
     else:
@@ -818,13 +1165,7 @@ def _send_admission_decision_email(pending, decision):
         )
 
     try:
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=_settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[pending.email],
-            fail_silently=False,
-        )
+        send_branded_email(subject, body, [pending.email], fail_silently=False)
     except Exception:
         _logger.error('Failed to send admission decision email to %s', pending.email, exc_info=True)
 
@@ -1345,6 +1686,77 @@ class AdminEnrollmentSummaryReportView(APIView):
 
 # ── Block Management ────────────────────────────────────────────────────────────
 
+class BlockGenerateView(APIView):
+    """POST /api/enrollment/blocks/generate/ — registrar/admin bulk-create blocks.
+
+    Body: {program_id, year_level, count, capacity, term_id?}. Ensures the first
+    `count` blocks (A, B, … then 1A, 1B, …) exist for that program + year level in
+    the term (current active term when term_id is omitted), each with the given
+    capacity. Existing blocks are kept and brought up to `capacity` (never below
+    what's already enrolled)."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+
+    def post(self, request):
+        ip = get_client_ip(request)
+        try:
+            program = Program.objects.get(pk=int(request.data.get('program_id')), is_active=True)
+        except (Program.DoesNotExist, TypeError, ValueError):
+            return Response({'error': 'Program not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            year_level = int(request.data.get('year_level'))
+            count      = int(request.data.get('count'))
+            capacity   = int(request.data.get('capacity'))
+        except (TypeError, ValueError):
+            return Response({'error': 'year_level, count, and capacity must be numbers.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if year_level not in (1, 2, 3, 4):
+            return Response({'error': 'Year level must be 1–4.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not (1 <= count <= 50):
+            return Response({'error': 'Number of blocks must be between 1 and 50.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not (1 <= capacity <= 500):
+            return Response({'error': 'Capacity must be between 1 and 500.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        term_id = request.data.get('term_id')
+        term = (AcademicTerm.objects.filter(pk=term_id).first() if term_id
+                else AcademicTerm.objects.filter(is_active=True).first())
+        if not term:
+            return Response({'error': 'No active term to create blocks for.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing = {
+            b.name: b for b in
+            Block.objects.filter(program=program, academic_term=term, year_level=year_level)
+        }
+        created = updated = 0
+        with transaction.atomic():
+            for i in range(count):
+                name = block_label(i)
+                block = existing.get(name)
+                if block is None:
+                    Block.objects.create(
+                        program=program, academic_term=term, year_level=year_level,
+                        name=name, capacity=capacity,
+                    )
+                    created += 1
+                else:
+                    new_cap = max(capacity, block.enrolled_count)
+                    if block.capacity != new_cap:
+                        block.capacity = new_cap
+                        block.save(update_fields=['capacity'])
+                        updated += 1
+
+        _audit(request.user, request.user.role, 'blocks_generated', request.path, ip, 'success',
+               {'program': program.code, 'year_level': year_level, 'count': count,
+                'capacity': capacity, 'created': created, 'updated': updated})
+
+        blocks = Block.objects.filter(
+            program=program, academic_term=term, year_level=year_level,
+        ).select_related('program', 'academic_term').order_by('name')
+        return Response(
+            {'created': created, 'updated': updated, 'blocks': BlockSerializer(blocks, many=True).data},
+            status=status.HTTP_201_CREATED,
+        )
+
+
 class BlockListView(generics.ListAPIView):
     """GET /api/enrollment/blocks/?term=<id>&program=<id>&year_level=<n>"""
     serializer_class   = BlockSerializer
@@ -1385,6 +1797,41 @@ class BlockDetailView(APIView):
             for e in enrollments
         ]
         return Response(data)
+
+    def patch(self, request, pk):
+        """Update a block's capacity (never below the number already enrolled)."""
+        from django.shortcuts import get_object_or_404
+        block = get_object_or_404(Block, pk=pk)
+        try:
+            capacity = int(request.data.get('capacity'))
+        except (TypeError, ValueError):
+            return Response({'error': 'Capacity must be a number.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not (1 <= capacity <= 500):
+            return Response({'error': 'Capacity must be between 1 and 500.'}, status=status.HTTP_400_BAD_REQUEST)
+        enrolled = block.enrolled_count
+        if capacity < enrolled:
+            return Response({'error': f'Capacity cannot be below the {enrolled} student(s) already enrolled.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        block.capacity = capacity
+        block.save(update_fields=['capacity'])
+        _audit(request.user, request.user.role, 'block_capacity_updated', request.path,
+               get_client_ip(request), 'success', {'block': block.name, 'capacity': capacity})
+        return Response(BlockSerializer(block).data)
+
+    def delete(self, request, pk):
+        """Delete an empty block (one with no enrolled students)."""
+        from django.shortcuts import get_object_or_404
+        block = get_object_or_404(Block, pk=pk)
+        if block.enrolled_count > 0:
+            return Response(
+                {'error': f'This block has {block.enrolled_count} enrolled student(s); reassign them before deleting.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+        name = block.name
+        block.delete()
+        _audit(request.user, request.user.role, 'block_deleted', request.path,
+               get_client_ip(request), 'success', {'block': name})
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class BlockExpansionRequestListCreateView(generics.ListCreateAPIView):

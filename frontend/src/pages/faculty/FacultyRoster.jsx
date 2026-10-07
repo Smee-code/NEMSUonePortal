@@ -166,6 +166,7 @@ export default function FacultyRoster() {
                   <span className="ro-subject-count">{a.student_count}</span>
                 </div>
                 <div className="ro-subject-name">{a.subject_name}</div>
+                {a.section && <span className="ro-subject-sec">{a.section}</span>}
               </button>
             ))}
           </div>
@@ -176,7 +177,7 @@ export default function FacultyRoster() {
               <div className="ro-subject-header">
                 <div>
                   <div style={{ fontSize: 11, letterSpacing: '.1em', color: 'var(--gold)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
-                    {selected.subject_code}
+                    {selected.subject_code}{selected.section ? ` · ${selected.section}` : ''}
                   </div>
                   <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 500, fontSize: 19, color: 'var(--ink)', marginBottom: 3 }}>
                     {selected.subject_name}
@@ -361,6 +362,11 @@ const CSS = `
     padding: 1px 6px; font-weight: 600; border-radius: 20px;
   }
   .ro-subject-name { font-size: 12px; color: var(--ink); margin-top: 2px; font-weight: 500; }
+  .ro-subject-sec {
+    display: inline-block; margin-top: 6px; font-size: 10px; font-weight: 700;
+    letter-spacing: .04em; color: var(--gold); background: var(--gold-tint);
+    padding: 2px 7px;
+  }
 
   /* Subject header */
   .ro-subject-header {

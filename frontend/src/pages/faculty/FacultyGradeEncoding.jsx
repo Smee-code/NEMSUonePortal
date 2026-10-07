@@ -22,6 +22,9 @@ export default function FacultyGradeEncoding() {
   const [grades, setGrades]                       = useState({});
   const [rowStatus, setRowStatus]                 = useState({}); // uuid -> 'saving'|'saved'|'error'
   const [submitting, setSubmitting]               = useState(false);
+  // Cells the faculty has opened for editing after submission (key `${uuid}:${stage}`).
+  // A submitted (but not finalized) grade is read-only until Edit is clicked.
+  const [editing, setEditing]                     = useState({});
 
   // Refs so the debounced auto-save closures always read the latest values.
   const gradesRef             = useRef(grades);
@@ -72,6 +75,7 @@ export default function FacultyGradeEncoding() {
     Object.values(saveTimers.current).forEach(clearTimeout);
     saveTimers.current = {};
     setRowStatus({});
+    setEditing({});
     if (!selectedAssignment) { setStudents([]); setGrades({}); return; }
     setLoadingStudents(true);
     setError('');
@@ -99,7 +103,9 @@ export default function FacultyGradeEncoding() {
   }
 
   // Apply an encode response to local state (single source of truth = students).
-  function applyEncoded(uuid, d, remarks) {
+  // syncInput=false leaves the grade input untouched — used by the debounced
+  // autosave so it never overwrites what the faculty is actively typing.
+  function applyEncoded(uuid, d, remarks, syncInput = true) {
     setStudents(prev => prev.map(s => s.student_uuid === uuid ? {
       ...s,
       midterm_grade: d.midterm_grade, final_grade: d.final_grade, grade: d.grade,
@@ -109,12 +115,14 @@ export default function FacultyGradeEncoding() {
       midterm_submitted: d.midterm_submitted, final_submitted: d.final_submitted,
       is_submitted: d.final_submitted,
     } : s));
-    setGrades(prev => ({ ...prev, [uuid]: {
-      ...prev[uuid], midterm_grade: d.midterm_grade || '', final_grade: d.final_grade || '',
-    } }));
+    if (syncInput) {
+      setGrades(prev => ({ ...prev, [uuid]: {
+        ...prev[uuid], midterm_grade: d.midterm_grade || '', final_grade: d.final_grade || '',
+      } }));
+    }
   }
 
-  async function postCell(uuid, stage, extra) {
+  async function postCell(uuid, stage, extra, syncInput = true) {
     const assignmentId = selectedAssignmentRef.current;
     if (!assignmentId) return;
     const remarks = gradesRef.current[uuid]?.remarks || '';
@@ -125,7 +133,7 @@ export default function FacultyGradeEncoding() {
         teaching_assignment_id: Number(assignmentId),
         stage, remarks, ...extra,
       });
-      applyEncoded(uuid, res.data, remarks);
+      applyEncoded(uuid, res.data, remarks, syncInput);
       setRowStatus(prev => ({ ...prev, [uuid]: 'saved' }));
       setTimeout(() => setRowStatus(prev => {
         if (prev[uuid] !== 'saved') return prev;
@@ -153,6 +161,19 @@ export default function FacultyGradeEncoding() {
   function blurVal(uuid, stage) {
     const k = `${uuid}:${stage}`;
     if (saveTimers.current[k]) { clearTimeout(saveTimers.current[k]); delete saveTimers.current[k]; }
+    // Normalize to exactly 2 decimal places on blur so the field shows the same
+    // value that gets stored (e.g. a stray "1.0023" settles to "1.00", and
+    // "1.5" shows as "1.50") instead of lingering in an odd, hard-to-read form.
+    const key = stage === 'midterm' ? 'midterm_grade' : 'final_grade';
+    const raw = (gradesRef.current[uuid]?.[key] ?? '').toString().trim();
+    if (raw !== '' && gradeFieldValid(raw)) {
+      const fixed = parseFloat(raw).toFixed(2);
+      if (fixed !== raw) {
+        setGrades(prev => ({ ...prev, [uuid]: { ...prev[uuid], [key]: fixed } }));
+      }
+      postCell(uuid, stage, { status: 'grade', value: fixed });
+      return;
+    }
     flushVal(uuid, stage);
   }
   function flushVal(uuid, stage) {
@@ -162,7 +183,9 @@ export default function FacultyGradeEncoding() {
     const v = (gradesRef.current[uuid]?.[key] ?? '').toString().trim();
     if (v === '') return;                 // nothing entered yet
     if (!gradeFieldValid(v)) return;      // mid-typing / out of range — wait
-    postCell(uuid, stage, { status: 'grade', value: v });
+    // Autosave: persist in the background but DON'T rewrite the field — the
+    // faculty may still be typing (e.g. "1" → "1.25"). Blur normalizes it.
+    postCell(uuid, stage, { status: 'grade', value: v }, false);
   }
 
   // Status selector (Grade / INC / DRP) for a stage cell.
@@ -213,7 +236,7 @@ export default function FacultyGradeEncoding() {
         teaching_assignment_id: Number(selectedAssignment),
         reason: reopenReason.trim(),
       });
-      toast('Reopen request sent to the admin.', { type: 'success', sub: 'You can edit midterms once it is approved.' });
+      toast('Reopen request sent to the admin.', { type: 'success', sub: 'You can edit the grades once it is approved.' });
       setShowReopen(false);
       setReopenReason('');
     } catch (err) {
@@ -249,9 +272,14 @@ export default function FacultyGradeEncoding() {
     const uuid  = s.student_uuid;
     const g     = grades[uuid] || {};
     const numInput = val => (
-      <input className="form-input ge-num" type="number" min="1" max="5" step="0.01"
+      // Plain text + decimal inputmode (not type=number, which mangles a
+      // trailing dot). Sanitizer keeps it to digits and a single dot.
+      <input className="form-input ge-num" type="text" inputMode="decimal" maxLength={5}
         value={val} placeholder="1.00"
-        onChange={e => updateVal(uuid, stageKey, e.target.value)}
+        onChange={e => {
+          const clean = e.target.value.replace(/[^0-9.]/g, '').replace(/(\.\d*)\./g, '$1');
+          updateVal(uuid, stageKey, clean);
+        }}
         onBlur={() => blurVal(uuid, stageKey)} />
     );
 
@@ -272,11 +300,28 @@ export default function FacultyGradeEncoding() {
       );
     }
 
-    // Midterm cell
-    const editable = !s.midterm_submitted || s.midterm_is_inc;
-    if (!editable) {
+    // Midterm cell.
+    // The course grade is FINALIZED once the final is submitted (not INC) — both
+    // stages are in, so it's hard-locked (admin reopen only).
+    const finalized = s.final_submitted && !s.final_is_inc;
+    const inEdit    = !!editing[`${uuid}:midterm`];
+    if (finalized) {
       const disp = s.is_dropped ? 'DRP' : (s.midterm_is_inc ? 'INC' : (s.midterm_grade || '-'));
       return <span className="ge-cell-locked"><i className="ti ti-lock" /> {disp}</span>;
+    }
+    // Submitted midterm, course not yet finalized: read-only with an Edit button
+    // so the faculty can self-correct it here — no admin reopen needed.
+    if (s.midterm_submitted && !s.midterm_is_inc && !inEdit) {
+      const disp = s.is_dropped ? 'DRP' : (s.midterm_grade || '-');
+      return (
+        <span className="ge-cell-locked">
+          <i className="ti ti-lock" /> {disp}
+          <button type="button" className="ge-edit"
+            onClick={() => setEditing(p => ({ ...p, [`${uuid}:midterm`]: true }))}>
+            <i className="ti ti-pencil" /> Edit
+          </button>
+        </span>
+      );
     }
     const mode = s.is_dropped ? 'drp' : (s.midterm_is_inc ? 'inc' : 'grade');
     return (
@@ -313,35 +358,41 @@ export default function FacultyGradeEncoding() {
         <div className="actions">
           {selectedAssignment && students.length > 0 && (
             <>
-              {/* Stage 1 — midterms */}
-              {!midtermsSubmitted && (
+              {/* Reopen asks the admin to unlock BOTH midterm and final grades so
+                  any of them can be corrected. Available once anything is in. */}
+              {(midtermsSubmitted || finalsSubmitted) && (
+                <button className="btn-sec" disabled={submitting} onClick={() => setShowReopen(true)}>
+                  <i className="ti ti-lock-open" /> Request grade reopen
+                </button>
+              )}
+
+              {/* Separate Submit buttons for each stage (finals need midterms in first). */}
+              {!(midtermsSubmitted && finalsSubmitted) && (
                 <>
                   {forceStage === 'midterm' && (
                     <button className="btn-sec" disabled={submitting} onClick={() => handleSubmitStage('midterm', true)}>
-                      <i className="ti ti-alert-triangle" /> Submit anyway
+                      <i className="ti ti-alert-triangle" /> Submit midterms anyway
                     </button>
                   )}
-                  <button className="btn-pri" disabled={submitting} onClick={() => handleSubmitStage('midterm', false)}>
-                    <i className="ti ti-send" /> {submitting ? 'Submitting…' : 'Submit midterm grades'}
+                  <button className="btn-pri" disabled={submitting || midtermsSubmitted}
+                    title={midtermsSubmitted ? 'All midterm grades are already submitted' : ''}
+                    onClick={() => handleSubmitStage('midterm', false)}>
+                    <i className="ti ti-send" /> Submit midterm grades
                   </button>
-                </>
-              )}
-              {/* Stage 2 — finals */}
-              {midtermsSubmitted && !finalsSubmitted && (
-                <>
-                  <button className="btn-sec" disabled={submitting} onClick={() => setShowReopen(true)}>
-                    <i className="ti ti-lock-open" /> Request midterm reopen
-                  </button>
+
                   {forceStage === 'final' && (
                     <button className="btn-sec" disabled={submitting} onClick={() => handleSubmitStage('final', true)}>
-                      <i className="ti ti-alert-triangle" /> Submit anyway
+                      <i className="ti ti-alert-triangle" /> Submit finals anyway
                     </button>
                   )}
-                  <button className="btn-pri" disabled={submitting} onClick={() => handleSubmitStage('final', false)}>
-                    <i className="ti ti-send" /> {submitting ? 'Submitting…' : 'Submit final grades'}
+                  <button className="btn-pri" disabled={submitting || !midtermsSubmitted}
+                    title={!midtermsSubmitted ? 'Submit midterm grades first' : ''}
+                    onClick={() => handleSubmitStage('final', false)}>
+                    <i className="ti ti-send" /> Submit final grades
                   </button>
                 </>
               )}
+
               {midtermsSubmitted && finalsSubmitted && (
                 <span className="tag status-active" style={{ fontSize: 12, padding: '8px 14px' }}>
                   <i className="ti ti-check" /> All grades submitted
@@ -546,15 +597,16 @@ export default function FacultyGradeEncoding() {
         </div>
       </div>
 
-      {/* ── Request midterm reopen modal ── */}
+      {/* ── Request grade reopen modal ── */}
       {showReopen && (
         <div className="ge-overlay" onClick={() => !reopenSaving && setShowReopen(false)}>
           <form className="ge-modal" onClick={e => e.stopPropagation()} onSubmit={submitReopen}>
-            <div className="ge-modal-title">Request midterm reopen</div>
+            <div className="ge-modal-title">Request grade reopen</div>
             <p className="ge-modal-text">
-              Midterm grades for <strong>{assignment ? `${assignment.subject_code}${assignment.section ? ` [${assignment.section}]` : ''}` : 'this subject'}</strong> are
-              submitted and locked. Ask the admin to reopen them so you can correct a
-              submitted numeric midterm. (INC midterms can already be edited.)
+              Submitted grades for <strong>{assignment ? `${assignment.subject_code}${assignment.section ? ` [${assignment.section}]` : ''}` : 'this subject'}</strong> are
+              locked. Ask the admin to reopen them so you can correct a submitted
+              grade. When approved, <strong>both midterm and final</strong> grades for this
+              class are unlocked for editing.
             </p>
             <label className="ge-modal-label">Reason (optional)</label>
             <textarea
@@ -642,12 +694,19 @@ const CSS = `
   /* Grade stage cells */
   .ge-cell{display:flex;align-items:center;gap:6px;}
   .ge-mode{font-size:11px;padding:5px 4px;min-width:64px;}
-  .ge-num{width:70px;padding:6px 8px;font-size:13px;text-align:right;}
+  .ge-num{width:92px;padding:6px 10px;font-size:14px;text-align:center;font-variant-numeric:tabular-nums;}
+  /* Hide the number spinners so the whole grade is visible (faculty type it). */
+  .ge-num::-webkit-outer-spin-button,.ge-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .ge-num[type=number]{-moz-appearance:textfield;}
   .ge-badge{font-size:11px;font-weight:700;padding:3px 8px;letter-spacing:.05em;}
   .ge-badge.inc{background:var(--amber-tint,#fef3c7);color:var(--amber,#b45309);}
   .ge-badge.drp{background:var(--line-soft);color:var(--muted);}
   .ge-cell-locked{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--ink);}
   .ge-cell-locked i{font-size:13px;color:var(--faint);}
+  .ge-edit{display:inline-flex;align-items:center;gap:3px;margin-left:8px;padding:2px 8px;font-size:11px;font-weight:600;
+    color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:4px;cursor:pointer;}
+  .ge-edit:hover{border-color:var(--ink);background:#f7f8fa;}
+  .ge-edit i{font-size:12px;color:var(--muted);}
   .ge-cell-muted{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--faint);}
 
   /* Reopen modal */

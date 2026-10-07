@@ -481,6 +481,10 @@ class PendingEnrollment(models.Model):
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
+    # Student ID assigned by the registrar on approval. The applicant uses it to
+    # create their portal account (sign-up), which then marks this row 'activated'.
+    assigned_student_id = models.CharField(max_length=20, blank=True, db_index=True)
+
     activation_token         = models.UUIDField(null=True, blank=True, db_index=True)
     activation_token_expires = models.DateTimeField(null=True, blank=True)
     otp                      = models.CharField(max_length=6, blank=True)

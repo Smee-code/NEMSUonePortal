@@ -12,36 +12,19 @@ NAME_PART_RE = re.compile(r"^[^\d]{1,100}$", re.UNICODE)
 
 class UserRegistrationSerializer(serializers.Serializer):
     """
-    Public student self-registration. Returning/enrolled students who already have
-    a university-issued student ID register here; the account is created in a
-    'pending' state and must be validated by the Registrar before it can log in.
-    Name is captured as separate parts and stored combined as 'Last, First Middle'.
+    Public student self-registration for admission-approved applicants.
+
+    The applicant enters the Student ID the registrar assigned at admission (sent in
+    their approval email), their institutional email, and a password. Their name is
+    pulled from the approved admission record — not re-typed — and the account is
+    created ready to log in (the registrar already vetted them at admission).
     """
-    last_name = serializers.CharField(max_length=100)
-    first_name = serializers.CharField(max_length=100)
-    middle_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     student_id = serializers.CharField(max_length=20)
     institutional_email = serializers.EmailField()
-    contact_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
     password = serializers.CharField(
         write_only=True, required=True, validators=[validate_password],
         style={'input_type': 'password'},
     )
-
-    def _validate_name_part(self, value, label):
-        value = value.strip()
-        if value and not NAME_PART_RE.match(value):
-            raise serializers.ValidationError(f'{label} may not contain digits.')
-        return value
-
-    def validate_last_name(self, value):
-        return self._validate_name_part(value, 'Last name')
-
-    def validate_first_name(self, value):
-        return self._validate_name_part(value, 'First name')
-
-    def validate_middle_name(self, value):
-        return self._validate_name_part(value, 'Middle name')
 
     def validate_institutional_email(self, value):
         value = value.lower().strip()
@@ -52,61 +35,64 @@ class UserRegistrationSerializer(serializers.Serializer):
     def validate_student_id(self, value):
         value = value.strip().upper()
         existing = User.objects.filter(student_id__iexact=value).first()
-        # A placeholder student (created by an instructor's classlist import) may already
-        # hold this ID — that is fine, registration will link to it later. Only block a
-        # real, already-registered account.
         if existing and not getattr(existing, 'is_placeholder', False):
-            raise serializers.ValidationError('An account with this student ID already exists.')
+            raise serializers.ValidationError('An account with this Student ID already exists — try logging in instead.')
         return value
 
-    def validate_contact_number(self, value):
-        if value and not re.match(r'^\+?[\d\s\-\(\)]{7,20}$', value):
-            raise serializers.ValidationError('Enter a valid contact number.')
-        return value
-
-    def _compose_full_name(self, first, middle, last):
-        given = ' '.join(p for p in [first, middle] if p).strip()
-        return f'{last}, {given}'.strip().rstrip(',')
+    def validate(self, attrs):
+        from enrollment.models import PendingEnrollment
+        sid = attrs['student_id']
+        pending = (
+            PendingEnrollment.objects
+            .filter(assigned_student_id__iexact=sid, status='approved')
+            .select_related('program')
+            .first()
+        )
+        if pending is None:
+            used = PendingEnrollment.objects.filter(
+                assigned_student_id__iexact=sid, status='activated',
+            ).exists()
+            raise serializers.ValidationError({
+                'student_id': (
+                    'This Student ID has already been used to create an account.'
+                    if used else
+                    'No approved admission was found for this Student ID. '
+                    'Please check the ID in your approval email, or contact the registrar.'
+                )
+            })
+        attrs['_pending'] = pending
+        return attrs
 
     def create(self, validated_data):
-        full_name = self._compose_full_name(
-            validated_data['first_name'],
-            validated_data.get('middle_name', ''),
-            validated_data['last_name'],
-        )
+        pending    = validated_data['_pending']
         student_id = validated_data['student_id']
+        email      = validated_data['institutional_email']
+        password   = validated_data['password']
 
-        # If an instructor already imported this student ID as a placeholder (they were
-        # on a class list before registering), claim that record in place so all their
-        # course roster rows and grades carry over to the real account. student_id is
-        # unique, so we must reuse the row rather than create a second one.
-        placeholder = User.objects.filter(
-            student_id__iexact=student_id, is_placeholder=True
-        ).first()
+        # If this student was already imported as a placeholder (on a class list before
+        # registering), claim that row so roster/grade links carry over. student_id is
+        # unique, so we reuse the row rather than create a second one.
+        placeholder = User.objects.filter(student_id__iexact=student_id, is_placeholder=True).first()
         if placeholder:
-            placeholder.institutional_email = validated_data['institutional_email']
-            placeholder.full_name = full_name
-            placeholder.contact_number = validated_data.get('contact_number', '')
-            placeholder.set_password(validated_data['password'])
-            placeholder.role = 'student'
-            placeholder.is_placeholder = False
-            placeholder.is_verified = False
-            placeholder.is_active = False
-            placeholder.registration_status = User.REG_PENDING
-            placeholder.save()
-            return placeholder
+            user = placeholder
+            user.institutional_email = email
+            user.full_name = pending.full_name
+            user.set_password(password)
+            user.is_placeholder = False
+        else:
+            user = User(student_id=student_id, institutional_email=email, full_name=pending.full_name)
+            user.set_password(password)
+        user.role                = 'student'
+        user.program             = pending.program
+        user.year_level          = pending.year_level or 1
+        user.is_verified         = True   # admission review already vetted them
+        user.is_active           = True
+        user.registration_status = User.REG_APPROVED
+        user.save()
 
-        return User.objects.create_user(
-            student_id=student_id,
-            institutional_email=validated_data['institutional_email'],
-            full_name=full_name,
-            contact_number=validated_data.get('contact_number', ''),
-            password=validated_data['password'],
-            role='student',
-            is_verified=False,
-            is_active=False,
-            registration_status=User.REG_PENDING,
-        )
+        pending.status = 'activated'
+        pending.save(update_fields=['status'])
+        return user
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

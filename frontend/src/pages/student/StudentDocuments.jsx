@@ -2,12 +2,6 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../components/Toast';
 
-const DOC_TYPES = [
-  { value: 'certificate_of_enrollment', label: 'Certificate of Enrollment',   fee: 50,  days: '1–2',  desc: 'Proves you are enrolled this term.' },
-  { value: 'transcript_of_records',     label: 'Transcript of Records',        fee: 200, days: '7–10', desc: 'Official record of all subjects taken with grades.' },
-  { value: 'certificate_of_grades',     label: 'Certificate of Grades',        fee: 50,  days: '2–3',  desc: 'Summary of grades for a specific term.' },
-];
-
 const STATUS_META = {
   submitted:  { label: 'Submitted',          cls: 'status-unverified' },
   processing: { label: 'Processing',         cls: 'pending'           },
@@ -65,6 +59,7 @@ export default function StudentDocuments() {
   const [showForm, setShowForm]       = useState(false);
   const [form, setForm]               = useState(EMPTY_FORM);
   const [submitting, setSubmitting]   = useState(false);
+  const [docTypes, setDocTypes]       = useState([]);
 
   function fetchRequests() {
     setLoading(true);
@@ -74,7 +69,16 @@ export default function StudentDocuments() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { fetchRequests(); }, []);
+  useEffect(() => {
+    fetchRequests();
+    // The catalog is managed by the admin, so it's loaded from the server.
+    api.get('/documents/types/')
+      .then(res => setDocTypes((res.data || []).map(d => ({
+        value: d.code, label: d.name, fee: parseFloat(d.fee),
+        days: d.processing_days, desc: d.description,
+      }))))
+      .catch(() => { /* leave catalog empty on failure */ });
+  }, []);
 
   function openForm(docType = '') {
     setForm({ ...EMPTY_FORM, document_type: docType });
@@ -134,7 +138,7 @@ export default function StudentDocuments() {
   const ready      = requests.filter(r => r.status === 'ready').length;
   const released   = requests.filter(r => r.status === 'released').length;
 
-  const feeOf  = v => DOC_TYPES.find(d => d.value === v)?.fee;
+  const feeOf  = v => docTypes.find(d => d.value === v)?.fee;
 
   return (
     <div className="page">
@@ -174,7 +178,7 @@ export default function StudentDocuments() {
                 <label className="dr-label">Document type</label>
                 <select className="dr-input" value={form.document_type} onChange={e => setForm(p => ({ ...p, document_type: e.target.value }))} required>
                   <option value="">Select a document</option>
-                  {DOC_TYPES.map(d => (
+                  {docTypes.map(d => (
                     <option key={d.value} value={d.value}>{d.label} (₱{d.fee})</option>
                   ))}
                 </select>
@@ -279,7 +283,7 @@ export default function StudentDocuments() {
         </div>
       </div>
       <div className="dr-cat">
-        {DOC_TYPES.map(d => (
+        {docTypes.map(d => (
           <div key={d.value} className="dr-cat-card">
             <div className="dr-cat-eyebrow">{d.days} working days</div>
             <div className="dr-cat-name">{d.label}</div>

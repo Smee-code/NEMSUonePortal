@@ -8,14 +8,22 @@ Passing rule (registrar-confirmed): a course counts as passed only when there is
 a finalized grade at or above the passing mark. A failing grade, INC, DRP, or no
 record at all all count as "not passed", which blocks any course that requires it.
 """
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 # PH scale: 1.00 (highest) … 3.00 (lowest passing); anything above 3.00 fails.
 PASSING_MARK = Decimal('3.00')
 
 
 def has_passed(student, subject):
-    """True only if the student has a finalized passing grade for `subject`."""
+    """True only if the student finished `subject` with a passing OVERALL grade.
+
+    Pass/fail is decided by the overall course grade (GradeRecord.grade, the
+    average of midterm and final) — NOT the final-exam component (final_grade)
+    alone. A student can score <= 3.00 on the final yet still FAIL the course
+    overall, so using final_grade would wrongly clear the prerequisite.
+    INC / DRP / no record / a blank or failing overall grade all count as
+    "not passed", which blocks any course that requires it.
+    """
     if subject is None:
         return True
     from grades.models import GradeRecord
@@ -25,11 +33,15 @@ def has_passed(student, subject):
         .order_by('-academic_term__year', '-academic_term__semester')
         .first()
     )
-    if not rec or rec.is_dropped or rec.final_is_inc:
+    if not rec or rec.is_dropped:
         return False
-    if rec.final_grade is None:
+    # `grade` is a numeric string ("1.75", "4.00") once midterm + final are in;
+    # "INC", "DRP" or "" are non-numeric and mean the course isn't passed.
+    try:
+        overall = Decimal(rec.grade)
+    except (InvalidOperation, TypeError):
         return False
-    return rec.final_grade <= PASSING_MARK
+    return overall <= PASSING_MARK
 
 
 def offered_subjects(program, year_level, semester):
