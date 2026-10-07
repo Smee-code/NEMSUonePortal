@@ -155,7 +155,6 @@ export default function FacultyMySchedule() {
             <div className="sch-legend">
               {legend.map(l => (
                 <span key={l.code} className="sch-leg">
-                  <span className="sch-leg-sw" style={{ background: l.color }} />
                   <b>{l.code}</b><span className="sch-leg-nm">{l.name}</span>
                 </span>
               ))}
@@ -270,7 +269,6 @@ const CSS = `
   .sch-legend{display:flex;flex-wrap:wrap;gap:.6rem 1.25rem;padding:.9rem 1.1rem;background:#fff;
     border:1px solid var(--line);border-bottom:none;}
   .sch-leg{display:inline-flex;align-items:center;gap:8px;font-size:12px;min-width:0;}
-  .sch-leg-sw{width:11px;height:11px;flex-shrink:0;}
   .sch-leg b{color:var(--ink);font-weight:600;letter-spacing:.02em;}
   .sch-leg-nm{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
 
