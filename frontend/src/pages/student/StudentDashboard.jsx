@@ -432,9 +432,20 @@ export default function StudentDashboard() {
 
   const pendingDocs = documents.filter(d => ['submitted','processing','ready'].includes(d.status));
 
-  // Today's schedule
+  // Today's schedule. The endpoint returns courses with nested meeting
+  // slots, so flatten them into individual sessions and tag each with its
+  // course + room before filtering to today.
   const todayName   = DAY_NAMES[now.getDay()];
-  const todaySlots  = schedule.filter(s => s.day_of_week === todayName);
+  const allSlots    = schedule.flatMap(c =>
+    (c.slots || []).map(sl => ({
+      ...sl,
+      subject_code: c.subject_code,
+      subject_name: c.subject_name,
+      instructor_name: c.faculty_name,
+      room: [sl.building, sl.room].filter(Boolean).join(' '),
+    }))
+  );
+  const todaySlots  = allSlots.filter(s => s.day_of_week === todayName);
   const nowMinutes  = now.getHours() * 60 + now.getMinutes();
 
   const termLabel = currentTerm
