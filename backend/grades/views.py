@@ -1102,6 +1102,24 @@ class FacultyTeachingAssignmentCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # One course per block per term is handled by exactly one faculty.
+        # If another instructor already declared this subject for this block,
+        # stop the declaration and name who already has it.
+        if block is not None:
+            taken = (
+                TeachingAssignment.objects
+                .filter(subject=subject, academic_term=term, block=block)
+                .exclude(faculty=request.user)
+                .select_related('faculty')
+                .first()
+            )
+            if taken:
+                return Response(
+                    {'error': f'{subject.code} for {block.name} is already '
+                              f'handled by {taken.faculty.full_name}.'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
         # Optional meeting schedule declared by the faculty (room assigned later
         # by the registrar). Same time applied to each selected day.
         days = serializer.validated_data.get('days') or []
