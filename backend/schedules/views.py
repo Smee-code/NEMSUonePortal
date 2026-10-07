@@ -60,47 +60,32 @@ def _check_conflicts(room, day_of_week, start_time, end_time, teaching_assignmen
     )
 
     def _course(slot):
-        """'CODE — Descriptive Title' for the class occupying a clashing slot."""
-        subj = slot.teaching_assignment.subject
-        label = getattr(subj, 'code', '') or ''
-        name = getattr(subj, 'name', '') or ''
-        if label and name:
-            return f'{label} — {name}'
-        return label or name or 'another class'
+        """Short clashing-class label, e.g. 'GE-MMW (Demo Faculty)'."""
+        ta = slot.teaching_assignment
+        code = (getattr(ta.subject, 'code', '') or 'another class').strip()
+        fac = ta.faculty.full_name if ta.faculty else 'TBA'
+        return f'{code} ({fac})'
 
-    def _faculty(slot):
-        fac = slot.teaching_assignment.faculty
-        return fac.full_name if fac else 'an unassigned instructor (TBA)'
-
-    day = day_of_week.title()
+    day = day_of_week[:3].title()
 
     errors = []
     # Only a real (assigned) room can clash — unassigned slots (room='') never do.
     if room:
         clash = qs.filter(room__iexact=room).first()
         if clash:
-            errors.append(
-                f'Room "{room}" is already taken by {_course(clash)} '
-                f'({_faculty(clash)}) on {day} during this time slot.'
-            )
+            errors.append(f'Room {room} is taken by {_course(clash)} on {day}.')
     clash = qs.filter(teaching_assignment__faculty=teaching_assignment.faculty).first()
     if clash:
-        errors.append(
-            f'{teaching_assignment.faculty.full_name} already has {_course(clash)} '
-            f'on {day} during this time slot.'
-        )
+        errors.append(f'You already teach {_course(clash)} on {day}.')
     # Block (student cohort) clash: a block can't be in two classes at once,
-    # regardless of room or instructor. Name the clashing course and its
-    # faculty so whoever is declaring knows exactly what overlaps.
+    # regardless of room or instructor. Name the clashing course + faculty.
     if teaching_assignment.block_id:
         clash = qs.filter(
             teaching_assignment__block_id=teaching_assignment.block_id
         ).first()
         if clash:
-            errors.append(
-                f'{teaching_assignment.block} already has {_course(clash)} '
-                f'with {_faculty(clash)} on {day} during this time slot.'
-            )
+            block_name = getattr(teaching_assignment.block, 'name', '') or 'This block'
+            errors.append(f'{block_name} already has {_course(clash)} on {day}.')
     return errors
 
 
