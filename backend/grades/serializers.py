@@ -70,7 +70,41 @@ class StudentGradeSerializer(serializers.ModelSerializer):
         source='academic_term.get_semester_display', read_only=True
     )
     section = serializers.CharField(source='teaching_assignment.section', read_only=True, default='')
-    faculty_name = serializers.CharField(source='teaching_assignment.faculty.full_name', read_only=True, default=None)
+    faculty_name = serializers.SerializerMethodField()
+
+    def get_faculty_name(self, obj):
+        ta = obj.teaching_assignment
+        if ta and ta.faculty_id:
+            return ta.faculty.full_name
+        # The record lost its link (its class was deleted or re-declared, which
+        # SET_NULL's the assignment). Resolve the instructor from the class
+        # currently declared for this student's block, so the student still
+        # sees who teaches the course.
+        fallback = self._fallback_assignment(obj)
+        return fallback.faculty.full_name if fallback and fallback.faculty_id else None
+
+    @staticmethod
+    def _fallback_assignment(obj):
+        from enrollment.models import EnrollmentRequest
+        from grades.models import TeachingAssignment
+        block_id = (
+            EnrollmentRequest.objects
+            .filter(student_id=obj.student_id,
+                    academic_term_id=obj.academic_term_id,
+                    status='approved')
+            .values_list('block_id', flat=True)
+            .first()
+        )
+        if not block_id:
+            return None
+        return (
+            TeachingAssignment.objects
+            .filter(subject_id=obj.subject_id,
+                    academic_term_id=obj.academic_term_id,
+                    block_id=block_id)
+            .select_related('faculty')
+            .first()
+        )
 
     class Meta:
         model = GradeRecord
