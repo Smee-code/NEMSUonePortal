@@ -102,10 +102,6 @@ export default function FacultyMySchedule() {
   const nowDec   = now.getHours() + now.getMinutes() / 60;
   const showNow  = hasSlots && DAY_ORDER.includes(todayKey) && nowDec >= minHour && nowDec <= maxHour;
 
-  const legend = schedule.map(s => ({
-    code: s.subject_code, name: s.subject_name, color: subjectColor(s.subject_code, allCodes),
-  }));
-
   return (
     <>
       <style>{CSS}</style>
@@ -151,15 +147,6 @@ export default function FacultyMySchedule() {
             </div>
           </div>
 
-          {hasSlots && (
-            <div className="sch-legend">
-              {legend.map(l => (
-                <span key={l.code} className="sch-leg">
-                  <b>{l.code}</b><span className="sch-leg-nm">{l.name}</span>
-                </span>
-              ))}
-            </div>
-          )}
 
           {hasSlots ? (
             <>
@@ -265,12 +252,6 @@ const CSS = `
   .sch-facts{display:flex;gap:1.5rem;flex-wrap:wrap;}
   .sch-fact{font-size:12px;color:var(--muted);}
   .sch-fact b{color:var(--ink);font-weight:600;font-size:15px;margin-right:5px;font-variant-numeric:tabular-nums;}
-
-  .sch-legend{display:flex;flex-wrap:wrap;gap:.6rem 1.25rem;padding:.9rem 1.1rem;background:#fff;
-    border:1px solid var(--line);border-bottom:none;}
-  .sch-leg{display:inline-flex;align-items:center;gap:8px;font-size:12px;min-width:0;}
-  .sch-leg b{color:var(--ink);font-weight:600;letter-spacing:.02em;}
-  .sch-leg-nm{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
 
   .sch-cal{background:#fff;border:1px solid var(--line);overflow-x:auto;margin-bottom:1.5rem;}
   .sch-row{display:grid;grid-template-columns:64px repeat(6,minmax(96px,1fr));min-width:640px;}
