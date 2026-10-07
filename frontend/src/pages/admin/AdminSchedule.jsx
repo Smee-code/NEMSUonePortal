@@ -25,6 +25,9 @@ const SHIM = `
   --reg-green-tint:var(--adm-green-tint);
   --reg-red:var(--adm-red);
   --reg-red-tint:var(--adm-red-tint);
+  --reg-gold:var(--adm-gold,#b8860b);
+  --reg-gold-tint:var(--adm-gold-tint,#f5eeda);
+  --reg-amber-tint:var(--adm-amber-tint,#fdf3e2);
 }
 .adm-sched-scope .form-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--adm-muted);font-weight:600}
 .adm-sched-scope .form-input,.adm-sched-scope .form-select{padding:10px 12px;font-size:13px;background:#fff;border:1px solid var(--adm-line);outline:none;color:var(--adm-ink);font-family:inherit}

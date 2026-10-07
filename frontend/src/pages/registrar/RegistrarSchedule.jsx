@@ -19,8 +19,6 @@ const DAY_LABELS = {
 
 const DAY_ORDER = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
 
-const PAGE_SIZE = 12;   // classes per page
-
 const EMPTY_FORM = {
   department: '',    // scopes the faculty / building / room lists (not saved)
   subject_id: '',
@@ -271,20 +269,28 @@ const CSS = `
 .sched-rwmeet-fac i{font-size:12px;color:var(--reg-faint);}
 @media(max-width:520px){ .sched-rwday{grid-template-columns:92px 1fr;} .sched-rwday-lbl{font-size:10px;letter-spacing:.02em;padding:.6rem .5rem;} .sched-rwmeet{flex-direction:column;align-items:flex-start;gap:.3rem;} }
 :is(.sched-viewtoggle button,.sched-dept-btn,.sched-roomchip):focus-visible{outline:2px solid var(--reg-gold);outline-offset:1px;}
-`;
 
-function buildPageNumbers(current, total) {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages = [];
-  if (current <= 4) {
-    pages.push(1, 2, 3, 4, 5, '...', total);
-  } else if (current >= total - 3) {
-    pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total);
-  } else {
-    pages.push(1, '...', current - 1, current, current + 1, '...', total);
-  }
-  return pages;
-}
+/* By-class: department grouping */
+.sched-cgroups{display:flex;flex-direction:column;gap:1.1rem;}
+.sched-cgroup{border:1px solid var(--reg-line);border-radius:12px;background:#fff;overflow:hidden;}
+.sched-cgroup-btn{width:100%;display:flex;justify-content:space-between;align-items:center;gap:1rem;
+  padding:.85rem 1.05rem;background:var(--reg-warm,#faf7f0);border:none;cursor:pointer;font-family:inherit;text-align:left;}
+.sched-cgroup-btn:hover{background:#f3f5fa;}
+.sched-cgroup-l{display:flex;align-items:center;gap:12px;min-width:0;}
+.sched-cgroup-ic{width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:var(--reg-gold-tint);color:var(--reg-gold);border-radius:9px;}
+.sched-cgroup-ic i{font-size:19px;}
+.sched-cgroup-info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.sched-cgroup-nameline{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.sched-cgroup-name{font-size:14.5px;font-weight:700;color:var(--reg-ink);letter-spacing:-.01em;}
+.sched-cgroup-meta{font-size:12px;color:var(--reg-muted);font-variant-numeric:tabular-nums;}
+.sched-cgroup-r{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.sched-cgroup-need{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;
+  padding:3px 10px;border-radius:999px;background:var(--reg-amber-tint,#fdf3e2);border:1px solid #f0dcae;color:#8a6a12;white-space:nowrap;}
+.sched-cgroup-need i{font-size:13px;}
+.sched-cgroup-body{border-top:1px solid var(--reg-line-soft);padding:1rem 1.05rem;background:#fcfdff;}
+@media(max-width:560px){ .sched-cgroup-need{padding:3px 7px;} }
+`;
 
 function formatTime(t) {
   if (!t) return '';
@@ -435,6 +441,9 @@ export default function RegistrarSchedule() {
   const [programs,        setPrograms]        = useState([]);
   const [blockList,       setBlockList]       = useState([]);
   const [openDepts,       setOpenDepts]       = useState(() => new Set());
+  // Class-view department sections are expanded by default; this tracks the
+  // ones the user has collapsed.
+  const [collapsedCDepts, setCollapsedCDepts] = useState(() => new Set());
   const [roomView,        setRoomView]        = useState(null);     // { room, building } | null
 
   // Load terms on mount
@@ -807,7 +816,11 @@ export default function RegistrarSchedule() {
         map.set(key, {
           taId: key,
           subject_code: s.subject_code, subject_name: s.subject_name,
-          faculty_name: s.faculty_name, section: s.section, slots: [],
+          faculty_name: s.faculty_name, section: s.section,
+          department_id: s.department_id ?? null,
+          department_name: s.department_name || '',
+          department_code: s.department_code || '',
+          slots: [],
         });
       }
       map.get(key).slots.push(s);
@@ -880,10 +893,37 @@ export default function RegistrarSchedule() {
         building: b.name,
       })));
 
-  // Pagination on filtered classes
-  const totalPages    = Math.max(1, Math.ceil(classes.length / PAGE_SIZE));
-  const pageStart     = (page - 1) * PAGE_SIZE;
-  const pagedClasses  = classes.slice(pageStart, pageStart + PAGE_SIZE);
+  // Group the filtered classes by owning department so the registrar can scan
+  // the timetable one department at a time. Each group also counts how many of
+  // its meetings still need a room — the one thing that needs acting on.
+  const classDeptGroups = (() => {
+    const map = new Map();
+    for (const c of classes) {
+      const key = c.department_id != null ? String(c.department_id) : 'none';
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          name: c.department_name || 'Unassigned department',
+          code: c.department_code || '',
+          classes: [],
+          needRoom: 0,
+        });
+      }
+      const g = map.get(key);
+      g.classes.push(c);
+      g.needRoom += c.slots.filter(s => !s.room).length;
+    }
+    const list = [...map.values()];
+    list.forEach(g => g.classes.sort((a, b) =>
+      String(a.subject_code).localeCompare(String(b.subject_code))));
+    // Named departments first (alphabetical), the catch-all group last.
+    list.sort((a, b) => {
+      if (a.key === 'none') return 1;
+      if (b.key === 'none') return -1;
+      return a.name.localeCompare(b.name);
+    });
+    return list;
+  })();
 
   // Block suggestions for the chosen program + year level.
   const blockOptions = blockList
@@ -911,6 +951,13 @@ export default function RegistrarSchedule() {
   const roomsIn = g => g.buildings.reduce((n, b) => n + (b.rooms ? b.rooms.length : 0), 0);
   function toggleDept(key) {
     setOpenDepts(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+  function toggleClassDept(key) {
+    setCollapsedCDepts(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
@@ -1302,7 +1349,7 @@ export default function RegistrarSchedule() {
       ) : (
         <>
           <p style={{ fontSize: '.85rem', color: 'var(--reg-muted)', marginBottom: '.85rem' }}>
-            {classes.length} class{classes.length !== 1 ? 'es' : ''}{dayFilter ? ` meeting ${DAY_LABELS[dayFilter]}` : ''} · {termLabel}
+            {classes.length} class{classes.length !== 1 ? 'es' : ''} across {classDeptGroups.length} department{classDeptGroups.length !== 1 ? 's' : ''}{dayFilter ? ` · meeting ${DAY_LABELS[dayFilter]}` : ''} · {termLabel}
           </p>
 
           {needRoomCount > 0 && (
@@ -1311,8 +1358,38 @@ export default function RegistrarSchedule() {
               <span><strong>{needRoomCount}</strong> faculty meeting{needRoomCount !== 1 ? 's' : ''} {needRoomCount !== 1 ? 'have' : 'has'} no room yet — click <strong>Assign room</strong> on a meeting to set it.</span>
             </div>
           )}
-          <div className="sched-classes">
-            {pagedClasses.map(c => {
+          <div className="sched-cgroups">
+            {classDeptGroups.map(g => {
+              const open = !collapsedCDepts.has(g.key);
+              const mtgs = g.classes.reduce((n, c) => n + c.slots.length, 0);
+              return (
+                <section className="sched-cgroup" key={g.key}>
+                  <button className="sched-cgroup-btn" onClick={() => toggleClassDept(g.key)} aria-expanded={open}>
+                    <span className="sched-cgroup-l">
+                      <span className="sched-cgroup-ic"><i className="ti ti-building-community" /></span>
+                      <span className="sched-cgroup-info">
+                        <span className="sched-cgroup-nameline">
+                          <span className="sched-cgroup-name">{g.name}</span>
+                          {g.code && <span className="sched-dept-chip">{g.code}</span>}
+                        </span>
+                        <span className="sched-cgroup-meta">
+                          {g.classes.length} class{g.classes.length !== 1 ? 'es' : ''} · {mtgs} weekly meeting{mtgs !== 1 ? 's' : ''}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="sched-cgroup-r">
+                      {g.needRoom > 0 && (
+                        <span className="sched-cgroup-need" title={`${g.needRoom} meeting${g.needRoom !== 1 ? 's' : ''} still need a room`}>
+                          <i className="ti ti-alert-triangle" /> {g.needRoom} need room
+                        </span>
+                      )}
+                      <i className={`ti ti-chevron-${open ? 'up' : 'down'} sched-dept-chev`} />
+                    </span>
+                  </button>
+                  {open && (
+                    <div className="sched-cgroup-body">
+                      <div className="sched-classes">
+                        {g.classes.map(c => {
               const byDay = {};
               c.slots.forEach(s => { (byDay[s.day_of_week] = byDay[s.day_of_week] || []).push(s); });
               return (
@@ -1368,31 +1445,14 @@ export default function RegistrarSchedule() {
                   </div>
                 </div>
               );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              );
             })}
           </div>
-
-          {totalPages > 1 && (
-            <div className="pagination" style={{ marginTop: '1rem' }}>
-              <div className="count">Page {page} of {totalPages}</div>
-              <div className="controls">
-                <button disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
-                  <i className="ti ti-chevron-left" />
-                </button>
-                {buildPageNumbers(page, totalPages).map((item, i) =>
-                  item === '...' ? (
-                    <span key={`e-${i}`} style={{ color: 'var(--reg-faint)', padding: '0 2px', lineHeight: 2 }}>…</span>
-                  ) : (
-                    <button key={item} className={page === item ? 'active' : ''} onClick={() => setPage(item)}>
-                      {item}
-                    </button>
-                  )
-                )}
-                <button disabled={page === totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
-                  <i className="ti ti-chevron-right" />
-                </button>
-              </div>
-            </div>
-          )}
         </>
       )}
     </>

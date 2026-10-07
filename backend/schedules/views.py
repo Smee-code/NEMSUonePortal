@@ -337,8 +337,9 @@ class ScheduleListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         qs = ClassSchedule.objects.select_related(
-            'teaching_assignment__subject',
-            'teaching_assignment__faculty',
+            'teaching_assignment__subject__program__department',
+            'teaching_assignment__faculty__department',
+            'teaching_assignment__block__program__department',
             'teaching_assignment__academic_term',
         )
         p = self.request.query_params

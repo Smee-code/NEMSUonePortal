@@ -58,6 +58,9 @@ class ClassScheduleReadSerializer(serializers.ModelSerializer):
     block_name = serializers.SerializerMethodField()
     block_program = serializers.SerializerMethodField()
     block_year_level = serializers.SerializerMethodField()
+    department_id = serializers.SerializerMethodField()
+    department_code = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
     term_display = serializers.SerializerMethodField()
     term_id = serializers.IntegerField(source='teaching_assignment.academic_term.id', read_only=True)
     teaching_assignment_id = serializers.IntegerField(source='teaching_assignment.id', read_only=True)
@@ -68,12 +71,40 @@ class ClassScheduleReadSerializer(serializers.ModelSerializer):
             'id', 'teaching_assignment_id',
             'subject_id', 'subject_code', 'subject_name', 'subject_units', 'section',
             'block_name', 'block_program', 'block_year_level',
+            'department_id', 'department_code', 'department_name',
             'faculty_name', 'faculty_id', 'term_display', 'term_id',
             'day_of_week', 'day_display', 'start_time', 'end_time', 'room', 'building',
         ]
 
     def get_term_display(self, obj):
         return str(obj.teaching_assignment.academic_term)
+
+    @staticmethod
+    def _department(obj):
+        """The department a class belongs to: the block's program department,
+        then the subject's program department, then the instructor's
+        department. Lets the schedule be grouped by owning department."""
+        ta = obj.teaching_assignment
+        block = ta.block
+        if block and block.program_id and block.program.department_id:
+            return block.program.department
+        subj = ta.subject
+        if subj and subj.program_id and subj.program.department_id:
+            return subj.program.department
+        fac = ta.faculty
+        return getattr(fac, 'department', None)
+
+    def get_department_id(self, obj):
+        d = self._department(obj)
+        return d.id if d else None
+
+    def get_department_code(self, obj):
+        d = self._department(obj)
+        return d.code if d else ''
+
+    def get_department_name(self, obj):
+        d = self._department(obj)
+        return d.name if d else ''
 
     def get_block_name(self, obj):
         b = obj.teaching_assignment.block
