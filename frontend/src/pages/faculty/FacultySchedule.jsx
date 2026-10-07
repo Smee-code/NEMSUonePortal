@@ -173,7 +173,22 @@ export default function FacultyTeachingLoad() {
       if (targetTerm) setSelectedTerm(targetTerm);
       fetchLoad(targetTerm);
     } catch (err) {
-      setDeclareError(err.response?.data?.error || 'Failed to declare assignment.');
+      const d = err.response?.data;
+      let msg;
+      if (d?.non_field_errors) {
+        // Schedule clashes come back here (you already teach a class at that time).
+        const nfe = Array.isArray(d.non_field_errors) ? d.non_field_errors.join(' ') : d.non_field_errors;
+        msg = `Schedule conflict — ${nfe}`;
+      } else if (d?.error) {
+        msg = d.error;
+      } else if (d?.detail) {
+        msg = d.detail;
+      } else if (d && typeof d === 'object') {
+        msg = Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ');
+      } else {
+        msg = 'Failed to declare assignment.';
+      }
+      setDeclareError(msg);
     } finally {
       setDeclaring(false);
     }
