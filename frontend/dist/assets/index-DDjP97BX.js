@@ -672,11 +672,22 @@ Error generating stack: `+h.message+`
   .footer-bottom a:hover{color:#fff}
   @media(max-width:880px){
     .footer{padding:3.5rem 0 0}
-    .footer-grid{grid-template-columns:1fr 1fr;gap:2.5rem}
+    /* Brand gets its own full-width row; the three link groups sit evenly
+       beneath it, so the tall brand column no longer strands the links. */
+    .footer-grid{grid-template-columns:repeat(3,1fr);gap:2.25rem 2rem}
+    .footer-grid > :first-child{grid-column:1 / -1}
+    .footer-tagline{max-width:560px}
     .footer-bottom{flex-direction:column;gap:.75rem;text-align:center}
     .footer-bottom a{margin:0 .75rem}
   }
-  @media(max-width:520px){.footer-grid{grid-template-columns:1fr}}
+  @media(max-width:560px){
+    .footer-grid{grid-template-columns:1fr 1fr}
+    .footer-grid > :first-child{grid-column:1 / -1}
+  }
+  @media(max-width:400px){
+    .footer-grid{grid-template-columns:1fr}
+    .footer-brand-name{font-size:20px}
+  }
 
   /* ── Modal system ── */
   .modal-back{position:fixed;inset:0;background:rgba(10,22,40,.55);backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem;animation:lp-fadeIn .2s ease;overflow-y:auto;}
