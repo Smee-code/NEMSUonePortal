@@ -585,11 +585,6 @@ export default function FacultyGradeEncoding() {
                 Showing <strong>{filteredStudents.length}</strong> of <strong>{students.length}</strong> students
                 {assignment && ` · ${assignment.subject_code}`}
               </div>
-              <div className="controls">
-                <button onClick={() => window.print()}>
-                  <i className="ti ti-printer" style={{ marginRight: 4 }} /> Print sheet
-                </button>
-              </div>
             </div>
           </div>
             </>
