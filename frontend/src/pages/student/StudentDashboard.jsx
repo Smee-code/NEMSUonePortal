@@ -154,7 +154,7 @@ function TermStatus({ termLabel, enrolled, gwa, units, subjectCount, openCount, 
         />
         <StatRow label="Units enrolled" value={subjectCount ? units : '—'} />
         <StatRow
-          label="Open requests"
+          label="Document requests"
           value={openCount > 0 ? `${openCount} active` : 'None'}
           onClick={() => navigate('/student/documents')}
         />
