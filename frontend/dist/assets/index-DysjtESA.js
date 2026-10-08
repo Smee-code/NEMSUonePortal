@@ -1128,7 +1128,7 @@ Error generating stack: `+h.message+`
   .page-head h2{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;font-size:38px;letter-spacing:-.02em;line-height:1.05;color:var(--adm-ink)}
   .page-head h2 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:var(--adm-ink-2);font-weight:400}
   .page-head .sub{font-size:14px;color:var(--adm-muted);margin-top:6px;max-width:540px;line-height:1.55}
-  .page-head .actions{display:flex;gap:8px;flex-shrink:0;align-self:flex-start;margin-top:.5rem}
+  .page-head .actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;align-self:flex-start;margin-top:.5rem;max-width:100%}
   /* Toolbar */
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.25rem}
   .toolbar-search{flex:1;max-width:380px;min-width:220px;position:relative;display:flex;align-items:center}
@@ -2555,7 +2555,7 @@ Temporary password: ${de.temporary_password}`;(ct=navigator.clipboard)==null||ct
     letter-spacing:-.02em;line-height:1.05;color:var(--ink)}
   .page-head h2 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:var(--ink-2);font-weight:400}
   .page-head .sub{font-size:14px;color:var(--muted);margin-top:6px;max-width:540px;line-height:1.55}
-  .page-head .actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;align-self:flex-start;margin-top:.5rem}
+  .page-head .actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;align-self:flex-start;margin-top:.5rem;max-width:100%}
   .sec-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:1rem}
   .sec-head h3{font-family:'Inter',sans-serif;font-weight:500;font-size:22px;
     letter-spacing:-.01em;color:var(--ink)}
@@ -2671,6 +2671,7 @@ Temporary password: ${de.temporary_password}`;(ct=navigator.clipboard)==null||ct
     letter-spacing:.04em;margin-top:3px}
   /* Row layout */
   .row-21{display:grid;grid-template-columns:2fr 1fr;gap:1.5rem}
+  @media(max-width:860px){.row-21{grid-template-columns:1fr}}
   /* Welcome banner */
   .welcome{background:var(--ink);color:#fff;padding:2rem 2.5rem;margin-bottom:1.75rem;
     display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.5rem}
@@ -3511,7 +3512,7 @@ ${w.section}`:""}`,children:[e.jsx("div",{className:"sch-block-code",children:w.
   }
   .page-head h2 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:var(--reg-ink-2);font-weight:400}
   .page-head .sub{font-size:14px;color:var(--reg-muted);margin-top:6px;max-width:540px;line-height:1.55}
-  .page-head .actions{display:flex;gap:8px;flex-shrink:0}
+  .page-head .actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;max-width:100%}
 
   /* Section head */
   .sec-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:1rem}
@@ -4797,7 +4798,7 @@ If this faculty has teaching load, encoded grades, or posted announcements, the 
   .page-head h2{font-family:'Inter',sans-serif;font-weight:500;font-size:38px;letter-spacing:-.02em;line-height:1.05;color:var(--ink);}
   .page-head h2 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:var(--ink-2);font-weight:400;}
   .page-head .sub{font-size:14px;color:var(--muted);margin-top:6px;max-width:540px;line-height:1.55;}
-  .page-head .actions{display:flex;gap:8px;flex-shrink:0;}
+  .page-head .actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;max-width:100%;}
 
   /* Toolbar */
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.25rem;}

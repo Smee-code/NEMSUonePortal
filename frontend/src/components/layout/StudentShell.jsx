@@ -226,7 +226,7 @@ const CSS = `
   .page-head h2{font-family:'Inter',sans-serif;font-weight:500;font-size:38px;letter-spacing:-.02em;line-height:1.05;color:var(--ink);}
   .page-head h2 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:var(--ink-2);font-weight:400;}
   .page-head .sub{font-size:14px;color:var(--muted);margin-top:6px;max-width:540px;line-height:1.55;}
-  .page-head .actions{display:flex;gap:8px;flex-shrink:0;}
+  .page-head .actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;max-width:100%;}
 
   /* Toolbar */
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.25rem;}

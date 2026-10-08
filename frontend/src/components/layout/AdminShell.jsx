@@ -151,7 +151,7 @@ const CSS = `
   .page-head h2{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;font-size:38px;letter-spacing:-.02em;line-height:1.05;color:var(--adm-ink)}
   .page-head h2 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:var(--adm-ink-2);font-weight:400}
   .page-head .sub{font-size:14px;color:var(--adm-muted);margin-top:6px;max-width:540px;line-height:1.55}
-  .page-head .actions{display:flex;gap:8px;flex-shrink:0;align-self:flex-start;margin-top:.5rem}
+  .page-head .actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;align-self:flex-start;margin-top:.5rem;max-width:100%}
   /* Toolbar */
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.25rem}
   .toolbar-search{flex:1;max-width:380px;min-width:220px;position:relative;display:flex;align-items:center}
