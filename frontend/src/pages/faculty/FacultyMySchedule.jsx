@@ -112,13 +112,6 @@ export default function FacultyMySchedule() {
           <h2>My <em>schedule</em></h2>
           <div className="sub">Your weekly teaching timetable for the current term — the classes you teach, with their blocks, rooms and times.</div>
         </div>
-        {hasSlots && (
-          <div className="actions">
-            <button className="btn-sec" onClick={() => window.print()}>
-              <i className="ti ti-printer" /> Print
-            </button>
-          </div>
-        )}
       </div>
 
       {error && (
