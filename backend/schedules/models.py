@@ -77,3 +77,24 @@ class ClassSchedule(models.Model):
             f"{self.teaching_assignment.subject.code} — "
             f"{self.get_day_of_week_display()} {self.start_time}–{self.end_time} ({self.room})"
         )
+
+
+class ClassReminderLog(models.Model):
+    """One row per meeting-slot per day a pre-class reminder was sent. Lets the
+    reminder job run as often as it likes (e.g. every minute) without emailing
+    anyone twice for the same class occurrence."""
+    class_schedule = models.ForeignKey(
+        ClassSchedule,
+        on_delete=models.CASCADE,
+        related_name='reminder_logs',
+    )
+    occurrence_date = models.DateField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+    recipients = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ('class_schedule', 'occurrence_date')
+        indexes = [models.Index(fields=['occurrence_date'])]
+
+    def __str__(self):
+        return f"reminder {self.class_schedule_id} @ {self.occurrence_date}"
