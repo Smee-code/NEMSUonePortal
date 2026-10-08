@@ -168,6 +168,22 @@ const CSS = `
 @media(max-width:860px){ .sched-week{grid-template-columns:repeat(3,1fr);} }
 @media(max-width:520px){ .sched-week{grid-template-columns:repeat(2,1fr);} }
 
+/* Compact meeting list (replaces the empty-heavy week grid) */
+.sched-mtgs{display:flex;flex-direction:column;gap:6px;padding:.85rem 1.1rem;}
+.sched-mtg{display:flex;align-items:center;gap:12px;background:#f7f9fc;border:1px solid var(--reg-line-soft);
+  border-left:3px solid #284a7a;border-radius:8px;padding:8px 11px;}
+.sched-mtg.no-room{background:var(--reg-amber-tint,#fdf3e2);border-color:#f0dcae;border-left-color:var(--reg-warm,#b8860b);}
+.sched-mtg-day{flex:0 0 38px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#284a7a;}
+.sched-mtg.no-room .sched-mtg-day{color:#8a6a12;}
+.sched-mtg-time{flex:0 0 auto;font-size:12.5px;font-weight:600;color:var(--reg-ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.sched-mtg-room{flex:1;min-width:0;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--reg-muted);}
+.sched-mtg-room i{font-size:13px;flex-shrink:0;}
+.sched-mtg-assign{border:none;background:none;cursor:pointer;font-weight:700;color:var(--reg-warm,#b8860b);font-family:inherit;padding:0;text-align:left;}
+.sched-mtg-assign:hover{text-decoration:underline;}
+.sched-mtg-acts{display:flex;gap:4px;flex-shrink:0;}
+.sched-mtg-none{font-size:12.5px;color:var(--reg-faint);padding:4px 2px;}
+@media(max-width:520px){ .sched-mtg{flex-wrap:wrap;gap:6px 10px;} .sched-mtg-room{flex-basis:100%;} }
+
 /* View toggle (By class / By room) */
 .sched-viewtoggle{display:inline-flex;border:1px solid var(--reg-line);border-radius:8px;overflow:hidden;}
 .sched-viewtoggle button{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;font-size:12.5px;
@@ -1390,8 +1406,9 @@ export default function RegistrarSchedule() {
                     <div className="sched-cgroup-body">
                       <div className="sched-classes">
                         {g.classes.map(c => {
-              const byDay = {};
-              c.slots.forEach(s => { (byDay[s.day_of_week] = byDay[s.day_of_week] || []).push(s); });
+              const sortedSlots = [...c.slots].sort((a, b) =>
+                (DAY_ORDER[a.day_of_week] - DAY_ORDER[b.day_of_week]) ||
+                String(a.start_time).localeCompare(String(b.start_time)));
               return (
                 <div className="sched-class" key={c.taId}>
                   <div className="sched-class-head">
@@ -1415,33 +1432,26 @@ export default function RegistrarSchedule() {
                     </div>
                   </div>
 
-                  <div className="sched-week">
-                    {DAY_OPTIONS.map(d => {
-                      const daySlots = byDay[d.value] || [];
-                      return (
-                        <div className={`sched-day${daySlots.length ? ' has' : ''}`} key={d.value}>
-                          <span className="sched-day-lbl">{d.label}</span>
-                          {daySlots.length === 0 ? (
-                            <span className="sched-day-empty">—</span>
-                          ) : daySlots.map(s => (
-                            <div className={`sched-meet${s.room ? '' : ' no-room'}`} key={s.id}>
-                              <div className="sched-meet-actions">
-                                <button className="sched-meet-btn" title="Edit meeting" onClick={() => openEdit(s)}><i className="ti ti-pencil" /></button>
-                                <button className="sched-meet-btn del" title="Delete meeting" onClick={() => handleDelete(s.id)}><i className="ti ti-x" /></button>
-                              </div>
-                              <div className="sched-meet-time">{formatTime(s.start_time)}<br />{formatTime(s.end_time)}</div>
-                              {s.room ? (
-                                <div className="sched-meet-room"><i className="ti ti-door" /> {s.room}{s.building ? ` · ${s.building}` : ''}</div>
-                              ) : (
-                                <button type="button" className="sched-meet-room sched-meet-assign" onClick={() => openEdit(s)} title="Assign a room">
-                                  <i className="ti ti-alert-triangle" /> Assign room
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
+                  <div className="sched-mtgs">
+                    {sortedSlots.length === 0 ? (
+                      <div className="sched-mtg-none">No meeting times declared yet.</div>
+                    ) : sortedSlots.map(s => (
+                      <div className={`sched-mtg${s.room ? '' : ' no-room'}`} key={s.id}>
+                        <span className="sched-mtg-day">{DAY_LABELS[s.day_of_week] || s.day_of_week}</span>
+                        <span className="sched-mtg-time">{formatTime(s.start_time)} – {formatTime(s.end_time)}</span>
+                        {s.room ? (
+                          <span className="sched-mtg-room"><i className="ti ti-door" /> {s.room}{s.building ? ` · ${s.building}` : ''}</span>
+                        ) : (
+                          <button type="button" className="sched-mtg-room sched-mtg-assign" onClick={() => openEdit(s)} title="Assign a room">
+                            <i className="ti ti-alert-triangle" /> Room not assigned — assign
+                          </button>
+                        )}
+                        <span className="sched-mtg-acts">
+                          <button className="sched-meet-btn" title="Edit meeting" onClick={() => openEdit(s)}><i className="ti ti-pencil" /></button>
+                          <button className="sched-meet-btn del" title="Delete meeting" onClick={() => handleDelete(s.id)}><i className="ti ti-x" /></button>
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
