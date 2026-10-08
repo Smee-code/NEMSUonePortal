@@ -187,7 +187,7 @@ Error generating stack: `+h.message+`
   .authm-x:hover{background:#e9edf3;color:#0a1628;}
   .authm-body{display:flex;flex-direction:column;}
   .authm-head{text-align:center;margin-bottom:1.5rem;}
-  .authm-logo{width:52px;height:52px;border-radius:50%;object-fit:contain;background:#f4f6fa;padding:3px;margin-bottom:.75rem;}
+  .authm-logo{display:block;width:52px;height:52px;border-radius:50%;object-fit:contain;background:#f4f6fa;padding:3px;margin:0 auto .75rem;}
   .authm-head h2{font-size:20px;font-weight:700;color:#0a1628;margin:0 0 .25rem;}
   .authm-head p{font-size:13px;color:#5a6478;margin:0;line-height:1.5;}
   .authm-label{font-size:12px;font-weight:600;color:#374151;margin:.75rem 0 .35rem;display:block;}
