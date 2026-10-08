@@ -15,6 +15,20 @@ const EMPTY_FORM = {
   start_date: '', end_date: '',
 };
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtDate(s) {
+  if (!s) return '';
+  const p = s.split('-').map(Number);
+  return `${MONTHS[p[1] - 1]} ${p[2]}, ${p[0]}`;
+}
+function fmtRange(a, b) {
+  if (!a && !b) return 'Dates not set';
+  if (!a || !b) return fmtDate(a || b);
+  const pa = a.split('-').map(Number), pb = b.split('-').map(Number);
+  if (pa[0] === pb[0]) return `${MONTHS[pa[1] - 1]} ${pa[2]} – ${MONTHS[pb[1] - 1]} ${pb[2]}, ${pb[0]}`;
+  return `${fmtDate(a)} – ${fmtDate(b)}`;
+}
+
 function TermCardMenu({ items }) {
   const [open, setOpen] = useState(false);
   return (
@@ -180,6 +194,19 @@ export default function AdminTerms() {
     } finally { setDeletingId(null); }
   }
 
+  // The active term leads; everything else is grouped under its academic year.
+  const current = terms.find(t => t.is_active) || null;
+  const byYear = {};
+  terms.filter(t => !t.is_active).forEach(t => { (byYear[t.year] = byYear[t.year] || []).push(t); });
+  const yearGroups = Object.entries(byYear)
+    .sort((a, b) => String(b[0]).localeCompare(String(a[0])))
+    .map(([y, list]) => [y, list.sort((x, z) => (x.start_date || '').localeCompare(z.start_date || ''))]);
+
+  function rowStatus(t) {
+    if (hasEnded(t)) return { label: 'Ended', tone: 'muted' };
+    return { label: 'Scheduled', tone: 'cool' };
+  }
+
   return (
     <>
       <style>{CSS}</style>
@@ -188,7 +215,7 @@ export default function AdminTerms() {
         <div className="page-head-l">
           <div className="eyebrow">Manage · {terms.length} terms</div>
           <h2>Academic <em>terms</em></h2>
-          <div className="sub">Manage semester windows and open or close enrollment. A new term becomes current automatically; use “Set as current” on any card to switch.</div>
+          <div className="sub">The current term and its enrollment window are shown at the top. Past and upcoming terms are grouped below by academic year.</div>
         </div>
         <div className="actions">
           <button className="btn-pri" onClick={openCreate}>
@@ -297,76 +324,87 @@ export default function AdminTerms() {
           <div className="d">Create your first term to get started with enrollment and grade management.</div>
         </div>
       ) : (
-        <div className="grid-cards">
-          {terms.map(t => {
-            const ended = hasEnded(t);
-            const isCurrent = t.is_active;   // derived: the newest term by start date
-            // Only the current term can host enrollment. Within it, an ended term
-            // still can't (re)open a window — only close one that's stuck open.
-            const enrollLocked = ended && !t.enrollment_open;
-            const canToggle = isCurrent && !enrollLocked;
+        <>
+          {/* ── Current term: the one that matters, with its enrollment control ── */}
+          {current && (() => {
+            const enrollLocked = hasEnded(current) && !current.enrollment_open;
+            const busy = updatingEnrollId === current.id;
             return (
-            <div key={t.id}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div className="at-card-eyebrow" style={{ color: isCurrent ? 'var(--adm-gold)' : 'var(--adm-muted)' }}>
-                    {isCurrent ? 'Current term' : ended ? 'Past term' : `A.Y. ${t.year}`}
+              <div className="at-hero">
+                <div className="at-hero-top">
+                  <div>
+                    <div className="at-hero-eyebrow">Current term</div>
+                    <div className="at-hero-sem">{current.semester_display}</div>
+                    <div className="at-hero-meta">A.Y. {current.year} &middot; {fmtRange(current.start_date, current.end_date)}</div>
                   </div>
-                  <div className="at-card-semester">{t.semester_display}</div>
-                  {isCurrent && <div className="at-card-year">A.Y. {t.year}</div>}
+                  <button className="at-hero-edit" onClick={() => openEdit(current)}>
+                    <i className="ti ti-pencil" /> Edit
+                  </button>
                 </div>
-                <TermCardMenu items={[
-                  { icon: 'ti-pencil', label: 'Edit', onClick: () => openEdit(t) },
-                  ...(!isCurrent ? [{ icon: 'ti-star', label: 'Set as current', onClick: () => setCurrentTerm(t) }] : []),
-                  ...(canToggle ? [{
-                    icon: t.enrollment_open ? 'ti-lock' : 'ti-lock-open',
-                    label: t.enrollment_open ? 'Close enrollment' : 'Open enrollment',
-                    onClick: () => toggleEnrollment(t),
-                  }] : []),
-                  'sep',
-                  { icon: 'ti-trash', label: 'Delete', danger: true, onClick: () => deleteTerm(t) },
-                ]} />
-              </div>
-
-              <div className="at-card-dates">
-                <div>
-                  <span className="at-card-date-label">Start</span>
-                  <div className="at-card-date-val">{t.start_date || '-'}</div>
-                </div>
-                <div>
-                  <span className="at-card-date-label">End</span>
-                  <div className="at-card-date-val">{t.end_date || '-'}</div>
-                </div>
-              </div>
-
-              <div className="at-card-enroll-row">
-                <span className="at-card-enroll-label">Enrollment</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: (isCurrent && t.enrollment_open) ? 'var(--adm-green)' : 'var(--adm-muted)' }}>
-                    {isCurrent
-                      ? (t.enrollment_open ? 'Open' : 'Closed')
-                      : ended ? 'Term ended' : 'Not current'}
-                  </span>
-                  {isCurrent && (
+                <div className="at-hero-enroll">
+                  <div>
+                    <span className="at-hero-enroll-label">Enrollment</span>
+                    <span className={`at-hero-enroll-state${current.enrollment_open ? ' open' : ''}`}>
+                      {current.enrollment_open
+                        ? 'Open — students can enroll now'
+                        : enrollLocked ? 'Closed — this term has ended' : 'Closed'}
+                    </span>
+                  </div>
+                  <div className="at-hero-toggle">
+                    {busy && <span className="at-hero-busy">Updating…</span>}
                     <button
-                      className={`toggle${t.enrollment_open ? ' on' : ''}`}
-                      disabled={updatingEnrollId === t.id || enrollLocked}
-                      onClick={() => toggleEnrollment(t)}
+                      className={`toggle${current.enrollment_open ? ' on' : ''}`}
+                      disabled={busy || enrollLocked}
+                      onClick={() => toggleEnrollment(current)}
                       title={enrollLocked ? 'This term has ended — enrollment cannot be opened'
-                        : t.enrollment_open ? 'Close enrollment' : 'Open enrollment'}
+                        : current.enrollment_open ? 'Close enrollment' : 'Open enrollment'}
                       style={enrollLocked ? { opacity: .4, cursor: 'not-allowed' } : undefined}
                     />
-                  )}
+                  </div>
                 </div>
               </div>
-
-              {(deletingId === t.id || updatingEnrollId === t.id) && (
-                <div style={{ fontSize: 11, color: 'var(--adm-muted)', textAlign: 'right' }}>Updating…</div>
-              )}
-            </div>
             );
-          })}
-        </div>
+          })()}
+
+          {/* ── Everything else, grouped by academic year ── */}
+          <div className="at-years">
+            {yearGroups.map(([year, sems]) => (
+              <section className="at-year" key={year}>
+                <div className="at-year-head">
+                  <span className="at-year-name">A.Y. {year}</span>
+                  <span className="at-year-count">{sems.length} term{sems.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="at-rows">
+                  {sems.map(t => {
+                    const st = rowStatus(t);
+                    const busy = deletingId === t.id;
+                    return (
+                      <div className="at-row" key={t.id}>
+                        <div className="at-row-main">
+                          <span className="at-row-sem">{t.semester_display}</span>
+                          <span className="at-row-dates">{fmtRange(t.start_date, t.end_date)}</span>
+                        </div>
+                        <div className="at-row-right">
+                          {busy && <span className="at-row-busy">Deleting…</span>}
+                          <span className={`at-chip at-chip--${st.tone}`}>{st.label}</span>
+                          <TermCardMenu items={[
+                            { icon: 'ti-star', label: 'Set as current', onClick: () => setCurrentTerm(t) },
+                            { icon: 'ti-pencil', label: 'Edit', onClick: () => openEdit(t) },
+                            'sep',
+                            { icon: 'ti-trash', label: 'Delete', danger: true, onClick: () => deleteTerm(t) },
+                          ]} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+            {yearGroups.length === 0 && (
+              <div className="at-noother">Only the current term exists. Create another term to build your history.</div>
+            )}
+          </div>
+        </>
       )}
     </>
   );
@@ -399,12 +437,41 @@ const CSS = `
   .at-form-note{display:flex;align-items:flex-start;gap:8px;padding:.6rem .75rem;background:var(--adm-warm);border:1px solid var(--adm-line-soft);font-size:12px;color:var(--adm-muted);line-height:1.45}
   .at-form-note i{color:var(--adm-gold);font-size:15px;flex-shrink:0;margin-top:1px}
   .at-form-actions{display:flex;justify-content:flex-end;gap:.5rem;padding-top:.25rem;border-top:1px solid var(--adm-line-soft)}
-  .at-card-eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-bottom:6px}
-  .at-card-semester{font-family:'Inter',-apple-system,sans-serif;font-weight:500;font-size:24px;color:var(--adm-ink);letter-spacing:-.01em;line-height:1.15}
-  .at-card-year{font-size:12px;color:var(--adm-muted);margin-top:4px}
-  .at-card-dates{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:12px}
-  .at-card-date-label{color:var(--adm-faint);font-size:11px}
-  .at-card-date-val{color:var(--adm-ink);font-weight:500;margin-top:2px}
-  .at-card-enroll-row{display:flex;justify-content:space-between;align-items:center;padding-top:.75rem;border-top:1px solid var(--adm-line-soft)}
-  .at-card-enroll-label{font-size:10px;color:var(--adm-muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+
+  /* Current-term hero */
+  .at-hero{background:var(--adm-ink);border:1px solid var(--adm-ink);border-top:3px solid var(--adm-gold,#b8860b);overflow:hidden;margin-bottom:1.75rem}
+  .at-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.5rem 1.6rem}
+  .at-hero-eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--adm-gold,#b8860b);font-weight:700}
+  .at-hero-sem{font-size:30px;font-weight:600;color:#fff;letter-spacing:-.02em;line-height:1.1;margin-top:9px}
+  .at-hero-meta{font-size:13.5px;color:#aeb8c7;margin-top:9px;font-variant-numeric:tabular-nums}
+  .at-hero-edit{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#dbe2ec;font-size:12px;font-weight:600;padding:7px 13px;cursor:pointer;font-family:inherit;flex-shrink:0}
+  .at-hero-edit:hover{background:rgba(255,255,255,.15);color:#fff}
+  .at-hero-enroll{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1.05rem 1.6rem;background:#fff}
+  .at-hero-enroll-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--adm-muted);font-weight:600;display:block}
+  .at-hero-enroll-state{font-size:14px;color:var(--adm-ink);font-weight:600;margin-top:3px;display:block}
+  .at-hero-enroll-state.open{color:var(--adm-green,#0a6b48)}
+  .at-hero-toggle{display:flex;align-items:center;gap:10px}
+  .at-hero-busy{font-size:11.5px;color:var(--adm-muted)}
+
+  /* Terms grouped by academic year */
+  .at-years{display:flex;flex-direction:column;gap:1.6rem}
+  .at-year-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.55rem;padding-bottom:.5rem;border-bottom:1px solid var(--adm-line)}
+  .at-year-name{font-size:13px;font-weight:700;letter-spacing:.03em;color:var(--adm-ink)}
+  .at-year-count{font-size:11.5px;color:var(--adm-faint)}
+  .at-rows{display:flex;flex-direction:column;border:1px solid var(--adm-line);background:#fff}
+  .at-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem 1.1rem;border-bottom:1px solid var(--adm-line-soft)}
+  .at-row:last-child{border-bottom:none}
+  .at-row:hover{background:var(--adm-warm)}
+  .at-row-main{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .at-row-sem{font-size:14.5px;font-weight:600;color:var(--adm-ink)}
+  .at-row-dates{font-size:12.5px;color:var(--adm-muted);font-variant-numeric:tabular-nums}
+  .at-row-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .at-row-busy{font-size:11.5px;color:var(--adm-muted)}
+  .at-chip{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .at-chip--muted{background:#eef0f4;color:#6a7384}
+  .at-chip--cool{background:#eef2f9;color:#284a7a}
+  .at-chip--green{background:var(--adm-green-tint,#e6f4ec);color:var(--adm-green,#0a6b48)}
+  .at-chip--gold{background:#f5eeda;color:#8a6a12}
+  .at-noother{font-size:13px;color:var(--adm-muted);padding:1.5rem;background:#fff;border:1px dashed var(--adm-line);text-align:center}
+  @media(max-width:600px){ .at-hero-sem{font-size:24px} .at-row-dates{display:none} }
 `;
