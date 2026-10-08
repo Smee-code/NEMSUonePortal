@@ -318,6 +318,8 @@ const SB_GROUPS = [
 const SB_ITEMS = [
   { key: 'dashboard',     icon: 'ti-layout-dashboard', label: 'Dashboard',             section: 'overview', to: '/admin/dashboard'    },
   { key: 'users',         icon: 'ti-users',            label: 'User Management',       section: 'manage',   to: '/admin/users'        },
+  { key: 'students',      icon: 'ti-school',           label: 'Students',              section: 'manage',   to: '/admin/students'     },
+  { key: 'faculty',       icon: 'ti-chalkboard',       label: 'Faculty',               section: 'manage',   to: '/admin/faculty'      },
   { key: 'programs',      icon: 'ti-book-2',           label: 'Programs & Curriculum', section: 'manage',   to: '/admin/programs'     },
   { key: 'blocks',        icon: 'ti-layout-grid',      label: 'Block Management',      section: 'manage',   to: '/admin/blocks'       },
   { key: 'terms',         icon: 'ti-calendar',         label: 'Academic Terms',        section: 'manage',   to: '/admin/terms'        },
@@ -336,6 +338,8 @@ const SB_ITEMS = [
 const PAGE_LABELS = {
   dashboard:     'Dashboard',
   users:         'User Management',
+  students:      'Students',
+  faculty:       'Faculty',
   programs:      'Programs & Curriculum',
   blocks:        'Block Management',
   terms:         'Academic Terms',

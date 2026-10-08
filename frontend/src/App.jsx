@@ -27,6 +27,8 @@ import AdminShell from './components/layout/AdminShell';
 import AnnouncementsPage from './pages/announcements/AnnouncementsPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUserManagement from './pages/admin/AdminUserManagement';
+import AdminStudents from './pages/admin/AdminStudents';
+import AdminFaculty from './pages/admin/AdminFaculty';
 import AdminPrograms from './pages/admin/AdminPrograms';
 import AdminBlocks from './pages/admin/AdminBlocks';
 import AdminSiteContent from './pages/admin/AdminSiteContent';
@@ -140,6 +142,8 @@ export default function App() {
             <Route index             element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"    element={<AdminDashboard />} />
             <Route path="users"        element={<AdminUserManagement />} />
+            <Route path="students"     element={<AdminStudents />} />
+            <Route path="faculty"      element={<AdminFaculty />} />
             <Route path="programs"     element={<AdminPrograms />} />
             <Route path="blocks"       element={<AdminBlocks />} />
             <Route path="schedule"     element={<AdminSchedule />} />

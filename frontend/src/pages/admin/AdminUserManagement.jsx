@@ -252,9 +252,6 @@ export default function AdminUserManagement() {
           <button className="btn-sec" onClick={() => toast('Export not yet available', { type: 'warn' })}>
             <i className="ti ti-file-export" /> Export
           </button>
-          <button className="btn-pri" onClick={openCreate}>
-            <i className="ti ti-user-plus" /> Add user
-          </button>
         </div>
       </div>
 
