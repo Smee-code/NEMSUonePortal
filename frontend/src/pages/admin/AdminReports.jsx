@@ -60,7 +60,6 @@ export default function AdminReports() {
       .finally(() => setLoading(false));
   }
 
-  function handlePrint() { window.print(); }
 
   function handleExportCSV() {
     if (!reportData) return;
@@ -103,9 +102,6 @@ export default function AdminReports() {
           <div className="sub">View grade submission, document request, and user account summaries. Export to CSV.</div>
         </div>
         <div className="actions">
-          <button className="btn-sec" onClick={handlePrint}>
-            <i className="ti ti-printer" /> Print
-          </button>
           <button className="btn-pri" onClick={handleExportCSV} disabled={!reportData}>
             <i className="ti ti-file-export" /> Export CSV
           </button>
