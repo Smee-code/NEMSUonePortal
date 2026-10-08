@@ -181,7 +181,7 @@ const CSS = `
   .table .num,.table td.num{font-variant-numeric:tabular-nums}
   .table td.muted{color:var(--adm-muted);font-size:12px}
   /* Tags */
-  .tag{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;padding:3px 8px}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;padding:3px 8px;white-space:nowrap}
   .tag.role-student{background:#eef2fa;color:#1e3a5f}
   .tag.role-faculty{background:#f5edd9;color:#83662a}
   .tag.role-registrar{background:#e6f1ec;color:#0a7c52}
@@ -239,10 +239,14 @@ const CSS = `
   .info-section{background:#fff;border:1px solid var(--adm-line);margin-bottom:1.5rem}
   .info-section-head{padding:1rem 1.5rem;border-bottom:1px solid var(--adm-line);background:var(--adm-warm);display:flex;justify-content:space-between;align-items:center}
   .info-section-head h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--adm-ink);font-weight:600}
-  .info-row{display:flex;justify-content:space-between;align-items:baseline;padding:.75rem 1.5rem;border-bottom:1px solid var(--adm-line-soft)}
+  .info-row{display:flex;justify-content:space-between;align-items:baseline;gap:1.25rem;padding:.75rem 1.5rem;border-bottom:1px solid var(--adm-line-soft)}
   .info-row:last-child{border-bottom:none}
-  .info-row .lbl{font-size:12px;color:var(--adm-muted)}
-  .info-row .val{font-size:13px;color:var(--adm-ink);font-weight:500}
+  .info-row .lbl{font-size:12px;color:var(--adm-muted);flex-shrink:0}
+  .info-row .val{font-size:13px;color:var(--adm-ink);font-weight:500;text-align:right;min-width:0;overflow-wrap:anywhere}
+  @media(max-width:560px){
+    .info-row{flex-direction:column;align-items:flex-start;gap:3px}
+    .info-row .val{text-align:left}
+  }
   /* Empty state */
   .empty-state{text-align:center;padding:4rem 2rem;background:#fff;border:1px solid var(--adm-line)}
   .empty-state i{font-size:48px;color:var(--adm-faint);display:block;margin-bottom:1rem}

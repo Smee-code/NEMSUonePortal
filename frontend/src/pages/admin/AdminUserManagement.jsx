@@ -667,6 +667,10 @@ export default function AdminUserManagement() {
 }
 
 const CSS = `
+  /* Keep the user table a real table that scrolls horizontally inside its
+     wrapper on small screens, instead of the shell's display:block collapse
+     that squishes the columns (e.g. "ACTIVE" wrapping to two lines). */
+  .table-wrap table.table{display:table;min-width:780px}
   .um-flash{padding:10px 16px;margin-bottom:1rem;font-size:13px}
   .um-flash-err{background:#f6e8e4;color:var(--adm-red)}
   .um-flash-ok{background:#e6f1ec;color:var(--adm-green)}

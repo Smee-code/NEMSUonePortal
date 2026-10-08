@@ -130,7 +130,15 @@ const CSS = `
   background:#fbf7ec;padding:1px 8px;border-radius:5px;}
 .sched-class-fac{font-size:12.5px;color:var(--reg-ink-2);margin-top:4px;display:flex;align-items:center;gap:6px;}
 .sched-class-fac i{font-size:14px;color:var(--reg-faint);}
-.sched-class-actions{display:flex;gap:.4rem;flex-shrink:0;}
+.sched-class-actions{display:flex;gap:.4rem;flex-shrink:0;flex-wrap:wrap;}
+.sched-class-fac{white-space:nowrap;}
+/* On narrow screens, stack the class header so the course + faculty get the
+   full width and the action buttons sit on their own row. */
+@media(max-width:560px){
+  .sched-class-head{flex-direction:column;gap:.7rem;}
+  .sched-class-actions{width:100%;}
+  .sched-class-actions > *{flex:1;justify-content:center;}
+}
 .sched-del-class:hover{border-color:var(--reg-red);color:var(--reg-red);}
 .sched-del-class:hover i{color:var(--reg-red);}
 .sched-week{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:.9rem 1.1rem;}

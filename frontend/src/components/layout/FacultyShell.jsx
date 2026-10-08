@@ -270,11 +270,15 @@ const CSS = `
     background:var(--warm);display:flex;justify-content:space-between;align-items:center}
   .info-section-head h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--ink);font-weight:600}
-  .info-row{display:flex;justify-content:space-between;align-items:baseline;
+  .info-row{display:flex;justify-content:space-between;align-items:baseline;gap:1.25rem;
     padding:.75rem 1.5rem;border-bottom:1px solid var(--line-soft)}
   .info-row:last-child{border-bottom:none}
-  .info-row .lbl{font-size:12px;color:var(--muted)}
-  .info-row .val{font-size:13px;color:var(--ink);font-weight:500}
+  .info-row .lbl{font-size:12px;color:var(--muted);flex-shrink:0}
+  .info-row .val{font-size:13px;color:var(--ink);font-weight:500;text-align:right;min-width:0;overflow-wrap:anywhere}
+  @media(max-width:560px){
+    .info-row{flex-direction:column;align-items:flex-start;gap:3px}
+    .info-row .val{text-align:left}
+  }
   /* Empty state */
   .empty-state{text-align:center;padding:4rem 2rem;background:#fff;border:1px solid var(--line)}
   .empty-state i{font-size:48px;color:var(--faint);display:block;margin-bottom:1rem}

@@ -728,6 +728,7 @@ const CSS = `
     display:grid;grid-template-columns:260px 1fr;gap:1rem;padding:14px 1.5rem;
     border-bottom:1px solid var(--reg-line-soft);font-size:13px;
   }
+  @media(max-width:620px){.info-row{grid-template-columns:1fr;gap:3px}}
   .info-row:last-child{border-bottom:none}
   .info-row .lbl{color:var(--reg-muted)}
   .info-row .val{color:var(--reg-ink);font-weight:500;font-variant-numeric:tabular-nums}
