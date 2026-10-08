@@ -123,13 +123,6 @@ export default function StudentGrades() {
           <h2>My <em>grades</em></h2>
           <div className="sub">Midterm and final grades for the current term, with your full grade history per academic semester.</div>
         </div>
-        {grades.length > 0 && (
-          <div className="actions">
-            <button className="btn-sec" onClick={() => window.print()}>
-              <i className="ti ti-printer" /> Print
-            </button>
-          </div>
-        )}
       </div>
 
       {error && (
