@@ -229,7 +229,8 @@ export default function AdminTerms() {
       )}
 
       {showForm && (
-        <div className="at-form-wrap">
+        <div className="at-modal-overlay" onMouseDown={() => !saving && setShowForm(false)}>
+        <div className="at-form-wrap at-modal" onMouseDown={e => e.stopPropagation()}>
           <div className="at-form-head">
             <div>
               <div className="at-form-eyebrow">{editTarget ? 'Edit term' : 'New term'}</div>
@@ -312,6 +313,7 @@ export default function AdminTerms() {
               </button>
             </div>
           </form>
+        </div>
         </div>
       )}
 
@@ -415,6 +417,9 @@ const CSS = `
   .at-flash-ok{background:#e6f1ec;color:var(--adm-green)}
   .at-flash-err{background:#f6e8e4;color:var(--adm-red)}
   .at-loading{color:var(--adm-muted);padding:2rem 0;font-size:13px}
+  .at-modal-overlay{position:fixed;inset:0;background:rgba(10,22,40,.5);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow-y:auto}
+  .at-modal{width:100%;max-width:680px;margin:0;box-shadow:0 24px 60px -20px rgba(10,22,40,.45);animation:atModalIn .18s ease}
+  @keyframes atModalIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
   .at-form-wrap{background:#fff;border:1px solid var(--adm-line);margin-bottom:1.5rem}
   .at-form-head{display:flex;justify-content:space-between;align-items:flex-start;padding:1.25rem 1.5rem;border-bottom:1px solid var(--adm-line);background:var(--adm-warm)}
   .at-form-eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--adm-gold);font-weight:600;margin-bottom:4px}
