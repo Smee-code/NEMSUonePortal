@@ -2198,8 +2198,9 @@ Temporary password: ${pe.temporary_password}`;(ut=navigator.clipboard)==null||ut
   .at-form-eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--adm-gold);font-weight:600;margin-bottom:4px}
   .at-form-title{font-size:18px;font-weight:500;color:var(--adm-ink);margin:0;letter-spacing:-.01em}
   .at-form-body{padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:.85rem}
-  .at-form-row{display:flex;flex-wrap:wrap;gap:1rem}
-  .at-form-field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px}
+  .at-form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .at-form-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+  @media(max-width:520px){.at-form-row{grid-template-columns:1fr}}
   .at-form-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--adm-muted);font-weight:600}
   .at-form-input{padding:9px 12px;border:1px solid var(--adm-line);background:#fff;font:13px/1.4 'Inter',sans-serif;color:var(--adm-ink);outline:none}
   /* Academic year = editable start year – read-only end year */
