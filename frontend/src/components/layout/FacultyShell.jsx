@@ -174,7 +174,7 @@ const CSS = `
     letter-spacing:-.02em;line-height:1.05;color:var(--ink)}
   .page-head h2 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:var(--ink-2);font-weight:400}
   .page-head .sub{font-size:14px;color:var(--muted);margin-top:6px;max-width:540px;line-height:1.55}
-  .page-head .actions{display:flex;gap:8px;flex-shrink:0;align-self:flex-start;margin-top:.5rem}
+  .page-head .actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;align-self:flex-start;margin-top:.5rem}
   .sec-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:1rem}
   .sec-head h3{font-family:'Inter',sans-serif;font-weight:500;font-size:22px;
     letter-spacing:-.01em;color:var(--ink)}
@@ -322,6 +322,8 @@ const CSS = `
   /* Quick actions */
   .quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
     background:var(--line);border:1px solid var(--line);margin-bottom:1.75rem}
+  @media(max-width:860px){.quick-actions{grid-template-columns:1fr 1fr}}
+  @media(max-width:460px){.quick-actions{grid-template-columns:1fr}}
   .quick-action{background:#fff;padding:1.5rem;display:flex;flex-direction:column;
     gap:.75rem;cursor:pointer;transition:background .15s;text-decoration:none;color:inherit}
   .quick-action:hover{background:var(--warm)}

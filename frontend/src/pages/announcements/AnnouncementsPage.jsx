@@ -3,10 +3,6 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { useToast } from '../../components/Toast';
-import SidebarAdmin from '../../components/layout/SidebarAdmin';
-import SidebarRegistrar from '../../components/layout/SidebarRegistrar';
-import SidebarFaculty from '../../components/layout/SidebarFaculty';
-import SidebarStudent from '../../components/layout/SidebarStudent';
 
 const TARGET_META = {
   all:     { label: 'All users',          bg: '#dbeafe', color: '#1e40af' },
@@ -24,12 +20,10 @@ function formatDate(iso) {
 }
 
 export default function AnnouncementsPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const confirm = useConfirm();
   const toast = useToast();
 
-  const isInShell = user?.role === 'admin' || user?.role === 'faculty' || user?.role === 'registrar';
-  const isAdmin   = isInShell; // kept for compatibility with existing references below
   // Faculty may read announcements but not post or manage them (registrar / admin only).
   const canPost   = ['registrar', 'admin'].includes(user?.role);
 
@@ -130,9 +124,10 @@ export default function AnnouncementsPage() {
     }
   }
 
-  // ── Admin shell content (no own sidebar/wrapper) ───────────────────────
-  if (isAdmin) {
-    return (
+  // Shell-native content — renders cleanly inside ANY role shell (no own
+  // sidebar/header). Non-admin shells are wrapped in `.ann-scope` below, which
+  // supplies the --adm-* tokens the announcement styles use.
+  const content = (
       <>
         <style>{ADMIN_CSS}</style>
 
@@ -311,209 +306,28 @@ export default function AnnouncementsPage() {
           </div>
         )}
       </>
-    );
-  }
-
-  // ── Non-admin shell content (student / faculty / registrar) ────────────
-  return (
-    <div className="dashboard">
-      {user?.role === 'admin'     && <SidebarAdmin     active="announcements" />}
-      {user?.role === 'registrar' && <SidebarRegistrar active="announcements" />}
-      {user?.role === 'faculty'   && <SidebarFaculty   active="announcements" />}
-      {user?.role === 'student'   && <SidebarStudent   active="announcements" />}
-
-      <main className="dashboard-content">
-        <div className="dashboard-header">
-          <div>
-            <h1>Announcements</h1>
-            <span className="badge">{user?.role}</span>
-          </div>
-          <button className="btn-logout" onClick={logout}>Sign Out</button>
-        </div>
-
-        <div style={legacyStyles.toolbar}>
-          <form onSubmit={handleSearch} style={legacyStyles.searchForm}>
-            <input
-              type="text"
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              placeholder="Search announcements…"
-              style={legacyStyles.searchInput}
-            />
-            <button type="submit" style={legacyStyles.btnSearch}>Search</button>
-            {activeSearch && (
-              <button type="button" onClick={clearSearch} style={legacyStyles.btnClear}>✕ Clear</button>
-            )}
-          </form>
-          {canPost && (
-            <button onClick={openCreate} style={legacyStyles.btnPost}>+ Post Announcement</button>
-          )}
-        </div>
-
-        {activeSearch && (
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-            Showing results for "<strong>{activeSearch}</strong>"
-          </p>
-        )}
-
-        {showForm && (
-          <div style={legacyStyles.formCard}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1rem', color: '#1e3a5f' }}>
-              {editId ? 'Edit Announcement' : 'Post New Announcement'}
-            </h3>
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label style={legacyStyles.label}>Title <small style={{ color: '#6b7280' }}>(max 200 characters)</small></label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-                  maxLength={200}
-                  required
-                  placeholder="Announcement title"
-                  style={legacyStyles.input}
-                />
-              </div>
-              <div className="form-group">
-                <label style={legacyStyles.label}>Body</label>
-                <textarea
-                  value={form.body}
-                  onChange={e => setForm(p => ({ ...p, body: e.target.value }))}
-                  required
-                  rows={6}
-                  placeholder="Write the full announcement here…"
-                  style={{ ...legacyStyles.input, resize: 'vertical' }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                <div className="form-group" style={{ flex: 1, minWidth: 180 }}>
-                  <label style={legacyStyles.label}>Target Audience</label>
-                  <select
-                    value={form.target_audience}
-                    onChange={e => setForm(p => ({ ...p, target_audience: e.target.value }))}
-                    style={{ ...legacyStyles.input, maxWidth: '100%' }}
-                  >
-                    <option value="all">All Users</option>
-                    <option value="student">Students Only</option>
-                    <option value="faculty">Faculty Only</option>
-                    <option value="public">Public / Landing Page</option>
-                  </select>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '1.6rem' }}>
-                  <input
-                    type="checkbox"
-                    id="is_pinned_legacy"
-                    checked={form.is_pinned}
-                    onChange={e => setForm(p => ({ ...p, is_pinned: e.target.checked }))}
-                    style={{ width: 16, height: 16, cursor: 'pointer' }}
-                  />
-                  <label htmlFor="is_pinned_legacy" style={{ fontSize: '0.88rem', color: '#374151', cursor: 'pointer' }}>
-                    Pin to top
-                  </label>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-                <button type="submit" disabled={saving} style={legacyStyles.btnSave(saving)}>
-                  {saving ? 'Saving…' : editId ? 'Update' : 'Post'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowForm(false); setEditId(null); }}
-                  style={legacyStyles.btnCancel}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {loading ? (
-          <p style={{ color: '#6b7280' }}>Loading announcements…</p>
-        ) : announcements.length === 0 ? (
-          <div style={legacyStyles.emptyState}>
-            <p style={{ fontWeight: 600 }}>
-              {activeSearch ? `No announcements found for "${activeSearch}".` : 'No announcements yet.'}
-            </p>
-            {canPost && !activeSearch && (
-              <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                Click "Post Announcement" to share information with users.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-            {announcements.map(ann => {
-              const tm      = TARGET_META[ann.target_audience] || TARGET_META.all;
-              const expanded = expandedId === ann.id;
-              const canEdit  = canPost && (ann.is_mine || user?.role === 'admin');
-              return (
-                <div
-                  key={ann.id}
-                  style={{
-                    ...legacyStyles.card,
-                    borderLeft: ann.is_pinned ? '4px solid #1e3a5f' : '4px solid #e5e7eb',
-                  }}
-                >
-                  <div
-                    style={legacyStyles.cardHeader}
-                    onClick={() => setExpandedId(expanded ? null : ann.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => e.key === 'Enter' && setExpandedId(expanded ? null : ann.id)}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                        {ann.is_pinned && <span title="Pinned" style={{ fontSize: '0.9rem' }}>📌</span>}
-                        {ann.is_new   && <span style={legacyStyles.newBadge}>NEW</span>}
-                        <span style={legacyStyles.cardTitle}>{ann.title}</span>
-                      </div>
-                      <div style={legacyStyles.cardMeta}>
-                        <strong>{ann.posted_by_name}</strong>
-                        <span style={{ color: '#d1d5db' }}>·</span>
-                        {formatDate(ann.created_at)}
-                        <span style={{ ...legacyStyles.targetBadge, background: tm.bg, color: tm.color }}>
-                          {tm.label}
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-                      {canEdit && (
-                        <>
-                          <button onClick={e => { e.stopPropagation(); openEdit(ann); }} style={legacyStyles.btnEdit}>
-                            Edit
-                          </button>
-                          <button onClick={e => { e.stopPropagation(); handleDelete(ann.id, ann.title); }} style={legacyStyles.btnDelete}>
-                            Delete
-                          </button>
-                        </>
-                      )}
-                      <span style={{ color: '#9ca3af', fontSize: '0.75rem', userSelect: 'none' }}>
-                        {expanded ? '▲' : '▼'}
-                      </span>
-                    </div>
-                  </div>
-                  {expanded && (
-                    <div style={legacyStyles.cardBody}>
-                      <p style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: 1.7 }}>
-                        {ann.body}
-                      </p>
-                      {ann.updated_at !== ann.created_at && (
-                        <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.75rem' }}>
-                          Last updated: {new Date(ann.updated_at).toLocaleString('en-PH')}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
-    </div>
   );
+
+  // The admin shell already defines the --adm-* tokens; every other shell needs
+  // the scope wrapper to supply them so the announcement styles render correctly.
+  return user?.role === 'admin'
+    ? content
+    : <div className="ann-scope"><style>{SCOPE_CSS}</style>{content}</div>;
 }
+
+/* Non-admin shells don't define the --adm-* tokens the announcement styles use,
+   so scope them here. Shared classes (.page-head, .btn-*) adopt the host shell. */
+const SCOPE_CSS = `
+  .ann-scope{
+    --adm-ink:#0b1b2e;--adm-ink-2:#334155;--adm-muted:#64748b;--adm-faint:#94a3b8;
+    --adm-line:#e4e7ec;--adm-line-soft:#eef0f4;--adm-warm:#faf7f0;
+    --adm-gold:#b8860b;--adm-green:#0a6b48;--adm-green-tint:#e6f4ec;--adm-red:#b91c1c;--adm-red-tint:#fde8e8;
+  }
+  .ann-scope .empty-state{text-align:center;padding:3.5rem 2rem;background:#fff;border:1px solid var(--adm-line)}
+  .ann-scope .empty-state i{font-size:42px;color:var(--adm-faint);display:block;margin-bottom:.9rem}
+  .ann-scope .empty-state .t{font-size:15px;font-weight:600;color:var(--adm-ink);margin-bottom:.4rem}
+  .ann-scope .empty-state .d{font-size:13px;color:var(--adm-muted);max-width:340px;margin:.3rem auto 0;line-height:1.5}
+`;
 
 /* ── Admin-context CSS ─────────────────────────────────────────────────── */
 const ADMIN_CSS = `
@@ -553,29 +367,3 @@ const ADMIN_CSS = `
   .an-card-body{padding:.75rem 1.25rem 1rem;border-top:1px solid var(--adm-line-soft)}
 `;
 
-/* ── Legacy style-object for non-admin roles ───────────────────────────── */
-const legacyStyles = {
-  toolbar:     { display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' },
-  searchForm:  { display: 'flex', gap: '0.4rem', flex: 1, maxWidth: 380 },
-  searchInput: { flex: 1, padding: '0.45rem 0.65rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' },
-  btnSearch:   { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', padding: '0.45rem 0.9rem', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' },
-  btnClear:    { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '0.45rem 0.75rem', borderRadius: 6, fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' },
-  btnPost:     { background: '#1e3a5f', color: '#fff', border: 'none', padding: '0.5rem 1.25rem', borderRadius: 6, fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', whiteSpace: 'nowrap' },
-  label:       { display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#374151', marginBottom: '0.3rem' },
-  input:       { width: '100%', padding: '0.5rem 0.65rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem', boxSizing: 'border-box' },
-  alertError:  { background: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem' },
-  alertSuccess:{ background: '#d1fae5', color: '#065f46', padding: '0.75rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.9rem' },
-  emptyState:  { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem', textAlign: 'center', color: '#6b7280' },
-  formCard:    { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '1.25rem', marginBottom: '1.5rem' },
-  card:        { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
-  cardHeader:  { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1.1rem', cursor: 'pointer', gap: '0.5rem', userSelect: 'none' },
-  cardTitle:   { fontWeight: 700, color: '#1e3a5f', fontSize: '0.95rem' },
-  cardMeta:    { display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.78rem', color: '#6b7280', marginTop: '0.2rem' },
-  cardBody:    { padding: '0.75rem 1.1rem 1rem', borderTop: '1px solid #f3f4f6' },
-  newBadge:    { background: '#dc2626', color: '#fff', borderRadius: 4, padding: '0.1rem 0.4rem', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em' },
-  targetBadge: { borderRadius: 12, padding: '0.15rem 0.55rem', fontSize: '0.72rem', fontWeight: 600 },
-  btnEdit:     { background: '#1e3a5f', color: '#fff', border: 'none', padding: '0.22rem 0.6rem', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' },
-  btnDelete:   { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '0.22rem 0.6rem', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' },
-  btnSave:     (d) => ({ background: '#059669', color: '#fff', border: 'none', padding: '0.5rem 1.25rem', borderRadius: 6, fontWeight: 600, fontSize: '0.9rem', cursor: d ? 'not-allowed' : 'pointer', opacity: d ? 0.7 : 1 }),
-  btnCancel:   { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', padding: '0.5rem 1rem', borderRadius: 6, fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' },
-};

@@ -764,7 +764,7 @@ export default function AdminPrograms() {
       <p style={{ fontSize: '0.9rem', color: '#5a6478', marginBottom: '1rem' }}>
         Add a single course to <strong>{curriculumProgram?.name}</strong>.
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: '0 1rem' }}>
         <div style={{ ...s.fieldGroup, gridColumn: '1 / -1' }}>
           <label style={s.label}>Course Name *</label>
           <input style={s.input} placeholder="e.g. Introduction to Computing" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
@@ -1075,7 +1075,7 @@ export default function AdminPrograms() {
               <button style={s.modalClose} onClick={() => setEditingCurrSubject(null)}>×</button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 .85rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: '0 .85rem' }}>
               <div style={s.fieldGroup}>
                 <label style={s.label}>Code</label>
                 <input style={s.input} value={editCurrForm.code} onChange={e => setEditCurrForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} maxLength={20} />
@@ -1086,7 +1086,7 @@ export default function AdminPrograms() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 .85rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '0 .85rem' }}>
               <div style={s.fieldGroup}>
                 <label style={s.label}>Units</label>
                 <input style={s.input} type="number" min={0.5} max={12} step={0.01} value={editCurrForm.units} onChange={e => setEditCurrForm(f => ({ ...f, units: e.target.value }))} />
@@ -1174,7 +1174,7 @@ export default function AdminPrograms() {
       {/* ── SUBJECT MODAL ────────────────────────────────────────────────── */}
       {subjectModal && (
         <Modal title={subjectModal === 'add' ? 'Add Subject / Course' : 'Edit Subject / Course'} onClose={() => setSubjectModal(null)}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: '0 1rem' }}>
             <div style={{ ...s.fieldGroup, gridColumn: '1 / -1' }}><label style={s.label}>Subject Name *</label><input style={s.input} placeholder="e.g. Introduction to Computing" value={subjectForm.name} onChange={e => setSubjectForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div style={s.fieldGroup}><label style={s.label}>Subject Code *</label><input style={s.input} placeholder="e.g. CC101" value={subjectForm.code} onChange={e => setSubjectForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} maxLength={20} /></div>
             <div style={s.fieldGroup}><label style={s.label}>Units * (max 2 decimals)</label><input style={s.input} type="number" min={0.5} max={12} step={0.01} placeholder="e.g. 3 or 1.25" value={subjectForm.units} onChange={e => setSubjectForm(f => ({ ...f, units: e.target.value }))} /></div>

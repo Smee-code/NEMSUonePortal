@@ -78,7 +78,7 @@ const CSS = `
 .fac-modal-title{ margin:0; font:600 19px 'Inter',sans-serif; color:var(--reg-ink); }
 .fac-modal-x{ border:1px solid var(--reg-line); background:#fff; color:var(--reg-muted); cursor:pointer; padding:7px 9px; display:inline-flex; }
 .fac-modal-x:hover{ border-color:var(--reg-ink); color:var(--reg-ink); }
-.fac-modal-figs{ display:flex; background:var(--reg-warm); border-bottom:1px solid var(--reg-line); flex-shrink:0; }
+.fac-modal-figs{ display:flex; flex-wrap:wrap; background:var(--reg-warm); border-bottom:1px solid var(--reg-line); flex-shrink:0; }
 .fac-fig{ padding:12px 20px; border-right:1px solid var(--reg-line-soft); }
 .fac-fig:last-child{ border-right:none; }
 .fac-fig b{ display:block; font:600 20px 'Inter',sans-serif; color:var(--reg-ink); font-variant-numeric:tabular-nums; }

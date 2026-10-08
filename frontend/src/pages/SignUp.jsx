@@ -90,7 +90,8 @@ export default function SignUp() {
               <input style={inp} type="email" value={form.institutional_email} onChange={e => set('institutional_email', e.target.value)} required placeholder="jdelacruz@nemsu.edu.ph" />
             </Field>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+            <style>{`.su-pw-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}@media(max-width:480px){.su-pw-grid{grid-template-columns:1fr}}`}</style>
+            <div className="su-pw-grid">
               <Field label="Password">
                 <PasswordInput style={inp} value={form.password} onChange={e => set('password', e.target.value)} required placeholder="Min. 8 characters" />
               </Field>

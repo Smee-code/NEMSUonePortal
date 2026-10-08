@@ -123,6 +123,7 @@ const CSS = `
 
   /* Drawer — form */
   .adm-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+  @media(max-width:560px){.adm-form-grid{grid-template-columns:1fr}}
   .adm-form-field{display:flex;flex-direction:column;gap:6px}
   .adm-form-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5a6478;font-weight:600}
   .adm-form-input,.adm-form-select,.adm-form-textarea{padding:10px 12px;font-size:13px;background:#fff;border:1px solid #e5e7eb;outline:none;color:#0a1628;font-family:inherit;border-radius:0}
