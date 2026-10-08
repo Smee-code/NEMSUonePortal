@@ -55,6 +55,7 @@ export default function FacultyProfile() {
   const verified = !!profile?.is_verified;
   const facts = [
     profile?.student_id     && { k: 'Faculty No.', v: profile.student_id, mono: true },
+    profile?.rank           && { k: 'Academic rank', v: profile.rank },
     { k: 'Department', v: profile?.department_code || profile?.department_name || '—' },
     profile?.is_gec_faculty && { k: 'Classification', v: 'General Education' },
   ].filter(Boolean);
@@ -112,6 +113,7 @@ export default function FacultyProfile() {
                   ['Faculty ID',    profile?.student_id, true],
                   ['Email address', profile?.institutional_email],
                   ['Role',          'Faculty'],
+                  ['Academic rank', profile?.rank || 'Not set'],
                   ['Email status',  verified ? 'Verified' : 'Pending verification'],
                 ].map(([lbl, val, mono]) => (
                   <div key={lbl} className="fp-row">
