@@ -10,10 +10,52 @@ Callers keep passing the same (subject, body, recipients); only the transport
 changes from send_mail/send_mass_mail to these.
 """
 import html as _html
+import logging
 import re
+from email.mime.image import MIMEImage
+from functools import lru_cache
+from pathlib import Path
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
+
+logger = logging.getLogger(__name__)
+
+# Content-ID the header <img> references (cid:nemsu-logo). The image is embedded
+# inline so it renders without the recipient allowing remote images.
+LOGO_CID = 'nemsu-logo'
+
+
+@lru_cache(maxsize=1)
+def _logo_bytes():
+    """Read the NEMSU seal once. Returns the PNG bytes, or None if unavailable."""
+    candidates = [
+        getattr(settings, 'FRONTEND_DIST', None) and Path(settings.FRONTEND_DIST) / 'logo.png',
+        Path(settings.BASE_DIR).parent / 'frontend' / 'dist' / 'logo.png',
+        Path(settings.BASE_DIR).parent / 'frontend' / 'public' / 'logo.png',
+    ]
+    for p in candidates:
+        try:
+            if p and Path(p).is_file():
+                return Path(p).read_bytes()
+        except Exception:
+            continue
+    logger.warning('Email logo not found; sending without the inline seal.')
+    return None
+
+
+def _attach_logo(msg):
+    """Embed the seal as an inline image so cid:nemsu-logo resolves in the HTML."""
+    data = _logo_bytes()
+    if not data:
+        return
+    img = MIMEImage(data, _subtype='png')
+    img.add_header('Content-ID', f'<{LOGO_CID}>')
+    img.add_header('Content-Disposition', 'inline', filename='logo.png')
+    msg.attach(img)
+    # Group the HTML + inline image under multipart/related so clients associate
+    # the cid image with the message body.
+    msg.mixed_subtype = 'related'
 
 # ── Brand tokens (email-safe: inline styles, web-safe fonts only) ──────────────
 BRAND = 'NEMSUonePortal'
@@ -144,8 +186,15 @@ def render_branded_html(subject, body, preheader=None):
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid {CARD_LINE};border-radius:6px;overflow:hidden;">
   <tr><td style="background:{INK};padding:22px 32px;border-bottom:3px solid {GOLD};">
-    <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:.3px;">NEMSU<span style="color:{GOLD};">one</span>Portal</div>
-    <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c7d2e0;letter-spacing:.6px;margin-top:4px;text-transform:uppercase;">{INSTITUTION} &middot; Cantilan Campus</div>
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+      <td style="padding-right:14px;vertical-align:middle;">
+        <img src="cid:{LOGO_CID}" width="48" height="48" alt="NEMSU seal" style="display:block;width:48px;height:48px;border-radius:50%;background:#ffffff;">
+      </td>
+      <td style="vertical-align:middle;">
+        <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:.3px;">NEMSU<span style="color:{GOLD};">one</span>Portal</div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c7d2e0;letter-spacing:.6px;margin-top:4px;text-transform:uppercase;">{INSTITUTION} &middot; Cantilan Campus</div>
+      </td>
+    </tr></table>
   </td></tr>
   <tr><td style="padding:32px;font-family:Arial,Helvetica,sans-serif;">
     {body_html}
@@ -168,6 +217,7 @@ def send_branded_email(subject, message, recipient_list, from_email=None,
     from_email = from_email or settings.DEFAULT_FROM_EMAIL
     msg = EmailMultiAlternatives(subject, message, from_email, list(recipient_list))
     msg.attach_alternative(render_branded_html(subject, message, preheader), 'text/html')
+    _attach_logo(msg)
     return msg.send(fail_silently=fail_silently)
 
 
@@ -182,6 +232,7 @@ def send_branded_mass_email(datatuple, fail_silently=True):
             list(recipient_list), connection=connection,
         )
         msg.attach_alternative(render_branded_html(subject, message), 'text/html')
+        _attach_logo(msg)
         messages.append(msg)
     if not messages:
         return 0
