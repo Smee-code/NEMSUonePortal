@@ -258,28 +258,28 @@ export default function AdminUserManagement() {
       {stats && (
         <div className="stat-row">
           <div className="stat">
-            <div className="num">{(stats.total_users ?? 0).toLocaleString()}</div>
+            <div className="num">{(stats.users?.total ?? 0).toLocaleString()}</div>
             <div className="lbl">Total users</div>
           </div>
           <div className="stat">
-            <div className="num">{(stats.students ?? 0).toLocaleString()}</div>
+            <div className="num">{(stats.users?.student ?? 0).toLocaleString()}</div>
             <div className="lbl">Students</div>
           </div>
           <div className="stat">
-            <div className="num">{(stats.faculty ?? 0).toLocaleString()}</div>
+            <div className="num">{(stats.users?.faculty ?? 0).toLocaleString()}</div>
             <div className="lbl">Faculty</div>
           </div>
           <div className="stat">
-            <div className="num">{(stats.registrars ?? 0).toLocaleString()}</div>
+            <div className="num">{(stats.users?.registrar ?? 0).toLocaleString()}</div>
             <div className="lbl">Registrars</div>
           </div>
           <div className="stat">
-            <div className="num amber">{(stats.unverified_users ?? 0).toLocaleString()}</div>
+            <div className="num amber">{(stats.users?.unverified ?? 0).toLocaleString()}</div>
             <div className="lbl">Unverified</div>
             <div className="delta">Awaiting email verification</div>
           </div>
           <div className="stat">
-            <div className="num red">{(stats.locked_users ?? 0).toLocaleString()}</div>
+            <div className="num red">{(stats.users?.locked ?? 0).toLocaleString()}</div>
             <div className="lbl">Locked</div>
             <div className="delta">Lockout policy triggered</div>
           </div>
