@@ -83,13 +83,6 @@ export default function StudentEnrollment() {
           <h2>My <em>enrollment</em></h2>
           <div className="sub">Your certificate of registration for the current term, and a record of the terms you’ve completed.</div>
         </div>
-        {currentEnrollment?.status === 'approved' && (
-          <div className="actions">
-            <button className="btn-sec" onClick={() => window.print()}>
-              <i className="ti ti-printer" /> Print COR
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ── Current enrollment (COR) — rejected requests are hidden here; the
