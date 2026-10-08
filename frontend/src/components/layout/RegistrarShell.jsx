@@ -10,23 +10,31 @@ import NotificationList from '../NotificationList';
 
 /* ── Sidebar nav items ─────────────────────────────────────────────────────── */
 const SB_ITEMS = [
-  { key:'dashboard',    icon:'ti-layout-dashboard', label:'Dashboard',           section:'overview', to:'/registrar/dashboard' },
-  { key:'registrations',icon:'ti-user-check',       label:'Registration Requests', section:'workflow', to:'/registrar/registrations' },
-  { key:'admissions',   icon:'ti-user-plus',        label:'Admissions',          section:'workflow',  to:'/registrar/admissions', badgeKey:'admissions' },
-  { key:'enrollment',   icon:'ti-clipboard-check',  label:'Enrollment Requests', section:'workflow',  to:'/registrar/enrollment', badgeKey:'enrollment' },
-  { key:'documents',    icon:'ti-file-text',        label:'Document Requests',   section:'workflow',  to:'/registrar/documents',  badgeKey:'documents' },
-  { key:'students',     icon:'ti-users',            label:'List of Students',    section:'records',   to:'/registrar/students' },
-  { key:'faculty',      icon:'ti-user-edit',        label:'Faculty',             section:'records',   to:'/registrar/faculty' },
-  { key:'schedule',     icon:'ti-calendar-event',   label:'Room Management',     section:'records',   to:'/registrar/schedule' },
-  { key:'blocks',       icon:'ti-layout-grid',      label:'Block Management',    section:'records',   to:'/registrar/blocks' },
-  { key:'facilities',   icon:'ti-building-community',label:'Rooms & Buildings',   section:'records',   to:'/registrar/facilities' },
-  { key:'academic-data',icon:'ti-database',         label:'Academic Data',       section:'records',   to:'/registrar/academic-data' },
-  { key:'announcements',icon:'ti-bell',             label:'Announcements',       section:'records',   to:'/registrar/announcements' },
+  { key:'dashboard',    icon:'ti-layout-dashboard', label:'Dashboard',             section:'overview',   to:'/registrar/dashboard' },
+
+  { key:'registrations',icon:'ti-user-check',       label:'Registration Requests', section:'workflow',   to:'/registrar/registrations' },
+  { key:'admissions',   icon:'ti-user-plus',        label:'Admissions',            section:'workflow',   to:'/registrar/admissions', badgeKey:'admissions' },
+  { key:'enrollment',   icon:'ti-clipboard-check',  label:'Enrollment Requests',   section:'workflow',   to:'/registrar/enrollment', badgeKey:'enrollment' },
+  { key:'documents',    icon:'ti-file-text',        label:'Document Requests',     section:'workflow',   to:'/registrar/documents',  badgeKey:'documents' },
+
+  { key:'students',     icon:'ti-users',            label:'List of Students',      section:'directory',  to:'/registrar/students' },
+  { key:'faculty',      icon:'ti-user-edit',        label:'Faculty',               section:'directory',  to:'/registrar/faculty' },
+
+  { key:'academic-data',icon:'ti-database',         label:'Academic Data',         section:'academics',  to:'/registrar/academic-data' },
+  { key:'blocks',       icon:'ti-layout-grid',      label:'Block Management',      section:'academics',  to:'/registrar/blocks' },
+
+  { key:'schedule',     icon:'ti-calendar-event',   label:'Room Management',       section:'scheduling', to:'/registrar/schedule' },
+  { key:'facilities',   icon:'ti-building-community',label:'Rooms & Buildings',     section:'scheduling', to:'/registrar/facilities' },
+
+  { key:'announcements',icon:'ti-bell',             label:'Announcements',         section:'campus',     to:'/registrar/announcements' },
 ];
 const SB_GROUPS = [
-  { id:'overview', label:'Overview' },
-  { id:'workflow', label:'Workflow' },
-  { id:'records',  label:'Records'  },
+  { id:'overview',   label:'Overview'   },
+  { id:'workflow',   label:'Workflow'   },
+  { id:'directory',  label:'Directory'  },
+  { id:'academics',  label:'Academics'  },
+  { id:'scheduling', label:'Scheduling' },
+  { id:'campus',     label:'Campus'     },
 ];
 
 function initials(name) {
