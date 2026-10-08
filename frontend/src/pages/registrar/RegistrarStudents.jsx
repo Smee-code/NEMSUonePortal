@@ -55,7 +55,7 @@ export default function RegistrarStudents() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const YEARS = [
-    { id: '',  label: 'All years', count: counts.total },
+    { id: '',  label: 'All year levels', count: counts.total },
     { id: '1', label: '1st year',  count: counts[1] },
     { id: '2', label: '2nd year',  count: counts[2] },
     { id: '3', label: '3rd year',  count: counts[3] },
