@@ -152,12 +152,6 @@ function TermStatus({ termLabel, enrolled, gwa, units, subjectCount, openCount, 
           tone={enrolled ? 'var(--green)' : 'var(--amber)'}
           onClick={() => navigate('/student/enrollment')}
         />
-        <StatRow
-          label="General average"
-          value={gwa ?? '—'}
-          tone={gradeColor(gwa)}
-          onClick={() => navigate('/student/grades')}
-        />
         <StatRow label="Units enrolled" value={subjectCount ? units : '—'} />
         <StatRow
           label="Open requests"
@@ -467,7 +461,6 @@ export default function StudentDashboard() {
   if (!enrolled) summaryBits.push(<>you're <strong style={{ color: 'var(--amber)' }}>not enrolled yet</strong> for {termLabel}</>);
   else summaryBits.push(<>you have <strong style={{ color: 'var(--ink)' }}>{todaySlots.length} class{todaySlots.length !== 1 ? 'es' : ''}</strong> today</>);
   if (pendingDocs.length > 0) summaryBits.push(<><strong style={{ color: 'var(--ink)' }}>{pendingDocs.length} document request{pendingDocs.length !== 1 ? 's' : ''}</strong> in progress</>);
-  if (gwa) summaryBits.push(<>a general average of <strong style={{ color: 'var(--ink)' }}>{gwa}</strong></>);
 
   return (
     <div className="page" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
