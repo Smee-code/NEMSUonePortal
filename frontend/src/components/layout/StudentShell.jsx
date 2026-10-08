@@ -180,8 +180,9 @@ const CSS = `
   .quick-desc{font-size:11px;color:var(--muted);line-height:1.5;}
 
   /* Footer note */
-  .foot-note{font-size:11px;color:var(--faint);letter-spacing:.04em;padding-top:.5rem;border-top:1px solid var(--line-soft);display:flex;justify-content:space-between;}
-  .foot-note .live{display:inline-flex;align-items:center;gap:6px;}
+  .foot-note{font-size:11px;color:var(--faint);letter-spacing:.04em;padding-top:.5rem;border-top:1px solid var(--line-soft);display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 1rem;}
+  .foot-note .live{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  @media(max-width:560px){.foot-note{flex-direction:column;align-items:flex-start;gap:6px;}}
   .foot-note .live .dot{width:5px;height:5px;border-radius:50%;background:var(--green);}
 
   /* Toast */

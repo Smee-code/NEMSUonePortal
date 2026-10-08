@@ -334,9 +334,10 @@ const CSS = `
   .quick-action-label{font-size:13px;font-weight:600;color:var(--ink)}
   .quick-action-sub{font-size:11px;color:var(--muted);line-height:1.4}
   /* Footer note */
-  .foot-note{display:flex;justify-content:space-between;align-items:center;font-size:11px;
+  .foot-note{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 1rem;font-size:11px;
     color:var(--faint);padding:.75rem 0;border-top:1px solid var(--line-soft)}
-  .foot-note .live{display:flex;align-items:center;gap:6px}
+  .foot-note .live{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  @media(max-width:560px){.foot-note{flex-direction:column;align-items:flex-start;gap:6px}}
   .foot-note .dot{width:6px;height:6px;border-radius:50%;background:var(--green);
     animation:fac-pulse 2s ease-in-out infinite}
   @keyframes fac-pulse{0%,100%{opacity:1}50%{opacity:.4}}

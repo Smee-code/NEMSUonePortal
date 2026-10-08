@@ -184,8 +184,9 @@ const CSS = `
   .db-trends-chart{flex:1;position:relative;padding-top:1rem}
 
   /* Foot note */
-  .db-foot{font-size:11px;color:var(--adm-faint);letter-spacing:.04em;padding-top:.5rem;border-top:1px solid var(--adm-line-soft);display:flex;justify-content:space-between}
-  .db-foot-live{display:inline-flex;align-items:center;gap:6px}
+  .db-foot{font-size:11px;color:var(--adm-faint);letter-spacing:.04em;padding-top:.5rem;border-top:1px solid var(--adm-line-soft);display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 1rem}
+  .db-foot-live{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+  @media(max-width:560px){.db-foot{flex-direction:column;align-items:flex-start;gap:6px}}
   .db-foot-live-dot{width:5px;height:5px;border-radius:50%;background:var(--adm-green)}
 
   /* View-all link */

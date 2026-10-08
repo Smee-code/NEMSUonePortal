@@ -1519,8 +1519,9 @@ Error generating stack: `+h.message+`
   .db-trends-chart{flex:1;position:relative;padding-top:1rem}
 
   /* Foot note */
-  .db-foot{font-size:11px;color:var(--adm-faint);letter-spacing:.04em;padding-top:.5rem;border-top:1px solid var(--adm-line-soft);display:flex;justify-content:space-between}
-  .db-foot-live{display:inline-flex;align-items:center;gap:6px}
+  .db-foot{font-size:11px;color:var(--adm-faint);letter-spacing:.04em;padding-top:.5rem;border-top:1px solid var(--adm-line-soft);display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 1rem}
+  .db-foot-live{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+  @media(max-width:560px){.db-foot{flex-direction:column;align-items:flex-start;gap:6px}}
   .db-foot-live-dot{width:5px;height:5px;border-radius:50%;background:var(--adm-green)}
 
   /* View-all link */
@@ -2726,9 +2727,10 @@ Temporary password: ${le.temporary_password}`;(lt=navigator.clipboard)==null||lt
   .quick-action-label{font-size:13px;font-weight:600;color:var(--ink)}
   .quick-action-sub{font-size:11px;color:var(--muted);line-height:1.4}
   /* Footer note */
-  .foot-note{display:flex;justify-content:space-between;align-items:center;font-size:11px;
+  .foot-note{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 1rem;font-size:11px;
     color:var(--faint);padding:.75rem 0;border-top:1px solid var(--line-soft)}
-  .foot-note .live{display:flex;align-items:center;gap:6px}
+  .foot-note .live{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  @media(max-width:560px){.foot-note{flex-direction:column;align-items:flex-start;gap:6px}}
   .foot-note .dot{width:6px;height:6px;border-radius:50%;background:var(--green);
     animation:fac-pulse 2s ease-in-out infinite}
   @keyframes fac-pulse{0%,100%{opacity:1}50%{opacity:.4}}
@@ -4763,8 +4765,9 @@ If this faculty has teaching load, encoded grades, or posted announcements, the 
   .quick-desc{font-size:11px;color:var(--muted);line-height:1.5;}
 
   /* Footer note */
-  .foot-note{font-size:11px;color:var(--faint);letter-spacing:.04em;padding-top:.5rem;border-top:1px solid var(--line-soft);display:flex;justify-content:space-between;}
-  .foot-note .live{display:inline-flex;align-items:center;gap:6px;}
+  .foot-note{font-size:11px;color:var(--faint);letter-spacing:.04em;padding-top:.5rem;border-top:1px solid var(--line-soft);display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 1rem;}
+  .foot-note .live{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  @media(max-width:560px){.foot-note{flex-direction:column;align-items:flex-start;gap:6px;}}
   .foot-note .live .dot{width:5px;height:5px;border-radius:50%;background:var(--green);}
 
   /* Toast */
