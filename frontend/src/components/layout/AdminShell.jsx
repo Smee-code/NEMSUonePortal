@@ -310,29 +310,39 @@ const CSS = `
 
 /* ── Static data ─────────────────────────────────────────────────────────── */
 const SB_GROUPS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'manage',   label: 'Manage'   },
-  { id: 'system',   label: 'System'   },
+  { id: 'overview',   label: 'Overview'   },
+  { id: 'accounts',   label: 'Accounts'   },
+  { id: 'academics',  label: 'Academics'  },
+  { id: 'scheduling', label: 'Scheduling' },
+  { id: 'services',   label: 'Services'   },
+  { id: 'content',    label: 'Content'    },
+  { id: 'system',     label: 'System'     },
 ];
 
 const SB_ITEMS = [
-  { key: 'dashboard',     icon: 'ti-layout-dashboard', label: 'Dashboard',             section: 'overview', to: '/admin/dashboard'    },
-  { key: 'users',         icon: 'ti-users',            label: 'User Management',       section: 'manage',   to: '/admin/users'        },
-  { key: 'students',      icon: 'ti-school',           label: 'Students',              section: 'manage',   to: '/admin/students'     },
-  { key: 'faculty',       icon: 'ti-chalkboard',       label: 'Faculty',               section: 'manage',   to: '/admin/faculty'      },
-  { key: 'programs',      icon: 'ti-book-2',           label: 'Programs & Curriculum', section: 'manage',   to: '/admin/programs'     },
-  { key: 'blocks',        icon: 'ti-layout-grid',      label: 'Block Management',      section: 'manage',   to: '/admin/blocks'       },
-  { key: 'terms',         icon: 'ti-calendar',         label: 'Academic Terms',        section: 'manage',   to: '/admin/terms'        },
-  { key: 'schedule',      icon: 'ti-calendar-time',    label: 'Room Management',       section: 'manage',   to: '/admin/schedule'     },
-  { key: 'facilities',    icon: 'ti-building-community',label: 'Rooms & Buildings',     section: 'manage',   to: '/admin/facilities'   },
-  { key: 'document-types',icon: 'ti-files',            label: 'Document Catalog',      section: 'manage',   to: '/admin/document-types'},
-  { key: 'midterm-reopen',icon: 'ti-lock-open',        label: 'Reopen Requests',       section: 'manage',   to: '/admin/midterm-reopen'},
-  { key: 'reports',       icon: 'ti-chart-bar',        label: 'Reports & Export',      section: 'system',   to: '/admin/reports'      },
-  { key: 'audit-log',     icon: 'ti-clock-hour-4',     label: 'Audit Log',             section: 'system',   to: '/admin/audit-log'    },
-  { key: 'announcements', icon: 'ti-bell',             label: 'Announcements',         section: 'system',   to: '/admin/announcements'},
-  { key: 'landing',       icon: 'ti-layout-board',     label: 'Landing Content',       section: 'system',   to: '/admin/landing'      },
-  { key: 'spotlight',     icon: 'ti-news',             label: 'Campus Spotlight',      section: 'system',   to: '/admin/spotlight'    },
-  { key: 'settings',      icon: 'ti-settings',         label: 'System Settings',       section: 'system',   to: '/admin/settings'     },
+  { key: 'dashboard',     icon: 'ti-layout-dashboard', label: 'Dashboard',             section: 'overview',   to: '/admin/dashboard'    },
+
+  { key: 'users',         icon: 'ti-users',            label: 'User Management',       section: 'accounts',   to: '/admin/users'        },
+  { key: 'students',      icon: 'ti-school',           label: 'Students',              section: 'accounts',   to: '/admin/students'     },
+  { key: 'faculty',       icon: 'ti-chalkboard',       label: 'Faculty',               section: 'accounts',   to: '/admin/faculty'      },
+
+  { key: 'programs',      icon: 'ti-book-2',           label: 'Programs & Curriculum', section: 'academics',  to: '/admin/programs'     },
+  { key: 'blocks',        icon: 'ti-layout-grid',      label: 'Block Management',      section: 'academics',  to: '/admin/blocks'       },
+  { key: 'terms',         icon: 'ti-calendar',         label: 'Academic Terms',        section: 'academics',  to: '/admin/terms'        },
+
+  { key: 'schedule',      icon: 'ti-calendar-time',    label: 'Room Management',       section: 'scheduling', to: '/admin/schedule'     },
+  { key: 'facilities',    icon: 'ti-building-community',label: 'Rooms & Buildings',     section: 'scheduling', to: '/admin/facilities'   },
+
+  { key: 'document-types',icon: 'ti-files',            label: 'Document Catalog',      section: 'services',   to: '/admin/document-types'},
+  { key: 'midterm-reopen',icon: 'ti-lock-open',        label: 'Reopen Requests',       section: 'services',   to: '/admin/midterm-reopen'},
+
+  { key: 'announcements', icon: 'ti-bell',             label: 'Announcements',         section: 'content',    to: '/admin/announcements'},
+  { key: 'landing',       icon: 'ti-layout-board',     label: 'Landing Content',       section: 'content',    to: '/admin/landing'      },
+  { key: 'spotlight',     icon: 'ti-news',             label: 'Campus Spotlight',      section: 'content',    to: '/admin/spotlight'    },
+
+  { key: 'reports',       icon: 'ti-chart-bar',        label: 'Reports & Export',      section: 'system',     to: '/admin/reports'      },
+  { key: 'audit-log',     icon: 'ti-clock-hour-4',     label: 'Audit Log',             section: 'system',     to: '/admin/audit-log'    },
+  { key: 'settings',      icon: 'ti-settings',         label: 'System Settings',       section: 'system',     to: '/admin/settings'     },
 ];
 
 const PAGE_LABELS = {
