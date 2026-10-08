@@ -451,6 +451,118 @@ class AdminUserCreateSerializer(serializers.Serializer):
         return user
 
 
+def generate_faculty_id():
+    """Next sequential faculty ID, e.g. FAC-00010, based on the highest existing one."""
+    max_n = 0
+    for sid in User.objects.filter(
+        role='faculty', student_id__istartswith='FAC-'
+    ).values_list('student_id', flat=True):
+        m = re.match(r'^FAC-(\d+)$', (sid or '').strip(), re.IGNORECASE)
+        if m:
+            max_n = max(max_n, int(m.group(1)))
+    return f'FAC-{max_n + 1:05d}'
+
+
+def generate_temp_password():
+    """A readable, strong, effectively-unique temporary password.
+
+    Pattern: 4 uppercase + 5 lowercase + 3 digits + 2 symbols (14 chars),
+    shuffled — e.g. 'kQ7mXt#r2B9p@L'. Passes Django's validators (incl. the
+    12-char minimum) and differs for every account."""
+    import secrets
+    import string
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    while True:
+        chars = (
+            [secrets.choice(string.ascii_uppercase) for _ in range(4)]
+            + [secrets.choice(string.ascii_lowercase) for _ in range(5)]
+            + [secrets.choice(string.digits) for _ in range(3)]
+            + [secrets.choice('!@#$%&*') for _ in range(2)]
+        )
+        # Fisher-Yates shuffle with a cryptographic source.
+        for i in range(len(chars) - 1, 0, -1):
+            j = secrets.randbelow(i + 1)
+            chars[i], chars[j] = chars[j], chars[i]
+        pw = ''.join(chars)
+        try:
+            validate_password(pw)
+            return pw
+        except DjangoValidationError:
+            continue
+
+
+class AdminFacultyAutoCreateSerializer(serializers.Serializer):
+    """Admin adds a faculty account by gathering only email, name, department and
+    GEC/core classification. The faculty ID and a unique temporary password are
+    generated server-side; the view emails the credentials to the faculty."""
+    institutional_email = serializers.EmailField()
+    full_name = serializers.CharField(max_length=255)
+    department = serializers.CharField(required=False, allow_blank=True)
+    is_gec_faculty = serializers.BooleanField(required=False, default=False)
+    program = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate_institutional_email(self, value):
+        value = value.strip().lower()
+        if User.objects.filter(institutional_email__iexact=value).exists():
+            raise serializers.ValidationError('A user with this email already exists.')
+        return value
+
+    def validate(self, attrs):
+        from enrollment.models import Department, Program
+        dept_code = (attrs.get('department') or '').strip()
+        dept = None
+        if dept_code:
+            try:
+                dept = Department.objects.get(code__iexact=dept_code)
+            except Department.DoesNotExist:
+                raise serializers.ValidationError({'department': f"No department with code '{dept_code}'."})
+        attrs['department_obj'] = dept
+
+        prog = None
+        prog_id = attrs.get('program')
+        if prog_id and not attrs.get('is_gec_faculty'):
+            try:
+                prog = Program.objects.get(pk=prog_id)
+            except Program.DoesNotExist:
+                raise serializers.ValidationError({'program': 'Selected program does not exist.'})
+        attrs['program_obj'] = prog
+        return attrs
+
+    def create(self, validated_data):
+        from django.db import IntegrityError
+        dept = validated_data.get('department_obj')
+        prog = validated_data.get('program_obj')
+        is_gec = bool(validated_data.get('is_gec_faculty'))
+        password = generate_temp_password()
+
+        # Create with a freshly computed ID, retrying if two admins race to the
+        # same sequential number.
+        last_error = None
+        for _ in range(5):
+            faculty_id = generate_faculty_id()
+            try:
+                user = User.objects.create_user(
+                    institutional_email=validated_data['institutional_email'],
+                    student_id=faculty_id,
+                    full_name=validated_data['full_name'].strip(),
+                    password=password,
+                    role='faculty',
+                    department=dept,
+                    program=None if is_gec else prog,
+                    is_gec_faculty=is_gec,
+                    is_verified=True,
+                    is_active=True,
+                )
+                user._temp_password = password   # handed to the view for the email
+                return user
+            except IntegrityError as exc:
+                last_error = exc
+                continue
+        raise serializers.ValidationError(
+            {'student_id': 'Could not allocate a unique faculty ID. Please try again.'}
+        ) from last_error
+
+
 class RegistrarFacultyUpdateSerializer(serializers.Serializer):
     """Registrar (or admin) edits an existing FACULTY account's info.
     Identity fields (email, faculty ID) are intentionally not editable here."""

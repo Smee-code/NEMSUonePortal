@@ -15,6 +15,7 @@ from nemsuoneportal.emails import send_branded_email
 from .models import AuditLog, User
 from .permissions import IsAdmin, IsRegistrarOrAdmin, get_client_ip
 from .serializers import (
+    AdminFacultyAutoCreateSerializer,
     AdminUserCreateSerializer,
     RegistrarFacultyUpdateSerializer,
     AdminUserListSerializer,
@@ -351,6 +352,65 @@ class RegistrarFacultyCreateView(APIView):
             },
         )
         return Response(AdminUserListSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+def _email_faculty_credentials(user, temp_password):
+    """Email a newly created faculty their login details. Returns True if sent."""
+    try:
+        send_branded_email(
+            'Your NEMSUonePortal faculty account',
+            (
+                f'Hi {user.full_name},\n\n'
+                f'A faculty account has been created for you on NEMSUonePortal. '
+                f'Use these details to log in:\n\n'
+                f'Faculty ID: {user.student_id}\n'
+                f'Login email: {user.institutional_email}\n'
+                f'Temporary password: {temp_password}\n\n'
+                f'Log in at {settings.FRONTEND_URL}/login and change your password '
+                f'from your profile after your first login.\n\n'
+                f'— NEMSU Cantilan Campus'
+            ),
+            [user.institutional_email],
+        )
+        return True
+    except Exception:
+        logger.warning('Failed to email faculty credentials', exc_info=True)
+        return False
+
+
+class AdminFacultyAutoCreateView(APIView):
+    """POST /api/auth/admin/faculty/ — admin adds a faculty by email + name +
+    department + GEC/core. The faculty ID and a unique temporary password are
+    generated here, the credentials are emailed, and (so the admin can relay them
+    if email bounces) returned in the response."""
+    permission_classes = [IsAuthenticated, IsAdmin]
+    throttle_classes   = [AdminUserManageThrottle]
+
+    def post(self, request):
+        ip = get_client_ip(request)
+        serializer = AdminFacultyAutoCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        temp_password = getattr(user, '_temp_password', '')
+
+        email_sent = _email_faculty_credentials(user, temp_password)
+
+        _audit(
+            request.user, request.user.role,
+            'faculty_account_created', f'user:{user.id}', ip, 'success',
+            {
+                'target_user': str(user.id),
+                'faculty_id': user.student_id,
+                'department': user.department.code if user.department_id else None,
+                'email_sent': email_sent,
+            },
+        )
+
+        data = AdminUserListSerializer(user).data
+        data['faculty_id'] = user.student_id
+        data['temporary_password'] = temp_password
+        data['email_sent'] = email_sent
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class RegistrarFacultyUpdateView(APIView):

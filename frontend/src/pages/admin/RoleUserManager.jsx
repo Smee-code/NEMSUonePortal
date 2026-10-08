@@ -42,7 +42,11 @@ export default function RoleUserManager({ role, config }) {
   const [form, setForm]         = useState(EMPTY);
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState('');
+  const [created, setCreated]   = useState(null);   // auto-create result (faculty)
+  const [copied, setCopied]     = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+
+  const autoCreate = !!config.autoCreate;
 
   useEffect(() => {
     if (role === 'faculty') {
@@ -68,29 +72,39 @@ export default function RoleUserManager({ role, config }) {
 
   function goTo(newOffset) { setOffset(newOffset); fetchUsers(newOffset); }
 
-  function openAdd() { setForm(EMPTY); setCreateErr(''); setShowAdd(true); }
+  function openAdd() { setForm(EMPTY); setCreateErr(''); setCreated(null); setCopied(false); setShowAdd(true); }
+  function closeAdd() { setShowAdd(false); setCreated(null); setCopied(false); }
   function setField(k, v) { setForm(p => ({ ...p, [k]: v })); }
 
   async function handleCreate(e) {
     e.preventDefault();
     setCreating(true); setCreateErr('');
     try {
-      const payload = {
-        full_name: form.full_name.trim(),
-        institutional_email: form.institutional_email.trim(),
-        student_id: form.student_id.trim(),
-        role,
-        password: form.password,
-      };
-      if (role === 'faculty') {
-        payload.department = form.department;
-        payload.is_gec_faculty = form.is_gec_faculty;
+      if (autoCreate) {
+        // Faculty: the server generates the ID + temporary password and emails them.
+        const payload = {
+          full_name: form.full_name.trim(),
+          institutional_email: form.institutional_email.trim(),
+          department: form.department,
+          is_gec_faculty: form.is_gec_faculty,
+        };
         if (!form.is_gec_faculty && form.program) payload.program = Number(form.program);
+        const res = await api.post('/auth/admin/faculty/', payload);
+        setCreated(res.data);          // show the generated credentials
+        goTo(0);                       // refresh the list behind the panel
+      } else {
+        const payload = {
+          full_name: form.full_name.trim(),
+          institutional_email: form.institutional_email.trim(),
+          student_id: form.student_id.trim(),
+          role,
+          password: form.password,
+        };
+        await api.post('/auth/admin/users/', payload);
+        toast(`${config.singular} account for ${payload.full_name} created.`, { type: 'success' });
+        closeAdd();
+        goTo(0);
       }
-      await api.post('/auth/admin/users/', payload);
-      toast(`${config.singular} account for ${payload.full_name} created.`, { type: 'success' });
-      setShowAdd(false);
-      goTo(0);
     } catch (err) {
       const d = err.response?.data;
       let m = d?.error || d?.detail;
@@ -100,6 +114,20 @@ export default function RoleUserManager({ role, config }) {
       }
       setCreateErr(m || 'Failed to create the account.');
     } finally { setCreating(false); }
+  }
+
+  function copyCredentials() {
+    if (!created) return;
+    const text =
+      `NEMSUonePortal faculty account\n` +
+      `Name: ${created.full_name}\n` +
+      `Faculty ID: ${created.faculty_id}\n` +
+      `Login email: ${created.institutional_email}\n` +
+      `Temporary password: ${created.temporary_password}`;
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
   }
 
   async function handleDelete(u) {
@@ -221,73 +249,127 @@ export default function RoleUserManager({ role, config }) {
       )}
 
       {showAdd && (
-        <div className="rum-overlay" onMouseDown={() => !creating && setShowAdd(false)}>
+        <div className="rum-overlay" onMouseDown={() => !creating && closeAdd()}>
           <div className="rum-modal" onMouseDown={e => e.stopPropagation()}>
             <div className="rum-modal-head">
               <div>
-                <h3>Add {config.singular.toLowerCase()}</h3>
-                <div className="rum-modal-sub">{config.addSub}</div>
+                <h3>{created ? `${config.singular} account created` : `Add ${config.singular.toLowerCase()}`}</h3>
+                <div className="rum-modal-sub">
+                  {created
+                    ? (created.email_sent
+                        ? 'The login details below were emailed to the faculty.'
+                        : 'The account was created, but the email could not be sent — share these details directly.')
+                    : config.addSub}
+                </div>
               </div>
-              <button className="rum-modal-x" onClick={() => setShowAdd(false)} disabled={creating}><i className="ti ti-x" /></button>
+              <button className="rum-modal-x" onClick={closeAdd} disabled={creating}><i className="ti ti-x" /></button>
             </div>
-            <form className="rum-modal-body" onSubmit={handleCreate}>
-              {createErr && <div className="rum-flash-err">{createErr}</div>}
 
-              <div className="rum-field">
-                <label>Full name</label>
-                <input required placeholder="Dela Cruz, Juan A."
-                  value={form.full_name} onChange={e => setField('full_name', e.target.value)} />
+            {created ? (
+              <div className="rum-modal-body">
+                <div className={`rum-cred-banner${created.email_sent ? '' : ' warn'}`}>
+                  <i className={`ti ${created.email_sent ? 'ti-mail-check' : 'ti-mail-exclamation'}`} />
+                  <span>{created.email_sent
+                    ? `A login email was sent to ${created.institutional_email}.`
+                    : `Email to ${created.institutional_email} failed — copy the details below and send them another way.`}</span>
+                </div>
+                <div className="rum-cred">
+                  <div className="rum-cred-row"><span>Name</span><b>{created.full_name}</b></div>
+                  <div className="rum-cred-row"><span>Faculty ID</span><b>{created.faculty_id}</b></div>
+                  <div className="rum-cred-row"><span>Login email</span><b>{created.institutional_email}</b></div>
+                  <div className="rum-cred-row"><span>Temporary password</span><b className="rum-cred-pw">{created.temporary_password}</b></div>
+                </div>
+                <div className="rum-hint">The faculty can change this password from their profile after logging in.</div>
+                <div className="rum-modal-foot">
+                  <button type="button" className="btn-sec" onClick={copyCredentials}>
+                    <i className="ti ti-copy" /> {copied ? 'Copied' : 'Copy details'}
+                  </button>
+                  <button type="button" className="btn-pri" onClick={openAdd}>Add another</button>
+                  <button type="button" className="btn-pri" onClick={closeAdd}>Done</button>
+                </div>
               </div>
-              <div className="rum-field">
-                <label>Institutional email</label>
-                <input type="email" required placeholder={config.emailPlaceholder}
-                  value={form.institutional_email} onChange={e => setField('institutional_email', e.target.value)} />
-              </div>
-              <div className="rum-field">
-                <label>{config.idLabel}</label>
-                <input required placeholder={config.idPlaceholder}
-                  value={form.student_id} onChange={e => setField('student_id', e.target.value)} />
-              </div>
+            ) : (
+              <form className="rum-modal-body" onSubmit={handleCreate}>
+                {createErr && <div className="rum-flash-err">{createErr}</div>}
 
-              {role === 'faculty' && (
-                <>
+                <div className="rum-field">
+                  <label>Full name</label>
+                  <input required placeholder="Dela Cruz, Juan A."
+                    value={form.full_name} onChange={e => setField('full_name', e.target.value)} />
+                </div>
+                <div className="rum-field">
+                  <label>Institutional email</label>
+                  <input type="email" required placeholder={config.emailPlaceholder}
+                    value={form.institutional_email} onChange={e => setField('institutional_email', e.target.value)} />
+                </div>
+
+                {!autoCreate && (
                   <div className="rum-field">
-                    <label>Department <span className="rum-opt">(optional)</span></label>
-                    <select value={form.department} onChange={e => setField('department', e.target.value)}>
-                      <option value="">Select a department</option>
-                      {departments.map(d => <option key={d.id} value={d.code}>{d.code} - {d.name}</option>)}
-                    </select>
+                    <label>{config.idLabel}</label>
+                    <input required placeholder={config.idPlaceholder}
+                      value={form.student_id} onChange={e => setField('student_id', e.target.value)} />
                   </div>
-                  <div className="rum-field">
-                    <label className="rum-check">
-                      <input type="checkbox" checked={form.is_gec_faculty}
-                        onChange={e => setField('is_gec_faculty', e.target.checked)} />
-                      GEC faculty — teaches general-education courses across programs
-                    </label>
-                    {!form.is_gec_faculty && (
-                      <select value={form.program} onChange={e => setField('program', e.target.value)}>
-                        <option value="">Core program (optional)</option>
-                        {programs.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
+                )}
+
+                {role === 'faculty' && (
+                  <>
+                    <div className="rum-field">
+                      <label>Department <span className="rum-opt">(optional)</span></label>
+                      <select value={form.department} onChange={e => setField('department', e.target.value)}>
+                        <option value="">Select a department</option>
+                        {departments.map(d => <option key={d.id} value={d.code}>{d.code} - {d.name}</option>)}
                       </select>
-                    )}
+                    </div>
+                    <div className="rum-field">
+                      <label>Classification</label>
+                      <div className="rum-choice">
+                        <button type="button" className={`rum-choice-btn${!form.is_gec_faculty ? ' on' : ''}`}
+                          onClick={() => setField('is_gec_faculty', false)}>
+                          Core faculty
+                        </button>
+                        <button type="button" className={`rum-choice-btn${form.is_gec_faculty ? ' on' : ''}`}
+                          onClick={() => setField('is_gec_faculty', true)}>
+                          GEC faculty
+                        </button>
+                      </div>
+                      <div className="rum-hint">
+                        {form.is_gec_faculty
+                          ? 'Teaches general-education courses across programs.'
+                          : 'Teaches courses within a department / program.'}
+                      </div>
+                      {!form.is_gec_faculty && (
+                        <select style={{ marginTop: 8 }} value={form.program} onChange={e => setField('program', e.target.value)}>
+                          <option value="">Core program (optional)</option>
+                          {programs.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {!autoCreate && (
+                  <div className="rum-field">
+                    <label>Temporary password</label>
+                    <input type="text" required minLength={8} placeholder="At least 8 characters"
+                      value={form.password} onChange={e => setField('password', e.target.value)} />
+                    <div className="rum-hint">Share this with the account holder; they should change it after their first login.</div>
                   </div>
-                </>
-              )}
+                )}
 
-              <div className="rum-field">
-                <label>Temporary password</label>
-                <input type="text" required minLength={8} placeholder="At least 8 characters"
-                  value={form.password} onChange={e => setField('password', e.target.value)} />
-                <div className="rum-hint">Share this with the account holder; they should change it after their first login.</div>
-              </div>
+                {autoCreate && (
+                  <div className="rum-hint" style={{ marginBottom: '.5rem' }}>
+                    The Faculty ID and a temporary password are generated automatically and emailed to the faculty.
+                  </div>
+                )}
 
-              <div className="rum-modal-foot">
-                <button type="button" className="btn-sec" onClick={() => setShowAdd(false)} disabled={creating}>Cancel</button>
-                <button type="submit" className="btn-pri" disabled={creating}>
-                  {creating ? 'Creating…' : `Add ${config.singular.toLowerCase()}`}
-                </button>
-              </div>
-            </form>
+                <div className="rum-modal-foot">
+                  <button type="button" className="btn-sec" onClick={closeAdd} disabled={creating}>Cancel</button>
+                  <button type="submit" className="btn-pri" disabled={creating}>
+                    {creating ? 'Creating…' : `Add ${config.singular.toLowerCase()}`}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -353,7 +435,24 @@ const CSS = `
   .rum-check{display:flex;align-items:flex-start;gap:8px;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--adm-ink);font-weight:500;margin-bottom:8px;}
   .rum-check input{margin-top:1px;}
   .rum-hint{font-size:11.5px;color:var(--adm-faint);line-height:1.4;}
-  .rum-modal-foot{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.2rem;}
+  .rum-modal-foot{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.2rem;flex-wrap:wrap;}
+
+  .rum-choice{display:flex;gap:.5rem;}
+  .rum-choice-btn{flex:1;padding:9px 12px;border:1px solid var(--adm-line);background:#fff;font:13px/1 'Inter',sans-serif;
+    color:var(--adm-muted);font-weight:600;cursor:pointer;}
+  .rum-choice-btn:hover{border-color:var(--adm-ink);color:var(--adm-ink);}
+  .rum-choice-btn.on{background:var(--adm-ink);border-color:var(--adm-ink);color:#fff;}
+
+  .rum-cred-banner{display:flex;align-items:center;gap:9px;padding:.7rem .9rem;margin-bottom:1rem;font-size:12.5px;
+    background:var(--adm-green-tint,#e6f4ec);color:var(--adm-green,#0a6b48);}
+  .rum-cred-banner.warn{background:#fdf3e2;color:#8a6a12;}
+  .rum-cred-banner i{font-size:17px;flex-shrink:0;}
+  .rum-cred{border:1px solid var(--adm-line);background:var(--adm-warm);}
+  .rum-cred-row{display:flex;justify-content:space-between;gap:1rem;padding:.6rem .9rem;border-bottom:1px solid var(--adm-line-soft);font-size:13px;}
+  .rum-cred-row:last-child{border-bottom:none;}
+  .rum-cred-row span{color:var(--adm-muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;}
+  .rum-cred-row b{color:var(--adm-ink);font-weight:600;text-align:right;word-break:break-all;}
+  .rum-cred-pw{font-family:'Courier New',monospace;font-size:14px;letter-spacing:.02em;}
   @media(max-width:720px){
     .rum-row{grid-template-columns:1fr 90px 40px;}
     .rum-c-meta,.rum-c-date{display:none;}

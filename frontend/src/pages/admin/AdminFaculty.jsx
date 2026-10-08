@@ -5,13 +5,14 @@ const CONFIG = {
   plural: 'faculty',
   titleLead: 'Faculty',
   titleEm: 'accounts',
-  sub: 'View, search, and manually add faculty accounts, including their department and GEC classification.',
-  addSub: 'Create a faculty account. It is pre-verified, so the instructor can log in right away.',
+  sub: 'View, search, and add faculty accounts. Enter the essentials — the Faculty ID and a temporary password are generated and emailed automatically.',
+  addSub: 'Enter the faculty’s details. Their ID and a temporary password are generated and emailed to them.',
   addIcon: 'ti-user-plus',
   emptyIcon: 'ti-chalkboard',
-  idLabel: 'Employee ID',
+  idLabel: 'Faculty ID',
   idPlaceholder: 'e.g. FAC-00010',
   emailPlaceholder: 'grace.lim@nemsu.edu.ph',
+  autoCreate: true,
 };
 
 export default function AdminFaculty() {

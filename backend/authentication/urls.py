@@ -2,6 +2,7 @@ from django.urls import path
 
 from .admin_views import (
     AdminAuditLogView,
+    AdminFacultyAutoCreateView,
     AdminStatsView,
     AdminUserDetailView,
     AdminUserListView,
@@ -64,6 +65,7 @@ urlpatterns = [
 
     # Admin — user management, audit log, stats
     path('admin/users/',           AdminUserListView.as_view(),   name='admin-user-list'),
+    path('admin/faculty/',         AdminFacultyAutoCreateView.as_view(), name='admin-faculty-create'),
     path('admin/users/<uuid:pk>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
     path('admin/audit-log/',       AdminAuditLogView.as_view(),   name='admin-audit-log'),
     path('admin/stats/',           AdminStatsView.as_view(),      name='admin-stats'),
