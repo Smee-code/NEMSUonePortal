@@ -364,7 +364,7 @@ export default function AdminUserManagement() {
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Role">
                       <span className={`tag ${ROLE_TAG[u.role] || 'role-system'}`}>
                         {ROLE_LABEL[u.role] || u.role}
                       </span>
@@ -372,7 +372,7 @@ export default function AdminUserManagement() {
                         <div className="um-dept-line">{u.faculty_classification}</div>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       {u.is_locked
                         ? <span className="tag status-locked">Locked</span>
                         : !u.is_verified
@@ -382,11 +382,11 @@ export default function AdminUserManagement() {
                             : <span className="tag status-inactive">Inactive</span>
                       }
                     </td>
-                    <td className="muted">{u.student_id || '-'}</td>
-                    <td className="muted">
+                    <td className="muted" data-label="Student ID">{u.student_id || '-'}</td>
+                    <td className="muted" data-label="Joined">
                       {new Date(u.date_joined).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>
-                    <td style={{ width: 48 }}>
+                    <td className="um-row-actions" style={{ width: 48 }}>
                       <RowMenu items={[
                         { icon: 'ti-pencil',   label: 'Edit account', onClick: () => openExpand(u) },
                         ...(isSelf ? [] : [
@@ -667,10 +667,34 @@ export default function AdminUserManagement() {
 }
 
 const CSS = `
-  /* Keep the user table a real table that scrolls horizontally inside its
-     wrapper on small screens, instead of the shell's display:block collapse
-     that squishes the columns (e.g. "ACTIVE" wrapping to two lines). */
+  /* Tablet: keep it a real table that scrolls horizontally in its wrapper,
+     instead of the shell's display:block collapse that squishes columns. */
   .table-wrap table.table{display:table;min-width:780px}
+  /* Phone: turn each row into a stacked card (no horizontal scrolling, the
+     user's name/email leads, the rest shows as label → value). */
+  @media(max-width:700px){
+    .table-wrap{overflow-x:visible}
+    .table-wrap table.table{display:block;min-width:0;width:100%}
+    .table.table thead{display:none}
+    .table.table tbody{display:block}
+    .table.table tr{display:block;position:relative;border:1px solid var(--adm-line);
+      border-radius:8px;margin-bottom:.6rem;padding:.4rem 0;background:#fff}
+    .table.table td{display:flex;justify-content:space-between;align-items:center;gap:1rem;
+      padding:7px 14px;border:none;text-align:right;overflow-wrap:anywhere}
+    .table.table td::before{content:attr(data-label);font-size:10px;letter-spacing:.08em;
+      text-transform:uppercase;font-weight:600;color:var(--adm-muted);text-align:left;flex-shrink:0}
+    .table.table td:not([data-label]){ } /* user + actions handled below */
+    .table.table td:first-child{padding:12px 14px 10px;border-bottom:1px solid var(--adm-line-soft);
+      margin-bottom:4px;padding-right:52px}
+    .table.table td:first-child::before{display:none}
+    .table.table td.um-row-actions{position:absolute;top:8px;right:10px;width:auto!important;padding:0}
+    .table.table td.um-row-actions::before{display:none}
+    .table.table .um-dept-line{text-align:right}
+    /* Expanded edit row: full width, normal stacking */
+    .table.table tr.um-expanded-row{border-color:var(--adm-cool,#dbe3f0)}
+    .table.table tr.um-expanded-row td{display:block;text-align:left;padding:0}
+    .table.table tr.um-expanded-row td::before{display:none}
+  }
   .um-flash{padding:10px 16px;margin-bottom:1rem;font-size:13px}
   .um-flash-err{background:#f6e8e4;color:var(--adm-red)}
   .um-flash-ok{background:#e6f1ec;color:var(--adm-green)}
