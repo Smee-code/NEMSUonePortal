@@ -564,9 +564,62 @@ class FacultyScheduleSlotCreateView(APIView):
 
 
 class FacultyScheduleSlotDeleteView(APIView):
-    """DELETE /api/schedules/faculty/slots/<pk>/ — faculty removes their own schedule slot."""
+    """PATCH/DELETE /api/schedules/faculty/slots/<pk>/ — faculty edits or removes
+    one of their own schedule slots. PATCH changes the meeting day/time (the room
+    stays as the registrar assigned it unless the faculty sends one)."""
     permission_classes = [IsFaculty]
     throttle_classes = [FacultyScheduleWriteThrottle]
+
+    def _get_own_slot(self, request, pk):
+        return ClassSchedule.objects.select_related(
+            'teaching_assignment__faculty',
+            'teaching_assignment__subject',
+            'teaching_assignment__academic_term',
+            'teaching_assignment__block',
+        ).get(pk=pk, teaching_assignment__faculty=request.user)
+
+    def patch(self, request, pk):
+        ip = get_client_ip(request)
+        try:
+            slot = self._get_own_slot(request, pk)
+        except ClassSchedule.DoesNotExist:
+            return Response(
+                {'error': 'Schedule slot not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        ta = slot.teaching_assignment
+        serializer = FacultySlotCreateSerializer(data={
+            'teaching_assignment_id': ta.id,
+            'day_of_week': request.data.get('day_of_week', slot.day_of_week),
+            'start_time': request.data.get('start_time', slot.start_time),
+            'end_time': request.data.get('end_time', slot.end_time),
+            'room': request.data.get('room', slot.room) or '',
+            'building': request.data.get('building', slot.building) or '',
+        })
+        serializer.is_valid(raise_exception=True)
+        v = serializer.validated_data
+
+        with transaction.atomic():
+            conflicts = _check_conflicts(
+                v['room'], v['day_of_week'], v['start_time'], v['end_time'],
+                ta, exclude_id=slot.id,
+            )
+            if conflicts:
+                raise DRFValidationError({'non_field_errors': conflicts})
+            slot.day_of_week = v['day_of_week']
+            slot.start_time = v['start_time']
+            slot.end_time = v['end_time']
+            slot.room = v['room']
+            slot.building = v['building']
+            slot.save(update_fields=['day_of_week', 'start_time', 'end_time', 'room', 'building'])
+
+        _audit(
+            request.user, request.user.role,
+            'schedule_slot_updated', f'slot:{pk}', ip, 'success',
+            {'subject': ta.subject.code},
+        )
+        return Response(ScheduleSlotSerializer(slot).data)
 
     def delete(self, request, pk):
         ip = get_client_ip(request)

@@ -84,6 +84,11 @@ export default function FacultyTeachingLoad() {
   const [deletingAssignment, setDeletingAssignment] = useState(null);
   const [deletingSlot, setDeletingSlot] = useState(null);
 
+  // Inline edit of one existing meeting (day/time). Room stays as assigned.
+  const [editSlot, setEditSlot] = useState(null);  // { id, day_of_week, start_time, end_time } | null
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+
   useEffect(() => {
     Promise.all([
       api.get('/enrollment/terms/'),
@@ -352,6 +357,44 @@ export default function FacultyTeachingLoad() {
     }
   };
 
+  const openEditSlot = (slot) => {
+    setEditError('');
+    setEditSlot({
+      id: slot.id,
+      day_of_week: slot.day_of_week,
+      start_time: (slot.start_time || '').slice(0, 5) || '07:00',
+      end_time: (slot.end_time || '').slice(0, 5) || '08:30',
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editSlot) return;
+    if (editSlot.start_time >= editSlot.end_time) {
+      setEditError('End time must be after the start time.');
+      return;
+    }
+    setSavingEdit(true);
+    setEditError('');
+    try {
+      const res = await api.patch(`/schedules/faculty/slots/${editSlot.id}/`, {
+        day_of_week: editSlot.day_of_week,
+        start_time: editSlot.start_time,
+        end_time: editSlot.end_time,
+      });
+      const updated = res.data;
+      setLoad(prev => prev.map(ta => ({
+        ...ta,
+        slots: (ta.slots || []).map(s => (s.id === editSlot.id ? { ...s, ...updated } : s)),
+      })));
+      setEditSlot(null);
+    } catch (err) {
+      const d = err.response?.data;
+      setEditError(d?.non_field_errors?.[0] || d?.end_time?.[0] || d?.error || 'Failed to update this meeting.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   // ── Derived ──────────────────────────────────────────────────────────────────
 
   const selectedTermLabel = (() => {
@@ -470,26 +513,70 @@ export default function FacultyTeachingLoad() {
                 <div className="tl-slots-section">
                   <div className="tl-slots-row">
                     {sortedSlots.map(slot => (
-                      <div key={slot.id} className="tl-meeting">
-                        <div className="tl-meeting-top">
-                          <span className="tl-meeting-day">{slot.day_display || DAY_LABELS[slot.day_of_week]}</span>
-                          <span className="tl-meeting-time">{formatTime(slot.start_time)}–{formatTime(slot.end_time)}</span>
-                          <button
-                            className="tl-meeting-x"
-                            disabled={deletingSlot === slot.id}
-                            onClick={() => handleDeleteSlot(slot.id)}
-                            title="Remove this meeting"
-                          >
-                            {deletingSlot === slot.id ? '…' : <i className="ti ti-x" />}
-                          </button>
+                      editSlot && editSlot.id === slot.id ? (
+                        <div key={slot.id} className="tl-meeting tl-meeting--editing">
+                          <div className="tl-meeting-edit-row">
+                            <div>
+                              <label className="tl-label-sm">Day</label>
+                              <select className="tl-input-sm" value={editSlot.day_of_week}
+                                onChange={e => setEditSlot(p => ({ ...p, day_of_week: e.target.value }))}>
+                                {DAY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="tl-label-sm">Start</label>
+                              <input type="time" className="tl-input-sm" value={editSlot.start_time}
+                                onChange={e => setEditSlot(p => ({ ...p, start_time: e.target.value }))} />
+                            </div>
+                            <div>
+                              <label className="tl-label-sm">End</label>
+                              <input type="time" className="tl-input-sm" value={editSlot.end_time}
+                                onChange={e => setEditSlot(p => ({ ...p, end_time: e.target.value }))} />
+                            </div>
+                          </div>
+                          {editError && <div className="tl-meeting-edit-err">{editError}</div>}
+                          <div className="tl-meeting-edit-actions">
+                            <button className="btn-pri" style={{ padding: '.35rem .8rem', fontSize: 12 }}
+                              onClick={handleEditSave} disabled={savingEdit}>
+                              {savingEdit ? 'Saving…' : 'Save'}
+                            </button>
+                            <button className="btn-sec" style={{ padding: '.35rem .8rem', fontSize: 12 }}
+                              onClick={() => { setEditSlot(null); setEditError(''); }} disabled={savingEdit}>
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                        <div className={`tl-meeting-room${slot.room ? '' : ' pending'}`}>
-                          <i className={`ti ${slot.room ? 'ti-door' : 'ti-map-pin'}`} />
-                          <span>{slot.room
-                            ? `${slot.room}${slot.building ? ` · ${slot.building}` : ''}`
-                            : 'Room to be assigned by the registrar'}</span>
+                      ) : (
+                        <div key={slot.id} className="tl-meeting">
+                          <div className="tl-meeting-top">
+                            <span className="tl-meeting-day">{slot.day_display || DAY_LABELS[slot.day_of_week]}</span>
+                            <span className="tl-meeting-time">{formatTime(slot.start_time)}–{formatTime(slot.end_time)}</span>
+                            <span className="tl-meeting-btns">
+                              <button
+                                className="tl-meeting-ic"
+                                onClick={() => openEditSlot(slot)}
+                                title="Edit this meeting's day and time"
+                              >
+                                <i className="ti ti-pencil" />
+                              </button>
+                              <button
+                                className="tl-meeting-x"
+                                disabled={deletingSlot === slot.id}
+                                onClick={() => handleDeleteSlot(slot.id)}
+                                title="Remove this meeting"
+                              >
+                                {deletingSlot === slot.id ? '…' : <i className="ti ti-x" />}
+                              </button>
+                            </span>
+                          </div>
+                          <div className={`tl-meeting-room${slot.room ? '' : ' pending'}`}>
+                            <i className={`ti ${slot.room ? 'ti-door' : 'ti-map-pin'}`} />
+                            <span>{slot.room
+                              ? `${slot.room}${slot.building ? ` · ${slot.building}` : ''}`
+                              : 'Room to be assigned by the registrar'}</span>
+                          </div>
                         </div>
-                      </div>
+                      )
                     ))}
                     {sortedSlots.length === 0 && <span className="tl-noslots"><i className="ti ti-alert-triangle" /> No schedule slots yet — students can’t see this class.</span>}
                     {!slotOpen[taId] && (
@@ -848,6 +935,17 @@ const CSS = `
   }
   .tl-meeting-x:hover:not(:disabled) { color: var(--red); }
   .tl-meeting-x:disabled { opacity: .5; cursor: default; }
+  .tl-meeting-btns { display: inline-flex; align-items: center; gap: 8px; align-self: center; }
+  .tl-meeting-ic {
+    background: none; border: none; color: var(--faint); font-size: 13px;
+    cursor: pointer; line-height: 1; padding: 0; display: inline-flex; transition: color .15s;
+  }
+  .tl-meeting-ic:hover { color: var(--ink); }
+  .tl-meeting--editing { min-width: 240px; gap: 8px; }
+  .tl-meeting-edit-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tl-meeting-edit-row > div { display: flex; flex-direction: column; gap: 3px; }
+  .tl-meeting-edit-err { font-size: 11.5px; color: var(--red); }
+  .tl-meeting-edit-actions { display: flex; gap: .5rem; }
   .tl-meeting-room { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
   .tl-meeting-room i { font-size: 15px; color: var(--muted); }
   .tl-meeting-room.pending { color: var(--amber); }
