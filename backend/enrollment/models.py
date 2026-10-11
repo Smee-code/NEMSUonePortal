@@ -441,7 +441,7 @@ class PendingEnrollment(models.Model):
     STUDENT_TYPE_CHOICES = [
         ('new',        'New Student'),
         ('transferee', 'Transferee'),
-        ('returnee',   'Returnee'),
+        ('returnee',   'Returnee / old student'),
     ]
     STATUS_CHOICES = [
         ('pending',   'Pending'),
