@@ -26,7 +26,11 @@ export default function Login() {
     setLoading(true);
     try {
       const data = await login(form);
-      navigate(ROLE_HOME[data.user.role] ?? '/login');
+      if (data.user.needs_academic_setup) {
+        navigate('/setup-academic');
+      } else {
+        navigate(ROLE_HOME[data.user.role] ?? '/login');
+      }
     } catch (err) {
       const detail =
         err.response?.data?.detail ||

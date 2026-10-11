@@ -31,6 +31,7 @@ export function AuthProvider({ children }) {
           id: payload.user_id,
           role: payload.role,
           full_name: payload.full_name,
+          needs_academic_setup: !!payload.needs_academic_setup,
         });
       } catch {
         // No valid refresh cookie — user must log in
@@ -54,7 +55,18 @@ export function AuthProvider({ children }) {
   const loginWithToken = useCallback((accessToken) => {
     setAccessToken(accessToken);
     const payload = parseJwt(accessToken);
-    setUser({ id: payload.user_id, role: payload.role, full_name: payload.full_name });
+    setUser({
+      id: payload.user_id,
+      role: payload.role,
+      full_name: payload.full_name,
+      needs_academic_setup: !!payload.needs_academic_setup,
+    });
+  }, []);
+
+  // Merge fields into the in-memory user (e.g. clear the academic-setup gate
+  // after the student completes it, without waiting for a token refresh).
+  const updateUser = useCallback((patch) => {
+    setUser(prev => (prev ? { ...prev, ...patch } : prev));
   }, []);
 
   const logout = useCallback(async () => {
@@ -68,7 +80,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithToken, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

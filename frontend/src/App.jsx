@@ -67,6 +67,7 @@ import StudentGrades       from './pages/student/StudentGrades';
 import StudentSchedule     from './pages/student/StudentSchedule';
 import StudentDocuments    from './pages/student/StudentDocuments';
 import StudentProfile      from './pages/student/StudentProfile';
+import AcademicSetup       from './pages/AcademicSetup';
 import StudentAnnouncements from './pages/student/StudentAnnouncements';
 import StudentCurriculum   from './pages/student/StudentCurriculum';
 import StudentSpotlight    from './pages/student/StudentSpotlight';
@@ -88,6 +89,9 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/activate/:token" element={<ActivateAccount />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
+
+          {/* ── First-login academic setup (returnee / old student) ─── */}
+          <Route path="/setup-academic" element={<RequireRole roles={['student']} allowSetup><AcademicSetup /></RequireRole>} />
 
           {/* ── Student routes ────────────────────────────────────── */}
           <Route path="/student" element={<RequireRole roles={['student']}><StudentShell /></RequireRole>}>

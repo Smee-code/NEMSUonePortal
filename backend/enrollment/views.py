@@ -1203,6 +1203,8 @@ def _activate_returnee_account(pending):
             user.is_active            = True
             user.is_verified          = True
             user.registration_status  = User.REG_APPROVED
+            # First login must complete the academic profile before the dashboard.
+            user.needs_academic_setup = True
             user.set_password(password)
             user.save()
         else:
@@ -1214,6 +1216,7 @@ def _activate_returnee_account(pending):
                 role='student',
                 is_verified=True,
                 is_active=True,
+                needs_academic_setup=True,
             )
 
     email_sent = _email_returnee_password(user, password)

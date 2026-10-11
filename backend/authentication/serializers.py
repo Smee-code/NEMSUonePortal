@@ -134,6 +134,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token['role'] = user.role
         token['full_name'] = user.full_name
+        token['needs_academic_setup'] = user.needs_academic_setup
         return token
 
     def validate(self, attrs):
@@ -177,6 +178,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'role': self.user.role,
             'institutional_email': self.user.institutional_email,
             'is_verified': self.user.is_verified,
+            'needs_academic_setup': self.user.needs_academic_setup,
         }
         return data
 
@@ -206,6 +208,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'year_level',
             'year_level_display',
             'rank',
+            'needs_academic_setup',
         ]
         read_only_fields = [
             'id',
@@ -265,6 +268,14 @@ class AcademicProfileSerializer(serializers.Serializer):
                     except Program.DoesNotExist:
                         raise serializers.ValidationError({'program': 'Invalid or inactive program.'})
 
+            # When both are given, the program must belong to the chosen department.
+            dept_obj = attrs.get('_department_obj')
+            prog_obj = attrs.get('_program_obj')
+            if prog_obj and dept_obj and prog_obj.department_id != dept_obj.id:
+                raise serializers.ValidationError(
+                    {'program': 'The selected program does not belong to the chosen department.'}
+                )
+
         return attrs
 
     def update(self, instance, validated_data):
@@ -278,6 +289,11 @@ class AcademicProfileSerializer(serializers.Serializer):
         if 'year_level' in validated_data:
             instance.year_level = validated_data['year_level']
             update_fields.append('year_level')
+        # Once a returnee's profile is complete, lift the first-login setup gate.
+        if (instance.needs_academic_setup and instance.program_id
+                and instance.year_level):
+            instance.needs_academic_setup = False
+            update_fields.append('needs_academic_setup')
         if update_fields:
             instance.save(update_fields=update_fields)
         return instance

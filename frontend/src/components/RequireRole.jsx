@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
  *
  * OWASP A01 — Broken Access Control (client-side checks are insufficient alone)
  */
-export default function RequireRole({ roles, children, redirectTo = '/login' }) {
+export default function RequireRole({ roles, children, redirectTo = '/login', allowSetup = false }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -28,6 +28,13 @@ export default function RequireRole({ roles, children, redirectTo = '/login' }) 
 
   if (!roles.includes(user.role)) {
     return <Navigate to="/unauthorized" replace />;
+  }
+
+  // A returnee whose account was just activated must finish their academic
+  // profile before any dashboard route renders. `allowSetup` exempts the setup
+  // page itself so it doesn't redirect to itself.
+  if (!allowSetup && user.needs_academic_setup) {
+    return <Navigate to="/setup-academic" replace />;
   }
 
   return children;

@@ -62,6 +62,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     # that student later registers and the Registrar approves (matched by student_id).
     is_placeholder = models.BooleanField(default=False)
 
+    # A returnee/old student whose account was just activated must set up their
+    # academic profile (department, program, year level) on first login before
+    # reaching the dashboard. Cleared once that profile is complete.
+    needs_academic_setup = models.BooleanField(default=False)
+
     # Registrar validation of student self-registration.
     # 'approved' by default so existing rows and admin-created staff are unaffected;
     # only public student registration sets this to 'pending'.
