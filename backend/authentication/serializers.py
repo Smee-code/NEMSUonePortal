@@ -334,6 +334,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 class RegistrarStudentListSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True, default=None)
     department_code = serializers.CharField(source='department.code', read_only=True, default=None)
+    program_id      = serializers.IntegerField(source='program.id',   read_only=True, default=None)
     program_name    = serializers.CharField(source='program.name',    read_only=True, default=None)
     program_code    = serializers.CharField(source='program.code',    read_only=True, default=None)
     year_level_display = serializers.SerializerMethodField()
@@ -341,9 +342,9 @@ class RegistrarStudentListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'student_id', 'full_name', 'institutional_email',
+            'id', 'student_id', 'full_name', 'institutional_email', 'contact_number',
             'department_name', 'department_code',
-            'program_name', 'program_code',
+            'program_id', 'program_name', 'program_code',
             'year_level', 'year_level_display',
             'is_active',
         ]
@@ -359,6 +360,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True, default=None)
     program_id = serializers.IntegerField(source='program.id', read_only=True, default=None)
     program_name = serializers.CharField(source='program.name', read_only=True, default=None)
+    year_level_display = serializers.SerializerMethodField()
     faculty_classification = serializers.CharField(read_only=True)
 
     class Meta:
@@ -368,12 +370,16 @@ class AdminUserListSerializer(serializers.ModelSerializer):
             'role', 'is_active', 'is_verified', 'is_staff', 'date_joined',
             'failed_login_attempts', 'locked_until', 'is_locked',
             'department_code', 'department_name',
-            'program_id', 'program_name', 'is_gec_faculty', 'faculty_classification', 'rank',
+            'program_id', 'program_name', 'year_level', 'year_level_display',
+            'is_gec_faculty', 'faculty_classification', 'rank',
         ]
         read_only_fields = fields
 
     def get_is_locked(self, obj):
         return obj.is_locked()
+
+    def get_year_level_display(self, obj):
+        return obj.get_year_level_display() if obj.year_level else None
 
 
 # Roles an admin is allowed to assign/create through the management interface.
@@ -712,6 +718,64 @@ class RegistrarFacultyUpdateSerializer(serializers.Serializer):
             instance.program = None
         elif 'program_obj' in validated_data:
             instance.program = validated_data['program_obj']
+        instance.save()
+        return instance
+
+
+class RegistrarStudentUpdateSerializer(serializers.Serializer):
+    """Registrar (or admin) edits a STUDENT account's info.
+    Identity fields (email, student ID) are intentionally not editable here."""
+    full_name      = serializers.CharField(max_length=255, required=False)
+    contact_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    department     = serializers.CharField(required=False, allow_blank=True)
+    program        = serializers.IntegerField(required=False, allow_null=True)
+    year_level     = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate_year_level(self, value):
+        if value is not None and value not in (1, 2, 3, 4):
+            raise serializers.ValidationError('Year level must be 1, 2, 3, or 4.')
+        return value
+
+    def validate(self, attrs):
+        from enrollment.models import Department, Program
+        if 'department' in attrs:
+            code = (attrs.get('department') or '').strip()
+            if code:
+                try:
+                    attrs['department_obj'] = Department.objects.get(code__iexact=code)
+                except Department.DoesNotExist:
+                    raise serializers.ValidationError({'department': f"No department with code '{code}'."})
+            else:
+                attrs['department_obj'] = None
+        if 'program' in attrs:
+            prog_id = attrs.get('program')
+            if prog_id:
+                try:
+                    attrs['program_obj'] = Program.objects.get(pk=prog_id)
+                except Program.DoesNotExist:
+                    raise serializers.ValidationError({'program': 'Selected program does not exist.'})
+            else:
+                attrs['program_obj'] = None
+        # When both are given, the program must belong to the chosen department.
+        dept_obj = attrs.get('department_obj')
+        prog_obj = attrs.get('program_obj')
+        if prog_obj and dept_obj and prog_obj.department_id != dept_obj.id:
+            raise serializers.ValidationError(
+                {'program': 'The selected program does not belong to the chosen department.'}
+            )
+        return attrs
+
+    def update(self, instance, validated_data):
+        if 'full_name' in validated_data:
+            instance.full_name = validated_data['full_name'].strip()
+        if 'contact_number' in validated_data:
+            instance.contact_number = (validated_data['contact_number'] or '').strip()
+        if 'department_obj' in validated_data:
+            instance.department = validated_data['department_obj']
+        if 'program_obj' in validated_data:
+            instance.program = validated_data['program_obj']
+        if 'year_level' in validated_data:
+            instance.year_level = validated_data['year_level']
         instance.save()
         return instance
 

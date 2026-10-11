@@ -4,6 +4,7 @@ import { useAdminShell } from '../../context/AdminShellContext';
 import { useConfirm } from '../../components/ConfirmDialog';
 import StudentBulkImport from '../../components/StudentBulkImport';
 import StudentAddButton from '../../components/StudentAddButton';
+import UserEditModal from '../../components/UserEditModal';
 
 const PAGE_LIMIT = 20;
 
@@ -47,6 +48,7 @@ export default function RoleUserManager({ role, config }) {
   const [created, setCreated]   = useState(null);   // auto-create result (faculty)
   const [copied, setCopied]     = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [editUser, setEditUser] = useState(null);
 
   const autoCreate = !!config.autoCreate;
 
@@ -235,6 +237,9 @@ export default function RoleUserManager({ role, config }) {
                 </div>
                 <div className="rum-c-date">{fmtDate(u.date_joined || u.created_at)}</div>
                 <div className="rum-c-act">
+                  <button className="rum-edit" title="Edit information" onClick={() => setEditUser(u)}>
+                    <i className="ti ti-pencil" />
+                  </button>
                   <button className="rum-del" title="Remove account" disabled={deletingId === u.id} onClick={() => handleDelete(u)}>
                     {deletingId === u.id ? '…' : <i className="ti ti-trash" />}
                   </button>
@@ -257,6 +262,14 @@ export default function RoleUserManager({ role, config }) {
             </div>
           )}
         </>
+      )}
+
+      {editUser && (
+        <UserEditModal
+          user={editUser}
+          onClose={() => setEditUser(null)}
+          onSaved={() => { setEditUser(null); goTo(offset); toast(`${config.singular} information updated.`, { type: 'success' }); }}
+        />
       )}
 
       {showAdd && (
@@ -400,7 +413,7 @@ const CSS = `
   .rum-flash-err{background:#fee2e2;color:#991b1b;padding:.6rem .85rem;font-size:12.5px;margin-bottom:1rem;}
 
   .rum-table{border:1px solid var(--adm-line);background:#fff;}
-  .rum-row{display:grid;grid-template-columns:1fr 150px 150px 130px 48px;align-items:center;gap:1rem;padding:.85rem 1.1rem;border-bottom:1px solid var(--adm-line-soft);}
+  .rum-row{display:grid;grid-template-columns:1fr 150px 150px 130px 84px;align-items:center;gap:1rem;padding:.85rem 1.1rem;border-bottom:1px solid var(--adm-line-soft);}
   .rum-row:last-child{border-bottom:none;}
   .rum-row--head{background:var(--adm-warm);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--adm-muted);font-weight:600;padding-top:.7rem;padding-bottom:.7rem;}
   .rum-c-user{display:flex;align-items:center;gap:12px;min-width:0;}
@@ -415,7 +428,9 @@ const CSS = `
   .rum-tag.off{background:#eef0f4;color:#6a7384;}
   .rum-tag.warn{background:#fdf3e2;color:#8a6a12;}
   .rum-c-date{font-size:12.5px;color:var(--adm-muted);}
-  .rum-c-act{display:flex;justify-content:flex-end;}
+  .rum-c-act{display:flex;justify-content:flex-end;gap:6px;}
+  .rum-edit{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--adm-line);color:var(--adm-muted);cursor:pointer;font-size:14px;}
+  .rum-edit:hover{border-color:var(--adm-ink);color:var(--adm-ink);}
   .rum-del{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--adm-line);color:var(--adm-muted);cursor:pointer;font-size:14px;}
   .rum-del:hover:not(:disabled){border-color:#e6b4b4;color:var(--adm-red,#b91c1c);}
   .rum-del:disabled{opacity:.5;cursor:default;}
@@ -466,7 +481,7 @@ const CSS = `
   .rum-cred-row b{color:var(--adm-ink);font-weight:600;text-align:right;word-break:break-all;}
   .rum-cred-pw{font-family:'Courier New',monospace;font-size:14px;letter-spacing:.02em;}
   @media(max-width:720px){
-    .rum-row{grid-template-columns:1fr 90px 40px;}
+    .rum-row{grid-template-columns:1fr 90px 76px;}
     .rum-c-meta,.rum-c-date{display:none;}
   }
 `;

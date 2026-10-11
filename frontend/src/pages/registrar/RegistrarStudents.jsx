@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import StudentBulkImport from '../../components/StudentBulkImport';
 import StudentAddButton from '../../components/StudentAddButton';
+import UserEditModal from '../../components/UserEditModal';
 
 function initials(name) {
   const p = (name || '').trim().split(/\s+/);
@@ -24,6 +25,7 @@ export default function RegistrarStudents() {
 
   const [counts, setCounts] = useState({ total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
   const [reloadKey, setReloadKey] = useState(0);
+  const [editUser, setEditUser] = useState(null);
 
   // Summary counts + program list (mount only).
   useEffect(() => {
@@ -169,9 +171,14 @@ export default function RegistrarStudents() {
                       </span>
                     </td>
                     <td className="r">
-                      <Link to={`/registrar/grades/student/${s.id}`} className="st-link">
-                        <i className="ti ti-school" /> View grades
-                      </Link>
+                      <div className="st-actions">
+                        <button className="st-link" onClick={() => setEditUser({ ...s, role: 'student' })}>
+                          <i className="ti ti-pencil" /> Edit
+                        </button>
+                        <Link to={`/registrar/grades/student/${s.id}`} className="st-link">
+                          <i className="ti ti-school" /> View grades
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -196,6 +203,14 @@ export default function RegistrarStudents() {
             </div>
           )}
         </>
+      )}
+
+      {editUser && (
+        <UserEditModal
+          user={editUser}
+          onClose={() => setEditUser(null)}
+          onSaved={() => { setEditUser(null); setReloadKey(k => k + 1); }}
+        />
       )}
     </>
   );
@@ -259,8 +274,9 @@ const CSS = `
   .st-chip{ display:inline-block; font:600 11px 'Inter',sans-serif; padding:3px 10px; white-space:nowrap; }
   .st-chip.active{ background:var(--reg-green-tint); color:var(--reg-green); }
   .st-chip.inactive{ background:var(--reg-cool-2); color:var(--reg-muted); }
+  .st-actions{ display:inline-flex; gap:6px; justify-content:flex-end; }
   .st-link{ display:inline-flex; align-items:center; gap:6px; font:600 12px 'Inter',sans-serif; color:var(--reg-ink);
-    text-decoration:none; border:1px solid var(--reg-line); background:#fff; padding:7px 12px; white-space:nowrap; transition:border-color .14s, background .14s; }
+    text-decoration:none; border:1px solid var(--reg-line); background:#fff; padding:7px 12px; white-space:nowrap; cursor:pointer; transition:border-color .14s, background .14s; }
   .st-link:hover{ border-color:var(--reg-ink); background:var(--reg-warm); }
   .st-link i{ font-size:14px; color:var(--reg-muted); }
 

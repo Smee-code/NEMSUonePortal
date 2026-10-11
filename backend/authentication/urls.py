@@ -10,6 +10,7 @@ from .admin_views import (
     StudentAutoCreateView,
     RegistrarFacultyCreateView,
     RegistrarFacultyUpdateView,
+    RegistrarStudentUpdateView,
     RegistrarStudentListView,
     RegistrationRequestListView,
     RegistrationReviewView,
@@ -60,6 +61,7 @@ urlpatterns = [
 
     # Registrar — student list + faculty creation
     path('registrar/students/', RegistrarStudentListView.as_view(), name='registrar-student-list'),
+    path('registrar/students/<uuid:pk>/', RegistrarStudentUpdateView.as_view(), name='registrar-student-update'),
     path('registrar/faculty/', RegistrarFacultyCreateView.as_view(), name='registrar-faculty-create'),
     path('registrar/faculty/<uuid:pk>/', RegistrarFacultyUpdateView.as_view(), name='registrar-faculty-update'),
     path('registrar/registrations/', RegistrationRequestListView.as_view(), name='registrar-registration-list'),

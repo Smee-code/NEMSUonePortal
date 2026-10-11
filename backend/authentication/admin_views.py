@@ -21,6 +21,7 @@ from .serializers import (
     AdminStudentAutoCreateSerializer,
     AdminUserCreateSerializer,
     RegistrarFacultyUpdateSerializer,
+    RegistrarStudentUpdateSerializer,
     AdminUserListSerializer,
     AdminUserUpdateSerializer,
     AuditLogSerializer,
@@ -582,6 +583,37 @@ class RegistrarFacultyUpdateView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'Faculty member not found.'}, status=status.HTTP_404_NOT_FOUND)
         return _delete_or_deactivate(user, request, kind='faculty')
+
+
+class RegistrarStudentUpdateView(APIView):
+    """PATCH /api/auth/registrar/students/<uuid:pk>/ — registrar (or admin) edits a
+    STUDENT account's info (name, contact, department, program, year level).
+    Non-student targets are rejected so this endpoint can only edit students."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    throttle_classes   = [AdminUserManageThrottle]
+
+    def patch(self, request, pk):
+        ip = get_client_ip(request)
+        try:
+            user = User.objects.get(pk=pk, role='student')
+        except User.DoesNotExist:
+            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = RegistrarStudentUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.update(user, serializer.validated_data)
+
+        _audit(
+            request.user, request.user.role,
+            'student_account_updated', f'user:{user.id}', ip, 'success',
+            {
+                'target_user': str(user.id),
+                'department': user.department.code if user.department_id else None,
+                'program': user.program.code if user.program_id else None,
+                'year_level': user.year_level,
+            },
+        )
+        return Response(AdminUserListSerializer(user).data)
 
 
 class AdminUserDetailView(APIView):
