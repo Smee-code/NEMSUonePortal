@@ -563,6 +563,59 @@ class AdminFacultyAutoCreateSerializer(serializers.Serializer):
         ) from last_error
 
 
+class AdminStudentAutoCreateSerializer(serializers.Serializer):
+    """Admin/registrar adds one student by email + name + student ID. The password
+    is generated server-side and emailed to the student (no password is typed).
+    If the ID already exists as an imported placeholder, that account is claimed."""
+    institutional_email = serializers.EmailField()
+    student_id = serializers.CharField(max_length=20)
+    full_name = serializers.CharField(max_length=255)
+
+    def validate_institutional_email(self, value):
+        value = value.strip().lower()
+        if User.objects.filter(institutional_email__iexact=value).exists():
+            raise serializers.ValidationError('A user with this email already exists.')
+        return value
+
+    def validate_student_id(self, value):
+        value = value.strip()
+        existing = User.objects.filter(student_id__iexact=value).first()
+        # A real account with this ID blocks reuse; a bare placeholder gets claimed.
+        if existing and not existing.is_placeholder:
+            raise serializers.ValidationError('A user with this ID already exists.')
+        return value
+
+    def create(self, validated_data):
+        email = validated_data['institutional_email']
+        sid = validated_data['student_id']
+        name = validated_data['full_name'].strip()
+        password = generate_temp_password()
+
+        placeholder = User.objects.filter(student_id__iexact=sid, is_placeholder=True).first()
+        if placeholder:
+            placeholder.institutional_email = email
+            placeholder.full_name = name
+            placeholder.role = 'student'
+            placeholder.is_placeholder = False
+            placeholder.is_active = True
+            placeholder.is_verified = True
+            placeholder.set_password(password)
+            placeholder.save()
+            user = placeholder
+        else:
+            user = User.objects.create_user(
+                institutional_email=email,
+                student_id=sid,
+                full_name=name,
+                password=password,
+                role='student',
+                is_verified=True,   # created by staff — ready to log in
+                is_active=True,
+            )
+        user._temp_password = password   # handed to the view for the email
+        return user
+
+
 class RegistrarFacultyUpdateSerializer(serializers.Serializer):
     """Registrar (or admin) edits an existing FACULTY account's info.
     Identity fields (email, faculty ID) are intentionally not editable here."""

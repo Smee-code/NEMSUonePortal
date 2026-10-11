@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import StudentBulkImport from '../../components/StudentBulkImport';
+import StudentAddButton from '../../components/StudentAddButton';
 
 function initials(name) {
   const p = (name || '').trim().split(/\s+/);
@@ -78,10 +79,16 @@ export default function RegistrarStudents() {
             The student registry — {counts.total.toLocaleString()} on record. Search anyone, then open their full grade history.
           </p>
         </div>
-        <StudentBulkImport
-          buttonClassName="btn-sec"
-          onImported={() => { setReloadKey(k => k + 1); }}
-        />
+        <div className="st-head-actions">
+          <StudentBulkImport
+            buttonClassName="btn-sec"
+            onImported={() => { setReloadKey(k => k + 1); }}
+          />
+          <StudentAddButton
+            buttonClassName="btn-pri"
+            onCreated={() => { setReloadKey(k => k + 1); }}
+          />
+        </div>
       </header>
 
       {/* Year filter bar with counts */}
@@ -198,6 +205,7 @@ const CSS = `
   /* ── Header ── */
   .st-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; padding-bottom:1.1rem; margin-bottom:1.3rem; border-bottom:1px solid var(--reg-line); }
   .st-head-main{ min-width:0; }
+  .st-head-actions{ display:flex; flex-wrap:wrap; gap:.6rem; flex-shrink:0; }
   .st-head h1{ margin:0; font:600 24px/1.15 'Inter',sans-serif; color:var(--reg-ink); letter-spacing:-.015em; }
   .st-lede{ margin:.4rem 0 0; font-size:13.5px; color:var(--reg-muted); max-width:66ch; line-height:1.5; }
 

@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { useAdminShell } from '../../context/AdminShellContext';
 import { useConfirm } from '../../components/ConfirmDialog';
 import StudentBulkImport from '../../components/StudentBulkImport';
+import StudentAddButton from '../../components/StudentAddButton';
 
 const PAGE_LIMIT = 20;
 
@@ -164,12 +165,16 @@ export default function RoleUserManager({ role, config }) {
           <div className="sub">{config.sub}</div>
         </div>
         <div className="rum-head-actions">
-          {role === 'student' && (
-            <StudentBulkImport buttonClassName="btn-sec" onImported={() => goTo(0)} />
+          {role === 'student' ? (
+            <>
+              <StudentBulkImport buttonClassName="btn-sec" onImported={() => goTo(0)} />
+              <StudentAddButton buttonClassName="btn-pri" onCreated={() => goTo(0)} />
+            </>
+          ) : (
+            <button className="btn-pri" onClick={openAdd}>
+              <i className={`ti ${config.addIcon}`} /> Add {config.singular.toLowerCase()}
+            </button>
           )}
-          <button className="btn-pri" onClick={openAdd}>
-            <i className={`ti ${config.addIcon}`} /> Add {config.singular.toLowerCase()}
-          </button>
         </div>
       </div>
 

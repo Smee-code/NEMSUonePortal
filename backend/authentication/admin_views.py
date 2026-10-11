@@ -18,6 +18,7 @@ from .models import AuditLog, User
 from .permissions import IsAdmin, IsRegistrarOrAdmin, get_client_ip
 from .serializers import (
     AdminFacultyAutoCreateSerializer,
+    AdminStudentAutoCreateSerializer,
     AdminUserCreateSerializer,
     RegistrarFacultyUpdateSerializer,
     AdminUserListSerializer,
@@ -410,6 +411,59 @@ class AdminFacultyAutoCreateView(APIView):
 
         data = AdminUserListSerializer(user).data
         data['faculty_id'] = user.student_id
+        data['temporary_password'] = temp_password
+        data['email_sent'] = email_sent
+        return Response(data, status=status.HTTP_201_CREATED)
+
+
+def _email_student_credentials(user, temp_password):
+    """Email a newly created student their login details. Returns True if sent."""
+    try:
+        send_branded_email(
+            'Your NEMSUonePortal student account',
+            (
+                f'Hi {user.full_name},\n\n'
+                f'A student account has been created for you on NEMSUonePortal. '
+                f'Use these details to log in:\n\n'
+                f'Student ID: {user.student_id}\n'
+                f'Login email: {user.institutional_email}\n'
+                f'Temporary password: {temp_password}\n\n'
+                f'Log in at {settings.FRONTEND_URL}/login and change your password '
+                f'from your profile after your first login.\n\n'
+                f'— NEMSU Cantilan Campus'
+            ),
+            [user.institutional_email],
+        )
+        return True
+    except Exception:
+        logger.warning('Failed to email student credentials', exc_info=True)
+        return False
+
+
+class StudentAutoCreateView(APIView):
+    """POST /api/auth/students/create/ — admin or registrar adds one student by
+    email + name + student ID. The temporary password is generated here and
+    emailed to the student (also returned so staff can relay it if email bounces)."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    throttle_classes   = [AdminUserManageThrottle]
+
+    def post(self, request):
+        ip = get_client_ip(request)
+        serializer = AdminStudentAutoCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        temp_password = getattr(user, '_temp_password', '')
+
+        email_sent = _email_student_credentials(user, temp_password)
+
+        _audit(
+            request.user, request.user.role, 'student_account_created',
+            f'user:{user.id}', ip, 'success',
+            {'target_user': str(user.id), 'student_id': user.student_id, 'email_sent': email_sent},
+        )
+
+        data = AdminUserListSerializer(user).data
+        data['student_id_value'] = user.student_id
         data['temporary_password'] = temp_password
         data['email_sent'] = email_sent
         return Response(data, status=status.HTTP_201_CREATED)

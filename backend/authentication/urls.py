@@ -7,6 +7,7 @@ from .admin_views import (
     AdminUserDetailView,
     AdminUserListView,
     BulkStudentImportView,
+    StudentAutoCreateView,
     RegistrarFacultyCreateView,
     RegistrarFacultyUpdateView,
     RegistrarStudentListView,
@@ -67,6 +68,7 @@ urlpatterns = [
     # Admin — user management, audit log, stats
     path('admin/users/',           AdminUserListView.as_view(),   name='admin-user-list'),
     path('admin/faculty/',         AdminFacultyAutoCreateView.as_view(), name='admin-faculty-create'),
+    path('students/create/',       StudentAutoCreateView.as_view(),      name='student-create'),
     path('students/bulk-import/',  BulkStudentImportView.as_view(),      name='students-bulk-import'),
     path('admin/users/<uuid:pk>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
     path('admin/audit-log/',       AdminAuditLogView.as_view(),   name='admin-audit-log'),
