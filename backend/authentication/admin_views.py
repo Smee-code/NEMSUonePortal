@@ -1,9 +1,11 @@
 import logging
 
+from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Q
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -411,6 +413,82 @@ class AdminFacultyAutoCreateView(APIView):
         data['temporary_password'] = temp_password
         data['email_sent'] = email_sent
         return Response(data, status=status.HTTP_201_CREATED)
+
+
+class BulkStudentImportView(APIView):
+    """POST /api/auth/students/bulk-import/ — admin or registrar uploads an .xlsx/.csv
+    with IDNO + Name columns to add many students at once.
+
+    Each row becomes a pending student account (keyed by the ID). When that student
+    later self-registers with the same ID and verifies their email, the account is
+    claimed and activated. Existing IDs are left untouched."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    throttle_classes   = [AdminUserManageThrottle]
+    parser_classes     = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        from grades.rostering import parse_classlist, resolve_student
+        ip = get_client_ip(request)
+
+        upload = request.FILES.get('file')
+        if not upload:
+            return Response({'error': 'No file was uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        if upload.size > 5 * 1024 * 1024:
+            return Response({'error': 'File is too large (max 5 MB).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            rows = parse_classlist(upload)
+        except Exception:
+            logger.warning('Bulk student import parse failed', exc_info=True)
+            return Response(
+                {'error': 'Could not read the file. Upload a valid .xlsx or .csv with IDNO and Name columns.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if rows is None:
+            return Response(
+                {'error': 'Could not find the IDNO and Name columns in the file. The header row must contain both "IDNO" and "Name".'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not rows:
+            return Response(
+                {'error': 'No student rows were found under the IDNO/Name header.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created = existing = 0
+        errors = []
+        samples = []
+        seen = set()
+        with transaction.atomic():
+            for idno, name in rows:
+                if idno in seen:
+                    continue
+                seen.add(idno)
+                try:
+                    user, was_created = resolve_student(idno, name)
+                    if was_created:
+                        created += 1
+                        if len(samples) < 8:
+                            samples.append({'student_id': user.student_id, 'full_name': user.full_name})
+                    else:
+                        existing += 1
+                except Exception:
+                    logger.warning('Bulk import row failed for %s', idno, exc_info=True)
+                    errors.append(f'{idno}: could not be added (duplicate email or invalid data).')
+
+        _audit(
+            request.user, request.user.role, 'students_bulk_imported',
+            request.path, ip, 'success',
+            {'rows': len(seen), 'created': created, 'existing': existing, 'errors': len(errors)},
+        )
+
+        return Response({
+            'total_rows': len(seen),
+            'created':    created,
+            'existing':   existing,
+            'errors':     errors,
+            'samples':    samples,
+        }, status=status.HTTP_200_OK)
 
 
 class RegistrarFacultyUpdateView(APIView):

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useAdminShell } from '../../context/AdminShellContext';
 import { useConfirm } from '../../components/ConfirmDialog';
+import StudentBulkImport from '../../components/StudentBulkImport';
 
 const PAGE_LIMIT = 20;
 
@@ -162,9 +163,14 @@ export default function RoleUserManager({ role, config }) {
           <h2>{config.titleLead} <em>{config.titleEm}</em></h2>
           <div className="sub">{config.sub}</div>
         </div>
-        <button className="btn-pri" onClick={openAdd}>
-          <i className={`ti ${config.addIcon}`} /> Add {config.singular.toLowerCase()}
-        </button>
+        <div className="rum-head-actions">
+          {role === 'student' && (
+            <StudentBulkImport buttonClassName="btn-sec" onImported={() => goTo(0)} />
+          )}
+          <button className="btn-pri" onClick={openAdd}>
+            <i className={`ti ${config.addIcon}`} /> Add {config.singular.toLowerCase()}
+          </button>
+        </div>
       </div>
 
       <form className="rum-search" onSubmit={e => { e.preventDefault(); setSearchQuery(searchInput.trim()); }}>
@@ -378,7 +384,8 @@ export default function RoleUserManager({ role, config }) {
 }
 
 const CSS = `
-  .rum-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.5rem;}
+  .rum-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+  .rum-head-actions{display:flex;flex-wrap:wrap;gap:.6rem;flex-shrink:0;}
   .rum-head .sub{font-size:13.5px;color:var(--adm-muted);margin-top:.35rem;max-width:560px;line-height:1.5;}
   .rum-search{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--adm-line);padding:9px 13px;margin-bottom:1.25rem;}
   .rum-search i{font-size:17px;color:var(--adm-faint);}
