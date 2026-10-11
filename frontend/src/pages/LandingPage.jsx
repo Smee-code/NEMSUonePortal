@@ -731,12 +731,12 @@ const SPOTLIGHT_FALLBACK = {
 /* ══════════════════════════════════════════════════════════════
    DATA — Enrollment modal (existing, preserved unchanged)
 ══════════════════════════════════════════════════════════════ */
-const TYPE_LABELS = { new:'New student', transferee:'Transferee', returnee:'Returnee' };
+const TYPE_LABELS = { new:'New student', transferee:'Transferee', returnee:'Returnee / old student' };
 const TYPE_ICONS  = { new:'ti-school', transferee:'ti-building-community', returnee:'ti-rotate-clockwise-2' };
 const TYPE_DESCS  = {
   new:        'Incoming first-year student from senior high',
   transferee: 'Coming from another school or institution',
-  returnee:   'Returning to NEMSU Cantilan after a break',
+  returnee:   'Already on record — just create your account',
 };
 
 const ALL_REQUIREMENTS = {
@@ -1656,9 +1656,11 @@ function EnrollmentModal({ onClose, term, programs }) {
   const [selSubj, setSelSubj] = useState(
     () => SUBJECTS.reduce((a, s) => ({ ...a, [s.code]: true }), {})
   );
+  const [returneeVerify, setReturneeVerify] = useState(false);
   const [form, setForm] = useState({
     first: '', middle: '', last: '', suffix: '', email: '', contact: '', dob: '', sex: 'Male',
     program: PROGRAMS_STATIC[0].name, year: '1st Year',
+    student_id: '', password: '', confirm: '',   // returnee / old student
   });
 
   const progList = programs?.length
@@ -1673,14 +1675,48 @@ function EnrollmentModal({ onClose, term, programs }) {
     }
   }, [programs]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Returnees/old students skip documents & review — one step only.
+  const sideSteps  = type === 'returnee' ? ['Create your account'] : FRESHMAN_STEPS;
+  const totalSteps = sideSteps.length;
+  const stepNow    = Math.min(step, totalSteps);
+
   const update  = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const toggle  = id   => setChecked(p => ({ ...p, [id]: !p[id] }));
   const toggleS = code => setSelSubj(p => ({ ...p, [code]: !p[code] }));
   const totalUnits = SUBJECTS.filter(s => selSubj[s.code]).reduce((a, s) => a + s.units, 0);
 
   const go = n => { setDir(n > step ? 'fwd' : 'back'); setStep(n); };
-  const back = () => step > 1 ? go(step - 1) : onClose();
-  const next = () => step < 3 ? go(step + 1) : handleSubmit();
+  const back = () => (type !== 'returnee' && step > 1) ? go(step - 1) : onClose();
+  const next = () => {
+    if (type === 'returnee') return handleReturneeSubmit();
+    return step < 3 ? go(step + 1) : handleSubmit();
+  };
+
+  // Returnee / old student: already on record, so skip documents & review —
+  // claim the existing account (Student ID + email + password) via signup,
+  // which emails a verification link.
+  const handleReturneeSubmit = async () => {
+    setSubErr('');
+    if (!form.student_id.trim())  { setSubErr('Enter your Student ID.'); return; }
+    if (!form.email.trim())       { setSubErr('Enter your institutional email.'); return; }
+    if (form.password.length < 8) { setSubErr('Password must be at least 8 characters.'); return; }
+    if (form.password !== form.confirm) { setSubErr('Passwords do not match.'); return; }
+    setSub(true);
+    try {
+      const res = await api.post('/auth/register/', {
+        student_id:          form.student_id.trim(),
+        institutional_email: form.email.trim(),
+        password:            form.password,
+      });
+      setReturneeVerify(!!res.data?.verification_required);
+      setDone(true);
+    } catch (err) {
+      const d = err.response?.data;
+      let m = d?.detail || d?.message;
+      if (!m && d && typeof d === 'object') { const f = Object.values(d)[0]; m = Array.isArray(f) ? f[0] : f; }
+      setSubErr(m || 'Could not create your account. Please check your Student ID and email.');
+    } finally { setSub(false); }
+  };
 
   const handleSubmit = async () => {
     setSub(true);
@@ -1736,7 +1772,7 @@ function EnrollmentModal({ onClose, term, programs }) {
             <img src="/logo.png" alt="NEMSU" />
             <div>
               <div className="name">NEMSUonePortal</div>
-              <div className="sub">{done ? 'Application received' : 'Admission application'}</div>
+              <div className="sub">{done ? (type === 'returnee' ? 'Account created' : 'Application received') : 'Admission application'}</div>
             </div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">
@@ -1745,6 +1781,20 @@ function EnrollmentModal({ onClose, term, programs }) {
         </div>
 
         {done ? (
+          type === 'returnee' ? (
+            <div className="modal-body modal-body--center">
+              <div className="success-icon" style={{ background:'#fef3c7', color:'#b45309' }}><i className="ti ti-mail-fast" /></div>
+              <h3>{returneeVerify ? <>Verify your <em>email</em>.</> : <>Account <em>created</em>.</>}</h3>
+              <p className="lead">
+                {returneeVerify
+                  ? <>We sent a verification link to <strong>{form.email || 'your email address'}</strong>. Open it to finish signing up, then log in with your Student ID or email and the password you just set.</>
+                  : <>Your NEMSUonePortal account is ready. You can now log in with your Student ID or email and the password you just set.</>}
+              </p>
+              <button className="flow-btn-primary" style={{ maxWidth:220, margin:'1rem auto 0' }} onClick={onClose}>
+                Done
+              </button>
+            </div>
+          ) : (
           <div className="modal-body modal-body--center">
             <div className="success-icon"><i className="ti ti-check" /></div>
             <h3>Application <em>received</em>.</h3>
@@ -1760,12 +1810,13 @@ function EnrollmentModal({ onClose, term, programs }) {
               Done
             </button>
           </div>
+          )
         ) : (
           <div className="wiz">
             <aside className="wiz-side">
-              <div className="wiz-side-head">Steps · {step}/3</div>
+              <div className="wiz-side-head">Steps · {stepNow}/{totalSteps}</div>
               <div className="wiz-steps">
-                {FRESHMAN_STEPS.map((label, i) => {
+                {sideSteps.map((label, i) => {
                   const n = i + 1, active = n === step, done = n < step;
                   return (
                     <div key={n} className={`wiz-step${active ? ' active' : ''}${done ? ' done' : ''}`}>
@@ -1785,15 +1836,17 @@ function EnrollmentModal({ onClose, term, programs }) {
 
             <main className="wiz-main">
               <div className="wiz-progress">
-                <div style={{ width: `${(step / 3) * 100}%` }} />
+                <div style={{ width: `${(stepNow / totalSteps) * 100}%` }} />
               </div>
 
               <div style={panel(dir)}>
                 {/* Step 1 — Personal info */}
                 {step === 1 && (
                   <>
-                    <h4>Personal information</h4>
-                    <p className="wiz-sub">Tell us who you are. Pick the type that matches you, then enter your details as they appear on official documents.</p>
+                    <h4>{type === 'returnee' ? 'Create your account' : 'Personal information'}</h4>
+                    <p className="wiz-sub">{type === 'returnee'
+                      ? "You're already on record. Enter your Student ID and institutional email, set a password, and we'll email a link to verify and finish."
+                      : 'Tell us who you are. Pick the type that matches you, then enter your details as they appear on official documents.'}</p>
                     <div style={{ marginBottom: '1.1rem' }}>
                       <label style={fLabel}>I am a…</label>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '.5rem', marginTop: 6 }}>
@@ -1809,6 +1862,29 @@ function EnrollmentModal({ onClose, term, programs }) {
                         ))}
                       </div>
                     </div>
+
+                    {type === 'returnee' ? (
+                    <div className="flow-form" style={{ gap: '1rem' }}>
+                      <div className="flow-field">
+                        <label style={fLabel}>Student ID</label>
+                        <input style={{ ...fInput, textTransform: 'uppercase', letterSpacing: '.03em' }} value={form.student_id} onChange={e => update('student_id', e.target.value)} placeholder="2020-00001" autoComplete="off" />
+                      </div>
+                      <div className="flow-field">
+                        <label style={fLabel}>Institutional email</label>
+                        <input style={fInput} type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="juan.delacruz@nemsu.edu.ph" />
+                      </div>
+                      <div style={fRow}>
+                        <div className="flow-field">
+                          <label style={fLabel}>Password</label>
+                          <input style={fInput} type="password" value={form.password} onChange={e => update('password', e.target.value)} placeholder="Min. 8 characters" />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Confirm password</label>
+                          <input style={fInput} type="password" value={form.confirm} onChange={e => update('confirm', e.target.value)} placeholder="Re-enter" />
+                        </div>
+                      </div>
+                    </div>
+                    ) : (
                     <div className="flow-form" style={{ gap: '1rem' }}>
                       <div style={fRow}>
                         <div className="flow-field">
@@ -1861,13 +1937,17 @@ function EnrollmentModal({ onClose, term, programs }) {
                           </select>
                         </div>
                         <div className="flow-field">
-                          <label style={fLabel}>Program / course</label>
-                          <select style={fInput} value={form.program} onChange={e => update('program', e.target.value)}>
-                            {progList.map(n => <option key={n}>{n}</option>)}
-                          </select>
+                          <label style={fLabel}>Program</label>
+                          <input style={fInput} list="adm-prog-list" value={form.program}
+                            onChange={e => update('program', e.target.value)}
+                            placeholder="Type to search programs…" autoComplete="off" />
+                          <datalist id="adm-prog-list">
+                            {progList.map(n => <option key={n} value={n} />)}
+                          </datalist>
                         </div>
                       </div>
                     </div>
+                    )}
                   </>
                 )}
 
@@ -1959,9 +2039,11 @@ function EnrollmentModal({ onClose, term, programs }) {
                   <i className="ti ti-arrow-left" /> {step === 1 ? 'Cancel' : 'Back'}
                 </button>
                 <button className="wiz-btn primary" onClick={next} disabled={submitting}>
-                  {step === 3
-                    ? (submitting ? 'Submitting…' : <><i className="ti ti-check" /> Submit application</>)
-                    : <>Continue <i className="ti ti-arrow-right" /></>}
+                  {type === 'returnee'
+                    ? (submitting ? 'Creating…' : <><i className="ti ti-user-plus" /> Create account</>)
+                    : step === 3
+                      ? (submitting ? 'Submitting…' : <><i className="ti ti-check" /> Submit application</>)
+                      : <>Continue <i className="ti ti-arrow-right" /></>}
                 </button>
               </div>
             </main>
