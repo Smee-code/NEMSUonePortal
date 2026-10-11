@@ -51,11 +51,37 @@ def _attach_logo(msg):
         return
     img = MIMEImage(data, _subtype='png')
     img.add_header('Content-ID', f'<{LOGO_CID}>')
-    img.add_header('Content-Disposition', 'inline', filename='logo.png')
+    # No filename: a filename makes Gmail treat the part as a downloadable
+    # attachment and skip the inline cid substitution.
+    img.add_header('Content-Disposition', 'inline')
     msg.attach(img)
     # Group the HTML + inline image under multipart/related so clients associate
     # the cid image with the message body.
     msg.mixed_subtype = 'related'
+
+
+class BrandedEmail(EmailMultiAlternatives):
+    """EmailMultiAlternatives whose multipart/related container declares the
+    RFC 2387 ``type`` and ``start`` parameters.
+
+    Without them Gmail can't tell which sub-part is the root of the related
+    group, so it fails to resolve ``cid:nemsu-logo`` and shows the seal only as
+    a downloadable attachment instead of inline in the header.
+    """
+
+    def message(self):
+        msg = super().message()
+        if msg.get_content_subtype() == 'related':
+            payload = msg.get_payload()
+            if payload:
+                root = payload[0]  # the multipart/alternative (text + html) body
+                root_cid = root.get('Content-ID')
+                if not root_cid:
+                    root_cid = '<branded-body>'
+                    root.add_header('Content-ID', root_cid)
+                msg.set_param('type', 'multipart/alternative')
+                msg.set_param('start', root_cid)
+        return msg
 
 # ── Brand tokens (email-safe: inline styles, web-safe fonts only) ──────────────
 BRAND = 'NEMSUonePortal'
@@ -215,7 +241,7 @@ def send_branded_email(subject, message, recipient_list, from_email=None,
                        fail_silently=False, preheader=None):
     """Drop-in for send_mail that also attaches a branded HTML alternative."""
     from_email = from_email or settings.DEFAULT_FROM_EMAIL
-    msg = EmailMultiAlternatives(subject, message, from_email, list(recipient_list))
+    msg = BrandedEmail(subject, message, from_email, list(recipient_list))
     msg.attach_alternative(render_branded_html(subject, message, preheader), 'text/html')
     _attach_logo(msg)
     return msg.send(fail_silently=fail_silently)
@@ -227,7 +253,7 @@ def send_branded_mass_email(datatuple, fail_silently=True):
     connection = get_connection(fail_silently=fail_silently)
     messages = []
     for subject, message, from_email, recipient_list in datatuple:
-        msg = EmailMultiAlternatives(
+        msg = BrandedEmail(
             subject, message, from_email or settings.DEFAULT_FROM_EMAIL,
             list(recipient_list), connection=connection,
         )
