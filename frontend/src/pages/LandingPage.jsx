@@ -1693,7 +1693,9 @@ function EnrollmentModal({ onClose, term, programs }) {
         email: form.email, contact_number: form.contact,
         date_of_birth: form.dob || null, sex: form.sex,
         program_id: progObj?.id, program_name: form.program,
-        year_level: YEAR_LEVEL_MAP[form.year] || 1,
+        // New students are 1st year; the registrar sets the year level for
+        // transferees/returnees during validation, so it's not asked here.
+        year_level: 1,
       });
       const ref = res.data?.reference_number
         || `NEMSU-${new Date().getFullYear()}-${String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5)}`;
@@ -1859,17 +1861,11 @@ function EnrollmentModal({ onClose, term, programs }) {
                           </select>
                         </div>
                         <div className="flow-field">
-                          <label style={fLabel}>Year level</label>
-                          <select style={fInput} value={form.year} onChange={e => update('year', e.target.value)}>
-                            {Object.keys(YEAR_LEVEL_MAP).map(y => <option key={y}>{y}</option>)}
+                          <label style={fLabel}>Program / course</label>
+                          <select style={fInput} value={form.program} onChange={e => update('program', e.target.value)}>
+                            {progList.map(n => <option key={n}>{n}</option>)}
                           </select>
                         </div>
-                      </div>
-                      <div className="flow-field">
-                        <label style={fLabel}>Program / course</label>
-                        <select style={fInput} value={form.program} onChange={e => update('program', e.target.value)}>
-                          {progList.map(n => <option key={n}>{n}</option>)}
-                        </select>
                       </div>
                     </div>
                   </>
@@ -1927,14 +1923,13 @@ function EnrollmentModal({ onClose, term, programs }) {
                     <p className="wiz-sub">Verify your details before submitting. Go back to edit any field.</p>
                     <div style={{ border:'1px solid var(--line)', background:'var(--warm)', marginBottom:12 }}>
                       {[
-                        ['Applying as',   'Incoming freshman'],
+                        ['Applying as',   TYPE_LABELS[type] || 'New student'],
                         ['Full name',     `${form.first} ${form.last}`.trim() || '-'],
                         ['Email',         form.email  || '-'],
                         ['Contact',       form.contact || '-'],
                         ['Date of birth', form.dob    || '-'],
                         ['Sex',           form.sex],
                         ['Program',       form.program],
-                        ['Year level',    form.year],
                         ['Campus',        'NEMSU Cantilan Campus'],
                         ['Academic year', `${term?.year ?? '2025–2026'}, 1st Semester`],
                       ].map((r, i, arr) => (
