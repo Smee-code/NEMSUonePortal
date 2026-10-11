@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +20,10 @@ export default function AcademicSetup() {
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
 
+  const deptRef = useRef(null);
+  const progRef = useRef(null);
+  const yearRef = useRef(null);
+
   useEffect(() => {
     Promise.all([
       api.get('/auth/departments/'),
@@ -40,9 +44,9 @@ export default function AcademicSetup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.department)  { setError('Select your department.'); return; }
-    if (!form.program)     { setError('Select your program.'); return; }
-    if (!form.year_level)  { setError('Select your year level.'); return; }
+    if (!form.department) { setError('Select your department.'); deptRef.current?.focus(); return; }
+    if (!form.program)    { setError('Select your program.');    progRef.current?.focus(); return; }
+    if (!form.year_level) { setError('Select your year level.'); yearRef.current?.focus(); return; }
     setSaving(true);
     try {
       await api.patch('/auth/academic-profile/', {
@@ -65,10 +69,11 @@ export default function AcademicSetup() {
 
   return (
     <div style={wrap}>
+      <style>{CSS}</style>
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <img src="/logo.png" alt="NEMSU" style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #e0e7ff' }} />
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0a1628', margin: 0 }}>Set up your academic profile</h1>
+          <img src="/logo.png" alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #e0e7ff' }} />
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0a1628', margin: 0, textWrap: 'balance' }}>Set up your academic profile</h1>
           <p style={{ fontSize: 13, color: '#6b7280', marginTop: 6, lineHeight: 1.6 }}>
             Welcome back{user?.full_name ? `, ${user.full_name}` : ''}. Before you continue, tell us your
             department, program, and year level. These drive the courses offered to you during enrollment.
@@ -79,22 +84,26 @@ export default function AcademicSetup() {
           <p style={{ textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading…</p>
         ) : (
           <form onSubmit={handleSubmit}>
-            <Field label="Department">
-              <select style={inp} value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value, program: '' }))} autoFocus>
+            <Field label="Department" htmlFor="as-department">
+              <select id="as-department" name="department" className="as-input" ref={deptRef}
+                value={form.department}
+                onChange={e => setForm(f => ({ ...f, department: e.target.value, program: '' }))}>
                 <option value="">Select your department…</option>
                 {departments.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
               </select>
             </Field>
 
-            <Field label="Program">
-              <select style={inp} value={form.program} onChange={e => set('program', e.target.value)} disabled={!form.department}>
+            <Field label="Program" htmlFor="as-program">
+              <select id="as-program" name="program" className="as-input" ref={progRef}
+                value={form.program} onChange={e => set('program', e.target.value)} disabled={!form.department}>
                 <option value="">{form.department ? 'Select your program…' : 'Choose a department first'}</option>
                 {programsForDept.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
               </select>
             </Field>
 
-            <Field label="Year level">
-              <select style={inp} value={form.year_level} onChange={e => set('year_level', e.target.value)}>
+            <Field label="Year level" htmlFor="as-year">
+              <select id="as-year" name="year_level" className="as-input" ref={yearRef}
+                value={form.year_level} onChange={e => set('year_level', e.target.value)}>
                 <option value="">Select your year level…</option>
                 <option value="1">1st Year</option>
                 <option value="2">2nd Year</option>
@@ -103,13 +112,17 @@ export default function AcademicSetup() {
               </select>
             </Field>
 
-            {error && (
-              <p style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 12, padding: '8px 12px', borderRadius: 6, margin: '0 0 .75rem' }}>
-                {error}
-              </p>
-            )}
+            <p role="alert" aria-live="polite" style={{
+              minHeight: error ? undefined : 0,
+              margin: error ? '0 0 .75rem' : 0,
+              background: error ? '#fef2f2' : 'transparent',
+              border: error ? '1px solid #fca5a5' : 'none',
+              color: '#dc2626', fontSize: 12, padding: error ? '8px 12px' : 0, borderRadius: 6,
+            }}>
+              {error}
+            </p>
 
-            <button type="submit" disabled={saving} style={primBtn(saving)}>
+            <button type="submit" disabled={saving} className="as-btn">
               {saving ? 'Saving…' : 'Continue to dashboard'}
             </button>
           </form>
@@ -117,17 +130,17 @@ export default function AcademicSetup() {
 
         <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: 12, color: '#6b7280' }}>
           Not you?{' '}
-          <button type="button" onClick={() => { logout(); navigate('/login'); }} style={linkBtn}>Sign out</button>
+          <button type="button" onClick={() => { logout(); navigate('/login'); }} className="as-link">Sign out</button>
         </p>
       </div>
     </div>
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, htmlFor, children }) {
   return (
     <div style={{ marginBottom: '1rem' }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: '.35rem' }}>{label}</label>
+      <label htmlFor={htmlFor} style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: '.35rem' }}>{label}</label>
       {children}
     </div>
   );
@@ -135,13 +148,16 @@ function Field({ label, children }) {
 
 const wrap = { minHeight: '100vh', background: '#f4f6fb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" };
 const card = { background: '#fff', borderRadius: 16, boxShadow: '0 4px 32px rgba(10,58,110,.1)', padding: '2.5rem 2rem', width: '100%', maxWidth: 440, boxSizing: 'border-box' };
-const inp  = { width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', outline: 'none', background: '#fff', color: '#0a1628' };
-const linkBtn = { background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 12 };
 
-function primBtn(disabled) {
-  return {
-    width: '100%', padding: '11px', background: disabled ? '#93c5fd' : '#0a3a6e', border: 'none',
-    borderRadius: 8, color: '#fff', fontWeight: 600, fontSize: 14,
-    cursor: disabled ? 'not-allowed' : 'pointer', marginTop: 4,
-  };
-}
+const CSS = `
+  .as-input{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;background:#fff;color:#0a1628;outline:none;}
+  .as-input:focus-visible{outline:2px solid #0a3a6e;outline-offset:1px;border-color:#0a3a6e;}
+  .as-input:disabled{background:#f3f4f6;color:#9aa4b2;cursor:not-allowed;}
+  .as-btn{width:100%;padding:11px;background:#0a3a6e;border:none;border-radius:8px;color:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:4px;}
+  .as-btn:hover:not(:disabled){background:#0c4a8a;}
+  .as-btn:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
+  .as-btn:disabled{background:#93c5fd;cursor:not-allowed;}
+  .as-link{background:none;border:none;color:#1d4ed8;font-weight:600;cursor:pointer;padding:0;font-size:12px;}
+  .as-link:hover{text-decoration:underline;}
+  .as-link:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px;border-radius:2px;}
+`;

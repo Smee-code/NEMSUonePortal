@@ -51,9 +51,10 @@ export default function SignUp() {
 
   return (
     <div style={wrap}>
+      <style>{CSS}</style>
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <img src="/logo.png" alt="NEMSU" style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #e0e7ff' }} />
+          <img src="/logo.png" alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #e0e7ff' }} />
           <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0a1628', margin: 0 }}>Create your student account</h1>
           <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>NEMSU Cantilan Campus - NEMSUonePortal</p>
         </div>
@@ -61,7 +62,7 @@ export default function SignUp() {
         {done ? (
           <div style={{ textAlign: 'center' }}>
             <div style={iconCircle(verifyNeeded ? '#fef3c7' : '#dcfce7')}>
-              <i className={`ti ${verifyNeeded ? 'ti-mail-fast' : 'ti-clock-check'}`} style={{ fontSize: 32, color: verifyNeeded ? '#b45309' : '#15803d' }} />
+              <i className={`ti ${verifyNeeded ? 'ti-mail-fast' : 'ti-clock-check'}`} aria-hidden="true" style={{ fontSize: 32, color: verifyNeeded ? '#b45309' : '#15803d' }} />
             </div>
             <h2 style={hStyle}>{verifyNeeded ? 'Verify your email' : 'Account created'}</h2>
             <p style={pStyle}>
@@ -69,15 +70,15 @@ export default function SignUp() {
                 ? 'We sent a verification link to your email. Open it to finish signing up, then sign in with your Student ID or institutional email and the password you just set.'
                 : 'Your NEMSUonePortal account is ready. You can now sign in with your Student ID or institutional email and the password you just set.'}
             </p>
-            <button type="button" onClick={() => navigate('/login')} style={primBtn(false)}>
-              {verifyNeeded ? 'Go to sign in' : 'Go to sign in'}
+            <button type="button" onClick={() => navigate('/login')} className="su-btn" style={primBtn(false)}>
+              Go to sign in
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
               <div style={iconCircle('#e0e7ff')}>
-                <i className="ti ti-user-plus" style={{ fontSize: 28, color: '#3730a3' }} />
+                <i className="ti ti-user-plus" aria-hidden="true" style={{ fontSize: 28, color: '#3730a3' }} />
               </div>
               <p style={pStyle}>
                 Enter your Student ID, your institutional email, and a password. Your name is
@@ -86,27 +87,26 @@ export default function SignUp() {
               </p>
             </div>
 
-            <Field label="Student ID">
-              <input style={{ ...inp, textTransform: 'uppercase', letterSpacing: '.03em' }} value={form.student_id} onChange={e => set('student_id', e.target.value)} required placeholder="2026-00001" autoComplete="off" autoFocus />
+            <Field label="Student ID" htmlFor="su-student-id">
+              <input id="su-student-id" name="student_id" className="su-input" style={{ ...inp, textTransform: 'uppercase', letterSpacing: '.03em' }} value={form.student_id} onChange={e => set('student_id', e.target.value)} required placeholder="2026-00001" autoComplete="off" spellCheck={false} autoFocus />
             </Field>
 
-            <Field label="Institutional email">
-              <input style={inp} type="email" value={form.institutional_email} onChange={e => set('institutional_email', e.target.value)} required placeholder="jdelacruz@nemsu.edu.ph" />
+            <Field label="Institutional email" htmlFor="su-email">
+              <input id="su-email" name="email" className="su-input" style={inp} type="email" inputMode="email" autoComplete="email" spellCheck={false} value={form.institutional_email} onChange={e => set('institutional_email', e.target.value)} required placeholder="e.g. jdelacruz@nemsu.edu.ph" />
             </Field>
 
-            <style>{`.su-pw-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}@media(max-width:480px){.su-pw-grid{grid-template-columns:1fr}}`}</style>
             <div className="su-pw-grid">
-              <Field label="Password">
-                <PasswordInput style={inp} value={form.password} onChange={e => set('password', e.target.value)} required placeholder="Min. 8 characters" />
+              <Field label="Password" htmlFor="su-password">
+                <PasswordInput id="su-password" name="new-password" autoComplete="new-password" className="su-input" style={inp} value={form.password} onChange={e => set('password', e.target.value)} required placeholder="Min. 8 characters" />
               </Field>
-              <Field label="Confirm password">
-                <PasswordInput style={inp} value={form.confirm} onChange={e => set('confirm', e.target.value)} required placeholder="Re-enter" />
+              <Field label="Confirm password" htmlFor="su-confirm">
+                <PasswordInput id="su-confirm" name="confirm-password" autoComplete="new-password" className="su-input" style={inp} value={form.confirm} onChange={e => set('confirm', e.target.value)} required placeholder="Re-enter password" />
               </Field>
             </div>
 
             {error && <ErrMsg>{error}</ErrMsg>}
 
-            <button type="submit" disabled={loading} style={primBtn(loading)}>
+            <button type="submit" disabled={loading} className="su-btn" style={primBtn(loading)}>
               {loading ? 'Creating…' : 'Create account'}
             </button>
 
@@ -121,10 +121,10 @@ export default function SignUp() {
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, htmlFor, children }) {
   return (
     <div style={{ marginBottom: '1rem' }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: '.35rem' }}>{label}</label>
+      <label htmlFor={htmlFor} style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: '.35rem' }}>{label}</label>
       {children}
     </div>
   );
@@ -132,11 +132,20 @@ function Field({ label, children }) {
 
 function ErrMsg({ children }) {
   return (
-    <p style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 12, padding: '8px 12px', borderRadius: 6, marginBottom: '.75rem' }}>
+    <p role="alert" aria-live="polite" style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 12, padding: '8px 12px', borderRadius: 6, marginBottom: '.75rem' }}>
       {children}
     </p>
   );
 }
+
+const CSS = `
+  .su-pw-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+  @media(max-width:480px){.su-pw-grid{grid-template-columns:1fr}}
+  .su-input:focus-visible{outline:2px solid #0a3a6e;outline-offset:1px;}
+  .su-btn:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
+  .su-btn{filter:brightness(1);transition:filter .12s}
+  .su-btn:hover:not(:disabled){filter:brightness(1.12)}
+`;
 
 function iconCircle(bg) {
   return { width: 60, height: 60, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' };
