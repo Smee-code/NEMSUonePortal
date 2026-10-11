@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import AuthModal from '../components/AuthModal';
+import PasswordInput from '../components/PasswordInput';
 import ScrollMemory from '../components/ScrollMemory';
 
 /* ══════════════════════════════════════════════════════════════
@@ -1933,11 +1934,11 @@ function EnrollmentModal({ onClose, term, programs }) {
                       <div style={fRow}>
                         <div className="flow-field">
                           <label style={fLabel}>Password</label>
-                          <input style={fInput} type="password" value={form.password} onChange={e => update('password', e.target.value)} placeholder="Min. 8 characters" />
+                          <PasswordInput style={fInput} value={form.password} onChange={e => update('password', e.target.value)} placeholder="Min. 8 characters" />
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Confirm password</label>
-                          <input style={fInput} type="password" value={form.confirm} onChange={e => update('confirm', e.target.value)} placeholder="Re-enter" />
+                          <PasswordInput style={fInput} value={form.confirm} onChange={e => update('confirm', e.target.value)} placeholder="Re-enter" />
                         </div>
                       </div>
                     </div>
