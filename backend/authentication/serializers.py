@@ -42,13 +42,20 @@ class UserRegistrationSerializer(serializers.Serializer):
     def validate(self, attrs):
         from enrollment.models import PendingEnrollment
         sid = attrs['student_id']
+
+        # A student may register if EITHER an approved admission was recorded
+        # for this ID, OR the registrar/admin already pre-loaded the ID as a
+        # placeholder account (bulk import, class list, or an old student on
+        # record). Either one proves the ID is legitimate.
         pending = (
             PendingEnrollment.objects
             .filter(assigned_student_id__iexact=sid, status='approved')
             .select_related('program')
             .first()
         )
-        if pending is None:
+        placeholder = User.objects.filter(student_id__iexact=sid, is_placeholder=True).first()
+
+        if pending is None and placeholder is None:
             used = PendingEnrollment.objects.filter(
                 assigned_student_id__iexact=sid, status='activated',
             ).exists()
@@ -56,42 +63,54 @@ class UserRegistrationSerializer(serializers.Serializer):
                 'student_id': (
                     'This Student ID has already been used to create an account.'
                     if used else
-                    'No approved admission was found for this Student ID. '
-                    'Please check the ID in your approval email, or contact the registrar.'
+                    'This Student ID is not on record. Please check the ID in your '
+                    'approval email, or contact the registrar.'
                 )
             })
         attrs['_pending'] = pending
+        attrs['_placeholder'] = placeholder
         return attrs
 
     def create(self, validated_data):
-        pending    = validated_data['_pending']
-        student_id = validated_data['student_id']
-        email      = validated_data['institutional_email']
-        password   = validated_data['password']
+        pending     = validated_data.get('_pending')
+        placeholder = validated_data.get('_placeholder')
+        student_id  = validated_data['student_id']
+        email       = validated_data['institutional_email']
+        password    = validated_data['password']
 
-        # If this student was already imported as a placeholder (on a class list before
-        # registering), claim that row so roster/grade links carry over. student_id is
-        # unique, so we reuse the row rather than create a second one.
-        placeholder = User.objects.filter(student_id__iexact=student_id, is_placeholder=True).first()
+        # Name: prefer the admission record, else the name the staff imported.
+        full_name = (
+            (pending.full_name if pending else None)
+            or (placeholder.full_name if placeholder else None)
+            or student_id
+        )
+
+        # Claim an existing placeholder row (so roster/grade links carry over)
+        # rather than creating a second account for the same unique ID.
         if placeholder:
             user = placeholder
             user.institutional_email = email
-            user.full_name = pending.full_name
+            user.full_name = full_name
             user.set_password(password)
             user.is_placeholder = False
         else:
-            user = User(student_id=student_id, institutional_email=email, full_name=pending.full_name)
+            user = User(student_id=student_id, institutional_email=email, full_name=full_name)
             user.set_password(password)
+
         user.role                = 'student'
-        user.program             = pending.program
-        user.year_level          = pending.year_level or 1
-        user.is_verified         = True   # admission review already vetted them
+        if pending:
+            user.program    = pending.program
+            user.year_level = pending.year_level or 1
+        elif not user.year_level:
+            user.year_level = 1
+        user.is_verified         = True   # admission/registrar already vetted them
         user.is_active           = True
         user.registration_status = User.REG_APPROVED
         user.save()
 
-        pending.status = 'activated'
-        pending.save(update_fields=['status'])
+        if pending:
+            pending.status = 'activated'
+            pending.save(update_fields=['status'])
         return user
 
 
