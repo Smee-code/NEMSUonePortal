@@ -84,6 +84,36 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
+        if getattr(user, '_needs_verification', False) or not user.is_verified:
+            # Old student / pre-loaded placeholder: confirm the email before the
+            # account can be used. Send a one-click verification link.
+            EmailVerificationToken.objects.filter(user=user).delete()
+            token_obj = EmailVerificationToken.objects.create(user=user)
+            verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token_obj.token}"
+            _send_email(
+                subject='NEMSUonePortal — verify your email to finish signing up',
+                body=(
+                    f"Hello {user.full_name},\n\n"
+                    f"A NEMSUonePortal student account was created for Student ID "
+                    f"{user.student_id}. To finish and start using it, verify your email "
+                    f"by opening this link:\n\n"
+                    f"{verify_url}\n\n"
+                    f"After verifying, log in at {settings.FRONTEND_URL}/login with your "
+                    f"Student ID or institutional email and the password you set.\n\n"
+                    "If you did not sign up, please ignore this email or contact the "
+                    "Registrar's Office."
+                ),
+                recipient=user.institutional_email,
+            )
+            _audit(user, user.role, 'user_registered', request.path,
+                   get_client_ip(request), 'success')
+            return Response(
+                {'message': 'Account created. We sent a verification link to your email — '
+                            'open it to finish signing up, then log in.',
+                 'verification_required': True},
+                status=status.HTTP_201_CREATED,
+            )
+
         # The applicant was already vetted at admission, so the account is active
         # immediately — welcome them and point them to login.
         _send_email(
@@ -105,7 +135,8 @@ class RegisterView(generics.CreateAPIView):
 
         return Response(
             {'message': 'Account created. You can now log in with your Student ID or '
-                        'institutional email.'},
+                        'institutional email.',
+             'verification_required': False},
             status=status.HTTP_201_CREATED,
         )
 

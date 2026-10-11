@@ -97,13 +97,18 @@ class UserRegistrationSerializer(serializers.Serializer):
             user = User(student_id=student_id, institutional_email=email, full_name=full_name)
             user.set_password(password)
 
+        # Admission applicants were vetted at admission → ready immediately.
+        # Old students / pre-loaded placeholders confirm ownership of the email
+        # they just typed by verifying it before the account goes live.
+        needs_verification = pending is None
+
         user.role                = 'student'
         if pending:
             user.program    = pending.program
             user.year_level = pending.year_level or 1
         elif not user.year_level:
             user.year_level = 1
-        user.is_verified         = True   # admission/registrar already vetted them
+        user.is_verified         = not needs_verification
         user.is_active           = True
         user.registration_status = User.REG_APPROVED
         user.save()
@@ -111,6 +116,8 @@ class UserRegistrationSerializer(serializers.Serializer):
         if pending:
             pending.status = 'activated'
             pending.save(update_fields=['status'])
+
+        user._needs_verification = needs_verification
         return user
 
 

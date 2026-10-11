@@ -15,6 +15,7 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
   const [done,    setDone]    = useState(false);
+  const [verifyNeeded, setVerifyNeeded] = useState(false);
 
   function set(field, value) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -28,11 +29,12 @@ export default function SignUp() {
 
     setLoading(true);
     try {
-      await api.post('/auth/register/', {
+      const res = await api.post('/auth/register/', {
         student_id:          form.student_id.trim(),
         institutional_email: form.institutional_email.trim(),
         password:            form.password,
       });
+      setVerifyNeeded(!!res.data?.verification_required);
       setDone(true);
     } catch (err) {
       const data = err.response?.data;
@@ -58,16 +60,17 @@ export default function SignUp() {
 
         {done ? (
           <div style={{ textAlign: 'center' }}>
-            <div style={iconCircle('#dcfce7')}>
-              <i className="ti ti-clock-check" style={{ fontSize: 32, color: '#15803d' }} />
+            <div style={iconCircle(verifyNeeded ? '#fef3c7' : '#dcfce7')}>
+              <i className={`ti ${verifyNeeded ? 'ti-mail-fast' : 'ti-clock-check'}`} style={{ fontSize: 32, color: verifyNeeded ? '#b45309' : '#15803d' }} />
             </div>
-            <h2 style={hStyle}>Account created</h2>
+            <h2 style={hStyle}>{verifyNeeded ? 'Verify your email' : 'Account created'}</h2>
             <p style={pStyle}>
-              Your NEMSUonePortal account is ready. You can now sign in with your Student ID
-              or institutional email and the password you just set.
+              {verifyNeeded
+                ? 'We sent a verification link to your email. Open it to finish signing up, then sign in with your Student ID or institutional email and the password you just set.'
+                : 'Your NEMSUonePortal account is ready. You can now sign in with your Student ID or institutional email and the password you just set.'}
             </p>
             <button type="button" onClick={() => navigate('/login')} style={primBtn(false)}>
-              Go to sign in
+              {verifyNeeded ? 'Go to sign in' : 'Go to sign in'}
             </button>
           </div>
         ) : (
@@ -77,8 +80,9 @@ export default function SignUp() {
                 <i className="ti ti-user-plus" style={{ fontSize: 28, color: '#3730a3' }} />
               </div>
               <p style={pStyle}>
-                Enter the Student ID from your admission approval email, your institutional
-                email, and a password. Your name is already on file from your application.
+                Enter your Student ID, your institutional email, and a password. Your name is
+                already on record. If your ID is new, we’ll email you a link to verify your
+                email and finish signing up.
               </p>
             </div>
 
