@@ -29,7 +29,6 @@ const TITLES = {
   '/student/curriculum': 'My Curriculum',
   '/student/documents': 'Document Requests',
   '/student/announcements': 'Announcements',
-  '/student/spotlight': 'Campus Spotlight',
   '/student/profile': 'My Profile',
 
   '/faculty/dashboard': 'Faculty Dashboard',
@@ -62,7 +61,6 @@ const TITLES = {
   '/admin/audit-log': 'Audit Log',
   '/admin/settings': 'System Settings',
   '/admin/announcements': 'Announcements',
-  '/admin/spotlight': 'Campus Spotlight',
 };
 
 function resolve(pathname) {

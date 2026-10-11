@@ -40,7 +40,6 @@ import AdminReports from './pages/admin/AdminReports';
 import AdminMidtermReopen from './pages/admin/AdminMidtermReopen';
 import AdminAuditLog from './pages/admin/AdminAuditLog';
 import AdminSettings from './pages/admin/AdminSettings';
-import AdminSpotlight from './pages/admin/AdminSpotlight';
 import FacultyShell from './components/layout/FacultyShell';
 import FacultyDashboard from './pages/faculty/FacultyDashboard';
 import FacultyGradeEncoding from './pages/faculty/FacultyGradeEncoding';
@@ -70,7 +69,6 @@ import StudentProfile      from './pages/student/StudentProfile';
 import AcademicSetup       from './pages/AcademicSetup';
 import StudentAnnouncements from './pages/student/StudentAnnouncements';
 import StudentCurriculum   from './pages/student/StudentCurriculum';
-import StudentSpotlight    from './pages/student/StudentSpotlight';
 
 export default function App() {
   return (
@@ -103,7 +101,6 @@ export default function App() {
             <Route path="curriculum"    element={<StudentCurriculum />} />
             <Route path="documents"     element={<StudentDocuments />} />
             <Route path="announcements" element={<StudentAnnouncements />} />
-            <Route path="spotlight"     element={<StudentSpotlight />} />
             <Route path="profile"       element={<StudentProfile />} />
             <Route path="*"             element={<Navigate to="dashboard" replace />} />
           </Route>
@@ -160,7 +157,6 @@ export default function App() {
             <Route path="audit-log"    element={<AdminAuditLog />} />
             <Route path="settings"     element={<AdminSettings />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
-            <Route path="spotlight"    element={<AdminSpotlight />} />
             <Route path="*"            element={<Navigate to="dashboard" replace />} />
           </Route>
 

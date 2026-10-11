@@ -24,7 +24,6 @@ const NAV = [
   { key: 'curriculum',   path: '/student/curriculum',   icon: 'ti-route',            label: 'Curriculum',        section: 'academic' },
   { key: 'documents',    path: '/student/documents',    icon: 'ti-file-text',        label: 'Document Requests', section: 'services' },
   { key: 'announcements',path: '/student/announcements',icon: 'ti-bell',             label: 'Announcements',     section: 'campus' },
-  { key: 'spotlight',    path: '/student/spotlight',    icon: 'ti-news',             label: 'Campus Spotlight',  section: 'campus' },
   { key: 'profile',      path: '/student/profile',      icon: 'ti-user',             label: 'My Profile',        section: 'campus' },
 ];
 
@@ -38,7 +37,7 @@ const GROUPS = [
 const CRUMB = {
   dashboard: 'Dashboard', enrollment: 'My Enrollment', grades: 'My Grades',
   schedule: 'My Schedule', curriculum: 'Curriculum', documents: 'Document Requests',
-  announcements: 'Announcements', spotlight: 'Campus Spotlight', profile: 'My Profile',
+  announcements: 'Announcements', profile: 'My Profile',
 };
 
 const CSS = `

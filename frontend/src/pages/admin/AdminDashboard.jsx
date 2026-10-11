@@ -226,10 +226,6 @@ function initials(name) {
   return p.length === 1 ? (p[0][0] || '?').toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 
-function firstName(name) {
-  return (name || '').trim().split(/\s+/)[0] || 'Admin';
-}
-
 function relTime(isoStr) {
   if (!isoStr) return '';
   const s = (Date.now() - new Date(isoStr)) / 1000;
@@ -578,7 +574,7 @@ export default function AdminDashboard() {
         <div className="db-welcome">
           <div>
             <div className="db-w-eyebrow">Overview · {termLabel}</div>
-            <h1 className="db-w-title">{greeting()}, <em>{firstName(user?.full_name)}</em>.</h1>
+            <h1 className="db-w-title">{greeting()}, <em>{user?.full_name || 'Admin'}</em>.</h1>
             <p className="db-w-sub">
               {loading
                 ? 'Loading your overview…'

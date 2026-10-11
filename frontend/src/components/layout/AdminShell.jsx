@@ -343,7 +343,6 @@ const SB_ITEMS = [
 
   { key: 'announcements', icon: 'ti-bell',             label: 'Announcements',         section: 'content',    to: '/admin/announcements'},
   { key: 'landing',       icon: 'ti-layout-board',     label: 'Landing Content',       section: 'content',    to: '/admin/landing'      },
-  { key: 'spotlight',     icon: 'ti-news',             label: 'Campus Spotlight',      section: 'content',    to: '/admin/spotlight'    },
 
   { key: 'reports',       icon: 'ti-chart-bar',        label: 'Reports & Export',      section: 'system',     to: '/admin/reports'      },
   { key: 'audit-log',     icon: 'ti-clock-hour-4',     label: 'Audit Log',             section: 'system',     to: '/admin/audit-log'    },
@@ -365,7 +364,6 @@ const PAGE_LABELS = {
   reports:       'Reports & Export',
   'audit-log':   'Audit Log',
   announcements: 'Announcements',
-  spotlight:     'Campus Spotlight',
   landing:       'Landing Content',
   settings:      'System Settings',
 };

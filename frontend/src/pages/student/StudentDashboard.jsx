@@ -446,7 +446,7 @@ export default function StudentDashboard() {
     ? `${currentTerm.semester_display} ${currentTerm.year}`
     : 'No active term';
   const dayLabel  = now.toLocaleDateString('en-PH', { weekday: 'long' });
-  const firstName = (user?.full_name || '').split(' ')[0] || 'there';
+  const displayName = user?.full_name || 'there';
 
   if (loading) {
     return (
@@ -478,7 +478,7 @@ export default function StudentDashboard() {
       <div className="welcome">
         <div className="welcome-head">
           <div className="welcome-eyebrow">Student portal · {termLabel}</div>
-          <h1>{greeting(now)}, <em>{firstName}</em>.</h1>
+          <h1>{greeting(now)}, <em>{displayName}</em>.</h1>
           <p>
             Here's where things stand —{' '}
             {summaryBits.map((b, i) => (
