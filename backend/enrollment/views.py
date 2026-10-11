@@ -107,6 +107,31 @@ class PublicPreEnrollView(APIView):
         serializer.is_valid(raise_exception=True)
         d = serializer.validated_data
 
+        first_name = (d.get('first_name') or '').strip()
+        last_name  = (d.get('last_name') or '').strip()
+        student_id = (d.get('student_id') or '').strip()
+
+        if d['student_type'] == 'returnee':
+            # Block a second active application for the same Student ID.
+            if PendingEnrollment.objects.filter(
+                assigned_student_id__iexact=student_id, status__in=['pending', 'approved'],
+            ).exists():
+                return Response(
+                    {'student_id': 'An application for this Student ID is already being reviewed.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Pull the name from the on-record account if we can, so the registrar
+            # sees who is applying; otherwise fall back to the Student ID.
+            from authentication.models import User as _User
+            on_record = _User.objects.filter(student_id__iexact=student_id).first()
+            if on_record and on_record.full_name.strip():
+                nm = on_record.full_name.strip().split()
+                first_name = ' '.join(nm[:-1]) if len(nm) > 1 else nm[0]
+                last_name  = nm[-1] if len(nm) > 1 else ''
+            else:
+                first_name = first_name or student_id
+                last_name  = last_name or ''
+
         program = None
         if d.get('program_id'):
             program = Program.objects.filter(pk=d['program_id'], is_active=True).first()
@@ -120,8 +145,8 @@ class PublicPreEnrollView(APIView):
 
         pending = PendingEnrollment.objects.create(
             student_type   = d['student_type'],
-            first_name     = d['first_name'],
-            last_name      = d['last_name'],
+            first_name     = first_name,
+            last_name      = last_name,
             middle_name    = d.get('middle_name', ''),
             suffix         = d.get('suffix', ''),
             email          = d['email'],
@@ -131,6 +156,7 @@ class PublicPreEnrollView(APIView):
             program        = program,
             year_level     = d.get('year_level', 1),
             academic_term  = d.get('term_id'),
+            assigned_student_id = student_id if d['student_type'] == 'returnee' else '',
         )
 
         _audit(
@@ -1012,22 +1038,44 @@ class RegistrarPendingEnrollmentReviewView(APIView):
         serializer.is_valid(raise_exception=True)
         new_status = serializer.validated_data['status']
 
-        if new_status == 'approved' and not pending.assigned_student_id:
+        is_returnee = pending.student_type == 'returnee'
+
+        # Freshmen/transferees get a freshly generated Student ID; returnees keep
+        # the ID they already have on record (stored at submission time).
+        if new_status == 'approved' and not is_returnee and not pending.assigned_student_id:
             pending.assigned_student_id = _generate_student_id(pending)
 
-        pending.status      = new_status
+        if new_status == 'approved' and is_returnee:
+            try:
+                _, email_sent = _activate_returnee_account(pending)
+            except Exception as exc:
+                logger.error('Failed to activate returnee account', exc_info=True)
+                return Response(
+                    {'error': f'Could not create the student account: {exc}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Account is live and the password has been emailed.
+            pending.status = 'activated'
+        else:
+            pending.status = new_status
+            email_sent = None
+
         pending.remarks     = serializer.validated_data.get('remarks', '')
         pending.reviewed_by = request.user
         pending.reviewed_at = timezone.now()
         pending.save()
 
-        _send_admission_decision_email(pending, new_status)
+        if is_returnee and new_status == 'rejected':
+            _send_admission_decision_email(pending, new_status)
+        elif not is_returnee:
+            _send_admission_decision_email(pending, new_status)
 
         _audit(
             request.user, request.user.role,
             f'pre_enrollment_{new_status}', request.path, ip, 'success',
             {'pre_enrollment_id': str(pending.id), 'email': pending.email,
-             'assigned_student_id': pending.assigned_student_id or None},
+             'assigned_student_id': pending.assigned_student_id or None,
+             'returnee_email_sent': email_sent},
         )
 
         return Response({'message': f'Application {new_status}.',
@@ -1122,6 +1170,80 @@ class RegistrarPreEnrollFollowupView(APIView):
             {'pre_enrollment_id': str(pending.id), 'email': pending.email},
         )
         return Response({'message': f'Follow-up email sent to {pending.email}.'})
+
+
+def _activate_returnee_account(pending):
+    """
+    Approve a returnee/old-student application: create or claim their portal
+    account (keyed by the Student ID on record), generate a temporary password,
+    and email it to them. Returns (user, email_sent).
+    """
+    from django.db import transaction
+    from authentication.models import User
+    from authentication.serializers import generate_temp_password
+
+    sid   = (pending.assigned_student_id or '').strip()
+    email = pending.email.strip().lower()
+    name  = (pending.full_name or sid).strip()
+    password = generate_temp_password()
+
+    # Refuse to attach an email already used by a different account.
+    clash = User.objects.filter(institutional_email__iexact=email).exclude(student_id__iexact=sid).first()
+    if clash:
+        raise ValueError('That email is already linked to another account.')
+
+    with transaction.atomic():
+        user = User.objects.filter(student_id__iexact=sid).first()
+        if user:
+            user.institutional_email  = email
+            if name:
+                user.full_name = name
+            user.role                 = 'student'
+            user.is_placeholder       = False
+            user.is_active            = True
+            user.is_verified          = True
+            user.registration_status  = User.REG_APPROVED
+            user.set_password(password)
+            user.save()
+        else:
+            user = User.objects.create_user(
+                institutional_email=email,
+                student_id=sid,
+                full_name=name,
+                password=password,
+                role='student',
+                is_verified=True,
+                is_active=True,
+            )
+
+    email_sent = _email_returnee_password(user, password)
+    return user, email_sent
+
+
+def _email_returnee_password(user, temp_password):
+    """Email an approved returnee their login details. Returns True if sent."""
+    from nemsuoneportal.emails import send_branded_email
+    from django.conf import settings as _settings
+    try:
+        send_branded_email(
+            'NEMSU Cantilan — Application Approved · Your Login Details',
+            (
+                f'Hi {user.full_name},\n\n'
+                f'Your application to re-enroll at NEMSU Cantilan Campus has been '
+                f'approved by the registrar. Your NEMSUonePortal account is ready.\n\n'
+                f'Student ID: {user.student_id}\n'
+                f'Login email: {user.institutional_email}\n'
+                f'Temporary password: {temp_password}\n\n'
+                f'Log in at {_settings.FRONTEND_URL}/login and change your password '
+                f'from your profile after your first login.\n\n'
+                f'— NEMSU Cantilan Registrar\'s Office'
+            ),
+            [user.institutional_email],
+        )
+        return True
+    except Exception:
+        logger.warning('Failed to email returnee login details', exc_info=True)
+        return False
 
 
 def _send_admission_decision_email(pending, decision):

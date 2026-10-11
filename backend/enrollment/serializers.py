@@ -327,10 +327,13 @@ class RegistrarReviewSerializer(serializers.Serializer):
 
 class PendingEnrollmentCreateSerializer(serializers.Serializer):
     student_type   = serializers.ChoiceField(choices=['new', 'transferee', 'returnee'])
-    first_name     = serializers.CharField(max_length=100)
-    last_name      = serializers.CharField(max_length=100)
+    # Returnees/old students are already on record, so they submit only their
+    # Student ID + email; names/program are not required for that path.
+    first_name     = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
+    last_name      = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
     middle_name    = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
     suffix         = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
+    student_id     = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
     email          = serializers.EmailField()
     contact_number = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
     date_of_birth  = serializers.DateField(required=False, allow_null=True, default=None)
@@ -346,6 +349,25 @@ class PendingEnrollmentCreateSerializer(serializers.Serializer):
                 'An active pre-enrollment application already exists for this email address.'
             )
         return value
+
+    def validate(self, attrs):
+        if attrs.get('student_type') == 'returnee':
+            # Old-student path: Student ID is the identity; first/last names are
+            # looked up from the record (or filled in by the view).
+            if not (attrs.get('student_id') or '').strip():
+                raise serializers.ValidationError(
+                    {'student_id': 'Your Student ID is required.'}
+                )
+        else:
+            # Freshmen/transferees still provide their name on the form.
+            missing = {}
+            if not (attrs.get('first_name') or '').strip():
+                missing['first_name'] = 'This field is required.'
+            if not (attrs.get('last_name') or '').strip():
+                missing['last_name'] = 'This field is required.'
+            if missing:
+                raise serializers.ValidationError(missing)
+        return attrs
 
     def validate_term_id(self, value):
         if value is None:

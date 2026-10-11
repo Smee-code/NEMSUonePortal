@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import AuthModal from '../components/AuthModal';
-import PasswordInput from '../components/PasswordInput';
 import ScrollMemory from '../components/ScrollMemory';
 
 /* ══════════════════════════════════════════════════════════════
@@ -737,7 +736,7 @@ const TYPE_ICONS  = { new:'ti-school', transferee:'ti-building-community', retur
 const TYPE_DESCS  = {
   new:        'Incoming first-year student from senior high',
   transferee: 'Coming from another school or institution',
-  returnee:   'Already on record — just create your account',
+  returnee:   'Already on record — request access with your Student ID',
 };
 
 const ALL_REQUIREMENTS = {
@@ -1714,11 +1713,10 @@ function EnrollmentModal({ onClose, term, programs }) {
   const [selSubj, setSelSubj] = useState(
     () => SUBJECTS.reduce((a, s) => ({ ...a, [s.code]: true }), {})
   );
-  const [returneeVerify, setReturneeVerify] = useState(false);
   const [form, setForm] = useState({
     first: '', middle: '', last: '', suffix: '', email: '', contact: '', dob: '', sex: 'Male',
     program: PROGRAMS_STATIC[0].name, year: '1st Year',
-    student_id: '', password: '', confirm: '',   // returnee / old student
+    student_id: '',   // returnee / old student
   });
 
   const progList = programs?.length
@@ -1734,7 +1732,7 @@ function EnrollmentModal({ onClose, term, programs }) {
   }, [programs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Returnees/old students skip documents & review — one step only.
-  const sideSteps  = type === 'returnee' ? ['Create your account'] : FRESHMAN_STEPS;
+  const sideSteps  = type === 'returnee' ? ['Request access'] : FRESHMAN_STEPS;
   const totalSteps = sideSteps.length;
   const stepNow    = Math.min(step, totalSteps);
 
@@ -1751,28 +1749,26 @@ function EnrollmentModal({ onClose, term, programs }) {
   };
 
   // Returnee / old student: already on record, so skip documents & review —
-  // claim the existing account (Student ID + email + password) via signup,
-  // which emails a verification link.
+  // submit a lightweight application (Student ID + email). The registrar
+  // approves it, and the system then emails the student their login password.
   const handleReturneeSubmit = async () => {
     setSubErr('');
     if (!form.student_id.trim())  { setSubErr('Enter your Student ID.'); return; }
     if (!form.email.trim())       { setSubErr('Enter your institutional email.'); return; }
-    if (form.password.length < 8) { setSubErr('Password must be at least 8 characters.'); return; }
-    if (form.password !== form.confirm) { setSubErr('Passwords do not match.'); return; }
     setSub(true);
     try {
-      const res = await api.post('/auth/register/', {
-        student_id:          form.student_id.trim(),
-        institutional_email: form.email.trim(),
-        password:            form.password,
+      const res = await api.post('/enrollment/public/pre-enroll/', {
+        student_type: 'returnee',
+        student_id:   form.student_id.trim(),
+        email:        form.email.trim(),
       });
-      setReturneeVerify(!!res.data?.verification_required);
+      setRefNum(res.data?.reference_number || '');
       setDone(true);
     } catch (err) {
       const d = err.response?.data;
       let m = d?.detail || d?.message;
       if (!m && d && typeof d === 'object') { const f = Object.values(d)[0]; m = Array.isArray(f) ? f[0] : f; }
-      setSubErr(m || 'Could not create your account. Please check your Student ID and email.');
+      setSubErr(m || 'Could not submit your application. Please check your Student ID and email.');
     } finally { setSub(false); }
   };
 
@@ -1830,7 +1826,7 @@ function EnrollmentModal({ onClose, term, programs }) {
             <img src="/logo.png" alt="NEMSU" />
             <div>
               <div className="name">NEMSUonePortal</div>
-              <div className="sub">{done ? (type === 'returnee' ? 'Account created' : 'Application received') : 'Admission application'}</div>
+              <div className="sub">{done ? 'Application submitted' : 'Admission application'}</div>
             </div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">
@@ -1841,14 +1837,20 @@ function EnrollmentModal({ onClose, term, programs }) {
         {done ? (
           type === 'returnee' ? (
             <div className="modal-body modal-body--center">
-              <div className="success-icon" style={{ background:'#fef3c7', color:'#b45309' }}><i className="ti ti-mail-fast" /></div>
-              <h3>{returneeVerify ? <>Verify your <em>email</em>.</> : <>Account <em>created</em>.</>}</h3>
+              <div className="success-icon" style={{ background:'#fef3c7', color:'#b45309' }}><i className="ti ti-clock-check" /></div>
+              <h3>Application <em>submitted</em>.</h3>
               <p className="lead">
-                {returneeVerify
-                  ? <>We sent a verification link to <strong>{form.email || 'your email address'}</strong>. Open it to finish signing up, then log in with your Student ID or email and the password you just set.</>
-                  : <>Your NEMSUonePortal account is ready. You can now log in with your Student ID or email and the password you just set.</>}
+                Thanks — the registrar will review your application. Once it's approved,
+                we'll email your login password to <strong>{form.email || 'your email address'}</strong>,
+                and you can sign in with your Student ID and that password.
               </p>
-              <button className="flow-btn-primary" style={{ maxWidth:220, margin:'1rem auto 0' }} onClick={onClose}>
+              {refNum && (
+                <div style={{ display:'inline-block', margin:'1rem 0 0', padding:'1rem 2rem', background:'var(--warm)', border:'1px solid var(--line)' }}>
+                  <div style={{ fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--gold)', fontWeight:600, marginBottom:4 }}>Reference number</div>
+                  <div style={{ fontFamily:"'Fraunces',Georgia,serif", fontSize:22, color:'var(--ink)' }}>{refNum}</div>
+                </div>
+              )}
+              <button className="flow-btn-primary" style={{ maxWidth:220, margin:'1.5rem auto 0' }} onClick={onClose}>
                 Done
               </button>
             </div>
@@ -1901,9 +1903,9 @@ function EnrollmentModal({ onClose, term, programs }) {
                 {/* Step 1 — Personal info */}
                 {step === 1 && (
                   <>
-                    <h4>{type === 'returnee' ? 'Create your account' : 'Personal information'}</h4>
+                    <h4>{type === 'returnee' ? 'Request access' : 'Personal information'}</h4>
                     <p className="wiz-sub">{type === 'returnee'
-                      ? "You're already on record. Enter your Student ID and institutional email, set a password, and we'll email a link to verify and finish."
+                      ? "You're already on record. Enter your Student ID and institutional email to apply. Once the registrar approves, we'll email your login password."
                       : 'Tell us who you are. Pick the type that matches you, then enter your details as they appear on official documents.'}</p>
                     <div style={{ marginBottom: '1.1rem' }}>
                       <label style={fLabel}>I am a…</label>
@@ -1931,16 +1933,9 @@ function EnrollmentModal({ onClose, term, programs }) {
                         <label style={fLabel}>Institutional email</label>
                         <input style={fInput} type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="juan.delacruz@nemsu.edu.ph" />
                       </div>
-                      <div style={fRow}>
-                        <div className="flow-field">
-                          <label style={fLabel}>Password</label>
-                          <PasswordInput style={fInput} value={form.password} onChange={e => update('password', e.target.value)} placeholder="Min. 8 characters" />
-                        </div>
-                        <div className="flow-field">
-                          <label style={fLabel}>Confirm password</label>
-                          <PasswordInput style={fInput} value={form.confirm} onChange={e => update('confirm', e.target.value)} placeholder="Re-enter" />
-                        </div>
-                      </div>
+                      <p className="lead" style={{ fontSize: 12, margin: 0, color: 'var(--muted)' }}>
+                        No password needed yet. Once the registrar approves your application, we'll email your login password to this address.
+                      </p>
                     </div>
                     ) : (
                     <div className="flow-form" style={{ gap: '1rem' }}>
@@ -2094,7 +2089,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                 </button>
                 <button className="wiz-btn primary" onClick={next} disabled={submitting}>
                   {type === 'returnee'
-                    ? (submitting ? 'Creating…' : <><i className="ti ti-user-plus" /> Create account</>)
+                    ? (submitting ? 'Submitting…' : <><i className="ti ti-send" /> Submit application</>)
                     : step === 3
                       ? (submitting ? 'Submitting…' : <><i className="ti ti-check" /> Submit application</>)
                       : <>Continue <i className="ti ti-arrow-right" /></>}
