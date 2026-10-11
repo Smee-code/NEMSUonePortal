@@ -1642,6 +1642,63 @@ function AdmissionIntroModal({ onClose, onStart, onLogin }) {
 /* ══════════════════════════════════════════════════════════════
    ENROLLMENT MODAL — 5-step pre-enrollment wizard (Section 17)
 ══════════════════════════════════════════════════════════════ */
+/* Searchable program picker — reliable filtered suggestions (datalist is
+   inconsistent across browsers), keyboard-navigable. */
+function ProgramSearchSelect({ value, options, onChange }) {
+  const [open, setOpen]   = useState(false);
+  const [query, setQuery] = useState('');
+  const [hi, setHi]       = useState(0);
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    const onDoc = e => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  const q = query.trim().toLowerCase();
+  const matches = q ? options.filter(o => o.toLowerCase().includes(q)) : options;
+
+  const pick = v => { onChange(v); setQuery(''); setOpen(false); };
+
+  const onKey = e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi(h => Math.min(h + 1, matches.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)); }
+    else if (e.key === 'Enter' && open && matches[hi]) { e.preventDefault(); pick(matches[hi]); }
+    else if (e.key === 'Escape') { setOpen(false); }
+  };
+
+  return (
+    <div ref={boxRef} style={{ position:'relative' }}>
+      <input
+        style={fInput}
+        value={open ? query : value}
+        onChange={e => { setQuery(e.target.value); setOpen(true); setHi(0); }}
+        onFocus={() => { setQuery(''); setOpen(true); setHi(0); }}
+        onKeyDown={onKey}
+        placeholder="Type to search programs…"
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+      />
+      {open && (
+        <ul style={progDrop}>
+          {matches.length === 0 ? (
+            <li style={{ ...progOpt, color:'#94a3b8', cursor:'default' }}>No matching programs</li>
+          ) : matches.map((o, i) => (
+            <li key={o}
+              onMouseDown={e => { e.preventDefault(); pick(o); }}
+              onMouseEnter={() => setHi(i)}
+              style={{ ...progOpt, background: i === hi ? '#eff4fb' : '#fff', fontWeight: o === value ? 700 : 400 }}>
+              {o}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function EnrollmentModal({ onClose, term, programs }) {
   const [step, setStep]       = useState(1);
   const [dir, setDir]         = useState('fwd');
@@ -1938,12 +1995,8 @@ function EnrollmentModal({ onClose, term, programs }) {
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Program</label>
-                          <input style={fInput} list="adm-prog-list" value={form.program}
-                            onChange={e => update('program', e.target.value)}
-                            placeholder="Type to search programs…" autoComplete="off" />
-                          <datalist id="adm-prog-list">
-                            {progList.map(n => <option key={n} value={n} />)}
-                          </datalist>
+                          <ProgramSearchSelect value={form.program} options={progList}
+                            onChange={v => update('program', v)} />
                         </div>
                       </div>
                     </div>
@@ -2062,5 +2115,7 @@ const panel      = dir => ({ display:'flex', flexDirection:'column', flex:1, ani
 const fRow       = { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 };
 const fLabel     = { fontSize:11, fontWeight:700, color:'#5a7a9a', display:'block', marginBottom:5, textTransform:'uppercase', letterSpacing:'.05em' };
 const fInput     = { width:'100%', padding:'9px 12px', border:'1px solid #d0dcea', borderRadius:8, fontSize:13, background:'#fff', color:'#0a1628', outline:'none', boxSizing:'border-box' };
+const progDrop   = { position:'absolute', top:'calc(100% + 4px)', left:0, right:0, zIndex:40, margin:0, padding:'4px 0', listStyle:'none', background:'#fff', border:'1px solid #d0dcea', borderRadius:8, boxShadow:'0 8px 24px rgba(10,58,110,.14)', maxHeight:220, overflowY:'auto' };
+const progOpt    = { padding:'8px 12px', fontSize:13, color:'#0a1628', cursor:'pointer', whiteSpace:'normal' };
 const hintBox    = { padding:'12px 14px', border:'1px solid #c8d8f0', borderRadius:8, background:'#f0f6ff', fontSize:12, color:'#2a4a6e', display:'flex', gap:8, alignItems:'flex-start' };
 const unitPill   = { fontSize:12, padding:'4px 12px', borderRadius:99, background:'#eef3fb', border:'.5px solid #c8d8f0', color:'#5a7a9a' };
