@@ -105,21 +105,23 @@ class FacultyTeachingLoadView(generics.ListAPIView):
 def auto_roster_block_students(assignment):
     """Fill the class roster automatically from registrar-approved enrollments.
 
-    Every student approved into this class's block (and enrolled in this
-    subject) gets a GradeRecord, so the faculty never has to add them by hand.
-    Idempotent: existing records are kept (and re-linked to this assignment if
-    they were created before it existed); only missing ones are created.
+    Classes are block-based: every student approved into this class's block for
+    the term takes the block's subjects, so each gets a GradeRecord and the
+    faculty never has to add them by hand. This mirrors the block-cohort count
+    shown on the teaching-load view, so the roster and the "enrolled" counter
+    always agree. Idempotent: existing records are kept (and re-linked to this
+    assignment if they were created before it existed); only missing ones are
+    created.
     """
     if not assignment.block_id:
         return
-    from enrollment.models import EnrollmentSubject
+    from enrollment.models import EnrollmentRequest
     student_ids = set(
-        EnrollmentSubject.objects.filter(
-            subject=assignment.subject,
-            enrollment__block_id=assignment.block_id,
-            enrollment__academic_term=assignment.academic_term,
-            enrollment__status='approved',
-        ).values_list('enrollment__student_id', flat=True)
+        EnrollmentRequest.objects.filter(
+            block_id=assignment.block_id,
+            academic_term=assignment.academic_term,
+            status='approved',
+        ).values_list('student_id', flat=True)
     )
     if not student_ids:
         return
