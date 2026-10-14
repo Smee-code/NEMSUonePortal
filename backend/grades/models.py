@@ -69,6 +69,8 @@ class GradeRecord(models.Model):
     academic_term = models.ForeignKey(
         'enrollment.AcademicTerm',
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name='grade_records',
     )
     teaching_assignment = models.ForeignKey(
@@ -87,6 +89,10 @@ class GradeRecord(models.Model):
     # all finals. INC marks a stage as "incomplete" (stays editable after submit);
     # DRP marks the student as dropped (whole row disabled, counts as settled).
     is_dropped = models.BooleanField(default=False)
+    # A credited (transfer) grade entered manually by the registrar/admin for a
+    # subject the student took elsewhere. Has no academic term and no teaching
+    # assignment; it exists so a transferee's curriculum subjects can be credited.
+    is_credited = models.BooleanField(default=False)
     midterm_is_inc = models.BooleanField(default=False)
     final_is_inc = models.BooleanField(default=False)
     midterm_submitted = models.BooleanField(default=False)

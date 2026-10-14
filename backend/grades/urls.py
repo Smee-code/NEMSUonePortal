@@ -22,6 +22,7 @@ urlpatterns = [
     path('registrar/faculty/', views.RegistrarFacultyListView.as_view(), name='registrar-faculty-list'),
     path('registrar/faculty/<uuid:pk>/', views.RegistrarFacultyDetailView.as_view(), name='registrar-faculty-detail'),
     path('registrar/student/<uuid:pk>/', views.RegistrarStudentGradeHistoryView.as_view(), name='registrar-student-grade-history'),
+    path('registrar/student/<uuid:pk>/curriculum/', views.RegistrarStudentCurriculumGradesView.as_view(), name='registrar-student-curriculum-grades'),
 
     # Admin / Registrar — teaching assignment management
     path('admin/assignments/', views.AdminTeachingAssignmentListCreateView.as_view(), name='admin-assignments'),

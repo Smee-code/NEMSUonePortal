@@ -11,6 +11,8 @@ export default function RegistrarStudentGradeHistory() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [view, setView] = useState('history');   // 'history' | 'curriculum'
+  const [curriculum, setCurriculum] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -20,6 +22,16 @@ export default function RegistrarStudentGradeHistory() {
       .catch(() => setError('Failed to load grade history.'))
       .finally(() => setLoading(false));
   }, [studentId]);
+
+  const loadCurriculum = () => {
+    api.get(`/grades/registrar/student/${studentId}/curriculum/`)
+      .then(res => setCurriculum(res.data))
+      .catch(() => setError('Failed to load the curriculum.'));
+  };
+
+  useEffect(() => {
+    if (view === 'curriculum' && curriculum === null) loadCurriculum();
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function gradeColor(grade) {
     const n = parseFloat(grade);
@@ -122,9 +134,27 @@ export default function RegistrarStudentGradeHistory() {
               </div>
             </div>
 
-            {terms.length === 0 ? (
+            {/* Tabs */}
+            <div style={styles.tabBar}>
+              <button type="button" style={view === 'history' ? styles.tabActive : styles.tab} onClick={() => setView('history')}>
+                <i className="ti ti-history" /> Grade history
+              </button>
+              <button type="button" style={view === 'curriculum' ? styles.tabActive : styles.tab} onClick={() => setView('curriculum')}>
+                <i className="ti ti-list-check" /> Curriculum &amp; crediting
+              </button>
+            </div>
+
+            {view === 'curriculum' ? (
+              <CurriculumSection
+                studentId={studentId}
+                curriculum={curriculum}
+                reload={loadCurriculum}
+                gradeColor={gradeColor}
+                getStatus={getStatus}
+              />
+            ) : terms.length === 0 ? (
               <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '1rem' }}>
-                No submitted grade records found for this student.
+                No submitted grade records found for this student. Use <strong>Curriculum &amp; crediting</strong> to enter credited (transfer) grades.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1rem' }}>
@@ -256,7 +286,158 @@ function TermBlock({ term, semNumber, gradeColor, gpaColor, getStatus }) {
   );
 }
 
+function CurriculumSection({ studentId, curriculum, reload, gradeColor, getStatus }) {
+  if (curriculum === null) return <p style={{ color: '#6b7280', marginTop: '1rem' }}>Loading curriculum…</p>;
+
+  if (!curriculum.has_curriculum && (curriculum.curriculum || []).length === 0) {
+    return (
+      <div style={{ ...styles.alertError, background: '#fef3c7', color: '#92400e', marginTop: '1rem' }}>
+        This student has no program or curriculum set, so there are no courses to display.
+        Set the student’s program and year level first (from the student record).
+      </div>
+    );
+  }
+
+  const groups = curriculum.curriculum || [];
+  const allSubjects = groups.flatMap(g => g.subjects);
+  const gradedCount = allSubjects.filter(s => s.grade).length;
+
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      <div style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+        Courses from <strong>{curriculum.student?.curriculum_code || curriculum.student?.program_code || 'the program'}</strong>.
+        Enter a grade on any ungraded subject to credit it (for transferees). Subjects already graded in a class are shown read-only.
+        <span style={{ marginLeft: 8, fontWeight: 600, color: '#374151' }}>{gradedCount} of {allSubjects.length} with a grade</span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {groups.map((g, gi) => (
+          <div key={gi} style={styles.yearGroup}>
+            <div style={{ ...styles.yearGroupHeader, background: '#f9fafb' }}>
+              <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem' }}>
+                {g.year_level_display} · {g.semester_display}
+              </span>
+              <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{g.subjects.length} subject{g.subjects.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    {['Subject Code', 'Subject Name', 'Units', 'Midterm', 'Final', 'Grade', 'Remarks', ''].map(h => (
+                      <th key={h} style={styles.th}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.subjects.map(s => (
+                    <CurriculumRow
+                      key={s.subject_id}
+                      s={s}
+                      studentId={studentId}
+                      reload={reload}
+                      gradeColor={gradeColor}
+                      getStatus={getStatus}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CurriculumRow({ s, studentId, reload, gradeColor, getStatus }) {
+  const [form, setForm] = useState({
+    grade: s.grade || '', midterm: s.midterm_grade || '', final: s.final_grade || '', remarks: s.remarks || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  async function save() {
+    if (!form.grade.trim()) { setErr('Grade is required.'); return; }
+    setSaving(true); setErr('');
+    try {
+      await api.post(`/grades/registrar/student/${studentId}/curriculum/`, {
+        subject_id: s.subject_id,
+        grade: form.grade.trim(),
+        midterm_grade: form.midterm.trim() || null,
+        final_grade: form.final.trim() || null,
+        remarks: form.remarks.trim(),
+      });
+      reload();
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to save.');
+    } finally { setSaving(false); }
+  }
+
+  async function remove() {
+    setSaving(true); setErr('');
+    try {
+      await api.delete(`/grades/registrar/student/${studentId}/curriculum/?subject=${s.subject_id}`);
+      reload();
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to remove.');
+    } finally { setSaving(false); }
+  }
+
+  // Faculty class grade — read-only here.
+  if (!s.editable) {
+    const status = getStatus(s.grade);
+    return (
+      <tr>
+        <td style={{ ...styles.td, fontWeight: 600 }}>{s.code}</td>
+        <td style={{ ...styles.td, color: '#374151' }}>{s.name}</td>
+        <td style={{ ...styles.td, textAlign: 'center' }}>{s.units}</td>
+        <td style={{ ...styles.td, textAlign: 'center', color: '#6b7280' }}>{s.midterm_grade || '-'}</td>
+        <td style={{ ...styles.td, textAlign: 'center', color: '#6b7280' }}>{s.final_grade || '-'}</td>
+        <td style={{ ...styles.td, textAlign: 'center', fontWeight: 700, color: gradeColor(s.grade) }}>{s.grade || '-'}</td>
+        <td style={styles.td} colSpan={2}>
+          {status && <span style={{ background: status.bg, color: status.color, fontWeight: 700, fontSize: '0.75rem', padding: '0.1rem 0.5rem', borderRadius: 20 }}>{status.label}</span>}
+          <span style={{ marginLeft: 8, fontSize: '0.75rem', color: '#9ca3af' }}>{s.term_display ? `Class grade · ${s.term_display}` : 'Class grade'}</span>
+        </td>
+      </tr>
+    );
+  }
+
+  // Editable (ungraded, or already credited) — inline entry.
+  return (
+    <tr style={s.is_credited ? { background: '#f0fdf4' } : undefined}>
+      <td style={{ ...styles.td, fontWeight: 600 }}>{s.code}</td>
+      <td style={{ ...styles.td, color: '#374151' }}>{s.name}</td>
+      <td style={{ ...styles.td, textAlign: 'center' }}>{s.units}</td>
+      <td style={styles.td}><input style={styles.gradeInput} value={form.midterm} onChange={e => set('midterm', e.target.value)} placeholder="—" inputMode="decimal" /></td>
+      <td style={styles.td}><input style={styles.gradeInput} value={form.final} onChange={e => set('final', e.target.value)} placeholder="—" inputMode="decimal" /></td>
+      <td style={styles.td}><input style={{ ...styles.gradeInput, fontWeight: 700 }} value={form.grade} onChange={e => set('grade', e.target.value)} placeholder="1.00" inputMode="decimal" /></td>
+      <td style={styles.td}>
+        <input style={styles.remarksInput} value={form.remarks} onChange={e => set('remarks', e.target.value)} placeholder="Credited" />
+        {err && <div style={{ color: '#dc2626', fontSize: '0.72rem', marginTop: 2 }}>{err}</div>}
+      </td>
+      <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+        <button type="button" style={styles.saveBtn} disabled={saving} onClick={save}>
+          {saving ? '…' : s.is_credited ? 'Update' : 'Credit'}
+        </button>
+        {s.is_credited && (
+          <button type="button" style={styles.removeBtn} disabled={saving} onClick={remove} title="Remove credited grade">
+            <i className="ti ti-trash" />
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 const styles = {
+  tabBar: { display: 'flex', gap: '0.5rem', margin: '1rem 0 0.25rem' },
+  tab: { display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #e5e7eb', color: '#6b7280', padding: '0.45rem 0.9rem', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 },
+  tabActive: { display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0a3a6e', border: '1px solid #0a3a6e', color: '#fff', padding: '0.45rem 0.9rem', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 },
+  gradeInput: { width: 58, padding: '5px 6px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem', textAlign: 'center', boxSizing: 'border-box' },
+  remarksInput: { width: '100%', minWidth: 120, padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.82rem', boxSizing: 'border-box' },
+  saveBtn: { background: '#0a3a6e', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' },
+  removeBtn: { background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 6, padding: '5px 8px', fontSize: '0.8rem', cursor: 'pointer', marginLeft: 6 },
   backBtn: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     background: '#fff', border: '1px solid #e5e7eb',

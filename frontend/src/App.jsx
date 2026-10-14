@@ -144,6 +144,7 @@ export default function App() {
             <Route path="dashboard"    element={<AdminDashboard />} />
             <Route path="users"        element={<AdminUserManagement />} />
             <Route path="students"     element={<AdminStudents />} />
+            <Route path="grades/student/:studentId" element={<RegistrarStudentGradeHistory />} />
             <Route path="faculty"      element={<AdminFaculty />} />
             <Route path="programs"     element={<AdminPrograms />} />
             <Route path="blocks"       element={<AdminBlocks />} />

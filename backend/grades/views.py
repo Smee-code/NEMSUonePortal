@@ -74,7 +74,7 @@ class StudentGradeListView(generics.ListAPIView):
     def get_queryset(self):
         return (
             GradeRecord.objects
-            .filter(student=self.request.user)
+            .filter(student=self.request.user, academic_term__isnull=False)
             .select_related(
                 'subject', 'academic_term',
                 'teaching_assignment', 'teaching_assignment__faculty',
@@ -821,7 +821,7 @@ class RegistrarStudentGradeHistoryView(APIView):
 
         records = (
             GradeRecord.objects
-            .filter(student=student, is_submitted=True)
+            .filter(student=student, is_submitted=True, academic_term__isnull=False)
             .select_related('subject', 'academic_term', 'encoded_by')
             .order_by('academic_term__year', 'academic_term__semester', 'subject__code')
         )
@@ -949,6 +949,181 @@ class RegistrarStudentGradeHistoryView(APIView):
             },
             'terms': terms_list,
         })
+
+
+class RegistrarStudentCurriculumGradesView(APIView):
+    """
+    GET    /api/grades/registrar/student/<uuid:pk>/curriculum/
+           The student's program curriculum grouped by year level + semester, with
+           each subject's grade (faculty-encoded, credited, or none) so the
+           registrar/admin can see what still needs crediting.
+    POST   /api/grades/registrar/student/<uuid:pk>/curriculum/
+           Credit a grade manually for one subject (transfer credit). Body:
+           {subject_id, grade, midterm_grade?, final_grade?, remarks?}.
+    DELETE /api/grades/registrar/student/<uuid:pk>/curriculum/?subject=<id>
+           Remove a credited grade.
+    """
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+
+    SEM_ORDER = {'first': 0, 'second': 1, 'summer': 2}
+    YEAR_LABELS = {1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year'}
+
+    def _get_student(self, pk):
+        return (User.objects.select_related('program', 'curriculum')
+                .filter(id=pk, role='student').first())
+
+    def _curriculum_subjects(self, student):
+        from enrollment.models import Subject
+        if student.curriculum_id:
+            qs = student.curriculum.subjects.all()
+        elif student.program_id:
+            qs = Subject.objects.filter(program=student.program)
+        else:
+            qs = Subject.objects.none()
+        return qs.filter(is_active=True)
+
+    def get(self, request, pk):
+        from enrollment.models import Subject
+        student = self._get_student(pk)
+        if not student:
+            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        subjects = list(self._curriculum_subjects(student).order_by('year_level', 'code'))
+        grecs = {
+            gr.subject_id: gr for gr in
+            GradeRecord.objects.filter(student=student).select_related('academic_term')
+        }
+        sem_display = dict(Subject.SEMESTER_CHOICES)
+
+        groups = {}
+        for s in subjects:
+            gr = grecs.get(s.id)
+            key = (s.year_level or 99, self.SEM_ORDER.get(s.semester, 9))
+            grp = groups.setdefault(key, {
+                'year_level': s.year_level,
+                'year_level_display': self.YEAR_LABELS.get(s.year_level, 'Unassigned'),
+                'semester': s.semester,
+                'semester_display': sem_display.get(s.semester, 'Unassigned'),
+                'subjects': [],
+            })
+            grp['subjects'].append({
+                'subject_id': s.id,
+                'code': s.code,
+                'name': s.name,
+                'units': float(s.units),
+                'subject_type': s.subject_type,
+                'grade_record_id': str(gr.id) if gr else None,
+                'grade': (gr.grade if gr else '') or '',
+                'midterm_grade': str(gr.midterm_grade) if gr and gr.midterm_grade is not None else '',
+                'final_grade': str(gr.final_grade) if gr and gr.final_grade is not None else '',
+                'remarks': (gr.remarks if gr else '') or '',
+                'is_credited': bool(gr.is_credited) if gr else False,
+                'is_submitted': bool(gr.is_submitted) if gr else False,
+                'term_display': str(gr.academic_term) if gr and gr.academic_term_id else None,
+                # A faculty class grade (has a term, not credited) is read-only here;
+                # empty or credited subjects can be entered/edited by the registrar.
+                'editable': gr is None or bool(gr.is_credited),
+            })
+
+        result = [groups[k] for k in sorted(groups.keys())]
+        _audit(request.user, request.user.role, 'student_curriculum_grades_accessed',
+               request.path, get_client_ip(request), 'success', {'student': str(student.id)})
+        return Response({
+            'student': {
+                'id': str(student.id),
+                'student_id': student.student_id,
+                'full_name': student.full_name,
+                'program_code': student.program.code if student.program_id else None,
+                'program_name': student.program.name if student.program_id else None,
+                'curriculum_code': student.curriculum.code if student.curriculum_id else None,
+                'year_level_display': student.get_year_level_display() if student.year_level else None,
+            },
+            'has_curriculum': bool(student.curriculum_id),
+            'curriculum': result,
+        })
+
+    def post(self, request, pk):
+        from enrollment.models import Subject
+        student = self._get_student(pk)
+        if not student:
+            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            subject = self._curriculum_subjects(student).get(pk=request.data.get('subject_id'))
+        except (Subject.DoesNotExist, ValueError, TypeError):
+            return Response({'error': "That subject is not in the student's curriculum."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        def parse_dec(v):
+            v = (str(v).strip() if v is not None else '')
+            if v == '':
+                return None
+            return Decimal(v)
+
+        try:
+            midterm = parse_dec(request.data.get('midterm_grade'))
+            final = parse_dec(request.data.get('final_grade'))
+        except (InvalidOperation, ValueError):
+            return Response({'error': 'Midterm and final must be numbers.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        grade = (request.data.get('grade') or '').strip()
+        if not grade:
+            return Response({'error': 'A grade is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if grade.upper() not in ('INC', 'DRP'):
+            try:
+                gd = Decimal(grade)
+            except InvalidOperation:
+                return Response({'error': 'Grade must be a number from 1.00 to 5.00, or INC/DRP.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if not (Decimal('1.00') <= gd <= Decimal('5.00')):
+                return Response({'error': 'Grade must be between 1.00 and 5.00.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        existing = GradeRecord.objects.filter(student=student, subject=subject).first()
+        if existing and existing.academic_term_id and not existing.is_credited:
+            return Response(
+                {'error': 'This subject already has a class grade and cannot be credited manually.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rec = existing or GradeRecord(student=student, subject=subject)
+        rec.academic_term = None
+        rec.teaching_assignment = None
+        rec.is_credited = True
+        rec.grade = grade
+        rec.midterm_grade = midterm
+        rec.final_grade = final
+        rec.remarks = (request.data.get('remarks') or '').strip() or 'Credited'
+        rec.is_submitted = True
+        rec.submitted_at = timezone.now()
+        rec.final_submitted = True
+        rec.final_submitted_at = timezone.now()
+        rec.encoded_by = request.user
+        rec.save()
+
+        _audit(request.user, request.user.role, 'student_grade_credited',
+               request.path, get_client_ip(request), 'success',
+               {'student': str(student.id), 'subject': subject.code, 'grade': grade})
+        return Response({'message': f'Grade credited for {subject.code}.',
+                         'grade_record_id': str(rec.id)}, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk):
+        student = self._get_student(pk)
+        if not student:
+            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+        rec = GradeRecord.objects.filter(
+            student=student, subject_id=request.query_params.get('subject'), is_credited=True,
+        ).first()
+        if not rec:
+            return Response({'error': 'No credited grade for that subject.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        code = rec.subject.code
+        rec.delete()
+        _audit(request.user, request.user.role, 'student_grade_credit_removed',
+               request.path, get_client_ip(request), 'success',
+               {'student': str(student.id), 'subject': code})
+        return Response({'message': f'Removed credited grade for {code}.'})
 
 
 # ── Admin / Registrar — Teaching Assignment management ────────────────────────
