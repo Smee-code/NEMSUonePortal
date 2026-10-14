@@ -430,8 +430,11 @@ export default function FacultyGradeEncoding() {
                   onClick={() => { setSelectedAssignment(String(a.id)); setError(''); setSearch(''); setForceStage(''); }}
                   title={`${a.subject_name} (${a.subject_units} units)`}
                 >
-                  <span className="ge-subject-code">{a.subject_code}{a.section ? ` [${a.section}]` : ''}</span>
+                  <span className="ge-subject-code">{a.subject_code}{(a.block_name || a.section) ? ` [${a.block_name || a.section}]` : ''}</span>
                   <span className="ge-subject-name">{a.subject_name}</span>
+                  {(a.program_code || a.year_level_display) && (
+                    <span className="ge-subject-ctx">{[a.program_code, a.year_level_display].filter(Boolean).join(' · ')}</span>
+                  )}
                 </button>
               ))}
             </>
@@ -439,8 +442,18 @@ export default function FacultyGradeEncoding() {
         </aside>
 
         <div className="ge-main">
-          {selectedAssignment && (
-            <div className="toolbar" style={{ marginBottom: '1rem' }}>
+          {selectedAssignment && assignment && (
+            <div className="toolbar" style={{ marginBottom: '1rem', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>
+                  {assignment.subject_code}{(assignment.block_name || assignment.section) ? ` · ${assignment.block_name || assignment.section}` : ''}
+                </div>
+                {[assignment.program_name || assignment.program_code, assignment.year_level_display].filter(Boolean).length > 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                    {[assignment.program_name || assignment.program_code, assignment.year_level_display].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+              </div>
               <div className="toolbar-search" style={{ marginLeft: 'auto' }}>
                 <i className="ti ti-search" />
                 <input
@@ -646,6 +659,7 @@ const CSS = `
   .ge-subject-code{display:block;font-size:11px;font-weight:700;color:var(--gold);
     text-transform:uppercase;letter-spacing:.08em;}
   .ge-subject-name{display:block;font-size:12px;color:var(--ink);margin-top:2px;font-weight:500;}
+  .ge-subject-ctx{display:block;font-size:10.5px;color:var(--muted);margin-top:3px;}
 
   /* Auto-save row indicator */
   .ge-save{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;

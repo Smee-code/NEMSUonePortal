@@ -19,6 +19,10 @@ class TeachingAssignmentSerializer(serializers.ModelSerializer):
     term_display = serializers.SerializerMethodField(read_only=True)
     term_id = serializers.IntegerField(source='academic_term.id', read_only=True)
     block_name = serializers.SerializerMethodField(read_only=True)
+    program_code = serializers.SerializerMethodField(read_only=True)
+    program_name = serializers.SerializerMethodField(read_only=True)
+    year_level = serializers.SerializerMethodField(read_only=True)
+    year_level_display = serializers.SerializerMethodField(read_only=True)
 
     faculty_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role='faculty'),
@@ -42,7 +46,8 @@ class TeachingAssignmentSerializer(serializers.ModelSerializer):
             'id', 'faculty_id', 'faculty_name',
             'subject_id', 'subject_code', 'subject_name', 'subject_units',
             'academic_term_id', 'term_id', 'term_display',
-            'block_name', 'section', 'assigned_at',
+            'block_name', 'program_code', 'program_name',
+            'year_level', 'year_level_display', 'section', 'assigned_at',
         ]
 
     def get_term_display(self, obj):
@@ -50,6 +55,18 @@ class TeachingAssignmentSerializer(serializers.ModelSerializer):
 
     def get_block_name(self, obj):
         return obj.block.name if obj.block_id else None
+
+    def get_program_code(self, obj):
+        return obj.block.program.code if obj.block_id and obj.block.program_id else None
+
+    def get_program_name(self, obj):
+        return obj.block.program.name if obj.block_id and obj.block.program_id else None
+
+    def get_year_level(self, obj):
+        return obj.block.year_level if obj.block_id else None
+
+    def get_year_level_display(self, obj):
+        return obj.block.get_year_level_display() if obj.block_id else None
 
     def create(self, validated_data):
         validated_data['assigned_by'] = self.context['request'].user

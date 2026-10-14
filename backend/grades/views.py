@@ -94,7 +94,7 @@ class FacultyTeachingLoadView(generics.ListAPIView):
         qs = (
             TeachingAssignment.objects
             .filter(faculty=self.request.user)
-            .select_related('subject', 'academic_term')
+            .select_related('subject', 'academic_term', 'block', 'block__program')
         )
         term_id = self.request.query_params.get('term')
         if term_id and term_id.isdigit():

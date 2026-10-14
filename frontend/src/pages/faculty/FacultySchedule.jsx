@@ -489,10 +489,13 @@ export default function FacultyTeachingLoad() {
                   <div className="tl-head-info">
                     <div className="tl-head-title">
                       <span className="tl-code">{ta.subject_code}</span>
-                      {ta.section && <span className="tl-sec">{ta.section}</span>}
+                      {(ta.block_name || ta.section) && <span className="tl-sec">{ta.block_name || ta.section}</span>}
                       <span className="tl-name">{ta.subject_name}</span>
                     </div>
                     <div className="tl-meta">
+                      {[ta.program_code, ta.year_level_display].filter(Boolean).length > 0 && (
+                        <><span>{[ta.program_code, ta.year_level_display].filter(Boolean).join(' · ')}</span><span className="tl-dot">·</span></>
+                      )}
                       <span>{ta.subject_units} unit{Number(ta.subject_units) !== 1 ? 's' : ''}</span>
                       <span className="tl-dot">·</span>
                       <span>{ta.student_count} student{ta.student_count !== 1 ? 's' : ''}</span>

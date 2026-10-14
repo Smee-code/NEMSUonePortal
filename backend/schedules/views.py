@@ -271,7 +271,7 @@ class FacultyScheduleView(APIView):
 
         ta_qs = TeachingAssignment.objects.filter(
             faculty=request.user,
-        ).select_related('subject', 'academic_term')
+        ).select_related('subject', 'academic_term', 'block', 'block__program')
 
         if term_id and term_id.isdigit():
             ta_qs = ta_qs.filter(academic_term_id=int(term_id))
@@ -299,12 +299,18 @@ class FacultyScheduleView(APIView):
                 )
             student_count = len(student_ids)
 
+            block = ta.block if ta.block_id else None
             result.append({
                 'teaching_assignment_id': ta.id,
                 'subject_code': ta.subject.code,
                 'subject_name': ta.subject.name,
                 'subject_units': ta.subject.units,
                 'section': ta.section,
+                'block_name': block.name if block else None,
+                'program_code': block.program.code if block and block.program_id else None,
+                'program_name': block.program.name if block and block.program_id else None,
+                'year_level': block.year_level if block else None,
+                'year_level_display': block.get_year_level_display() if block else None,
                 'term': str(ta.academic_term),
                 'term_id': ta.academic_term.id,
                 'student_count': student_count,

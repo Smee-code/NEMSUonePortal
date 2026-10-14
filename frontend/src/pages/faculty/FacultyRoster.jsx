@@ -166,7 +166,10 @@ export default function FacultyRoster() {
                   <span className="ro-subject-count">{a.student_count}</span>
                 </div>
                 <div className="ro-subject-name">{a.subject_name}</div>
-                {a.section && <span className="ro-subject-sec">{a.section}</span>}
+                {(a.block_name || a.section) && <span className="ro-subject-sec">{a.block_name || a.section}</span>}
+                {(a.program_code || a.year_level_display) && (
+                  <span className="ro-subject-ctx">{[a.program_code, a.year_level_display].filter(Boolean).join(' · ')}</span>
+                )}
               </button>
             ))}
           </div>
@@ -177,11 +180,16 @@ export default function FacultyRoster() {
               <div className="ro-subject-header">
                 <div>
                   <div style={{ fontSize: 11, letterSpacing: '.1em', color: 'var(--gold)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
-                    {selected.subject_code}{selected.section ? ` · ${selected.section}` : ''}
+                    {selected.subject_code}{(selected.block_name || selected.section) ? ` · ${selected.block_name || selected.section}` : ''}
                   </div>
                   <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 500, fontSize: 19, color: 'var(--ink)', marginBottom: 3 }}>
                     {selected.subject_name}
                   </div>
+                  {[selected.program_name || selected.program_code, selected.year_level_display, selected.block_name].filter(Boolean).length > 0 && (
+                    <div style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 500, marginBottom: 2 }}>
+                      {[selected.program_name || selected.program_code, selected.year_level_display, selected.block_name].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
                   <div style={{ fontSize: 12, color: 'var(--muted)' }}>
                     {selected.student_count} student{selected.student_count !== 1 ? 's' : ''}
                     {schedLabel ? ` · ${schedLabel}` : ''}
@@ -367,6 +375,7 @@ const CSS = `
     letter-spacing: .04em; color: var(--gold); background: var(--gold-tint);
     padding: 2px 7px;
   }
+  .ro-subject-ctx { display: block; margin-top: 5px; font-size: 10.5px; color: var(--muted); }
 
   /* Subject header */
   .ro-subject-header {

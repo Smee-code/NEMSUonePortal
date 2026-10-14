@@ -72,6 +72,9 @@ export default function FacultyMySchedule() {
         subject_code: course.subject_code,
         subject_name: course.subject_name,
         section:      course.section,
+        block_name:   course.block_name,
+        program_code: course.program_code,
+        year_level_display: course.year_level_display,
         student_count: course.student_count,
         color:        subjectColor(course.subject_code, allCodes),
       });
@@ -183,15 +186,15 @@ export default function FacultyMySchedule() {
                           return (
                             <div key={i} className="sch-block"
                               style={{ top, height, background: s.color }}
-                              title={`${s.subject_code} — ${s.subject_name}\n${formatTime(s.start_time)} – ${formatTime(s.end_time)}\n${s.room || 'Room to be assigned'}${s.section ? `\n${s.section}` : ''}`}
+                              title={`${s.subject_code} — ${s.subject_name}\n${formatTime(s.start_time)} – ${formatTime(s.end_time)}\n${s.room || 'Room to be assigned'}${[s.program_code, s.year_level_display, s.block_name].filter(Boolean).length ? `\n${[s.program_code, s.year_level_display, s.block_name].filter(Boolean).join(' · ')}` : ''}`}
                             >
                               <div className="sch-block-code">{s.subject_code}</div>
                               <div className="sch-block-room">{s.room || 'Room TBA'}</div>
                               {height >= 56 && (
                                 <div className="sch-block-time">{formatTime(s.start_time)} – {formatTime(s.end_time)}</div>
                               )}
-                              {height >= 82 && s.section && (
-                                <div className="sch-block-fac">{s.section}</div>
+                              {height >= 82 && (s.block_name || s.section) && (
+                                <div className="sch-block-fac">{s.block_name || s.section}</div>
                               )}
                             </div>
                           );
@@ -216,7 +219,10 @@ export default function FacultyMySchedule() {
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div className="sch-ag-code">{s.subject_code}<span className="sch-ag-nm"> · {s.subject_name}</span></div>
                             <div className="sch-ag-time">{formatTime(s.start_time)} – {formatTime(s.end_time)}</div>
-                            <div className="sch-ag-meta">{s.room || 'Room to be assigned'}{s.section ? ` · ${s.section}` : ''}</div>
+                            <div className="sch-ag-meta">
+                              {s.room || 'Room to be assigned'}
+                              {[s.program_code, s.year_level_display, s.block_name].filter(Boolean).length ? ` · ${[s.program_code, s.year_level_display, s.block_name].filter(Boolean).join(' · ')}` : ''}
+                            </div>
                           </div>
                         </div>
                       ))}
