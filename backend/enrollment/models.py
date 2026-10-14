@@ -490,6 +490,11 @@ class PendingEnrollment(models.Model):
     otp                      = models.CharField(max_length=6, blank=True)
     otp_expires              = models.DateTimeField(null=True, blank=True)
 
+    # Extended enrollment-form data captured at application time (address, civil
+    # status, education background, parents, etc.) for the registrar to review.
+    # Kept as JSON so the long paper form maps here without ~25 extra columns.
+    details = models.JSONField(default=dict, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

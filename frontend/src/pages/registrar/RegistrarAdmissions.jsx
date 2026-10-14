@@ -323,6 +323,64 @@ export default function RegistrarAdmissions() {
               <div style={{ marginTop: 2 }}>{selected.email} &nbsp;·&nbsp; Ref: <strong>{selected.reference_number}</strong></div>
             </div>
 
+            {/* Applicant details (from the enrollment form) */}
+            {(() => {
+              const d = selected.details || {};
+              const addr = d.address || {};
+              const edu = d.education || {};
+              const par = d.parents || {};
+              const sp = d.spouse || null;
+              const YL = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year' };
+              const sch = o => (o ? `${o.school || '-'}${o.year_graduated ? ` (${o.year_graduated})` : ''}` : null);
+              const Row = ({ k, v }) => (v ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', fontSize: '.8rem', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ color: 'var(--reg-muted)', flexShrink: 0 }}>{k}</span>
+                  <span style={{ color: 'var(--reg-ink-2)', fontWeight: 500, textAlign: 'right' }}>{v}</span>
+                </div>
+              ) : null);
+              const Sec = ({ t, children }) => (
+                <div style={{ marginBottom: '.6rem' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--reg-gold)', margin: '0 0 2px' }}>{t}</div>
+                  {children}
+                </div>
+              );
+              return (
+                <div style={{ marginBottom: '1rem', border: '1px solid var(--reg-line)', padding: '10px 14px', background: '#fff' }}>
+                  <Sec t="Personal">
+                    <Row k="Middle name" v={selected.middle_name} />
+                    <Row k="Suffix" v={selected.suffix} />
+                    <Row k="Contact" v={selected.contact_number} />
+                    <Row k="Date of birth" v={selected.date_of_birth} />
+                    <Row k="Birthplace" v={d.birthplace} />
+                    <Row k="Sex" v={selected.sex} />
+                    <Row k="Civil status" v={d.civil_status} />
+                    <Row k="Citizenship" v={d.citizenship} />
+                    <Row k="Religion" v={d.religion} />
+                    <Row k="Ethnicity" v={d.ethnicity} />
+                    <Row k="Major" v={d.major} />
+                    <Row k="Year level" v={YL[selected.year_level]} />
+                  </Sec>
+                  {(addr.brgy || addr.town || addr.province) && (
+                    <Sec t="Address"><Row k="Current address" v={[addr.brgy, addr.town, addr.province, addr.zip].filter(Boolean).join(', ')} /></Sec>
+                  )}
+                  {sp && (sp.name || sp.address) && (
+                    <Sec t="Spouse"><Row k="Name" v={sp.name} /><Row k="Address" v={sp.address} /></Sec>
+                  )}
+                  {(par.father || par.mother || par.address) && (
+                    <Sec t="Parent / Guardian"><Row k="Father" v={par.father} /><Row k="Mother" v={par.mother} /><Row k="Address" v={par.address} /></Sec>
+                  )}
+                  {(edu.elementary || edu.junior_high || edu.senior_high) && (
+                    <Sec t="Education">
+                      <Row k="Elementary" v={sch(edu.elementary)} />
+                      <Row k="Junior High" v={sch(edu.junior_high)} />
+                      <Row k="Senior High" v={sch(edu.senior_high)} />
+                      {edu.last_attended && <Row k="Last attended" v={sch(edu.last_attended)} />}
+                    </Sec>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Documents */}
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '.85rem', color: 'var(--reg-ink-2)', marginBottom: '.5rem', display: 'flex', alignItems: 'center', gap: 6 }}>

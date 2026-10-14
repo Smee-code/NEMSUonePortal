@@ -143,6 +143,9 @@ class PublicPreEnrollView(APIView):
                 or Program.objects.filter(name__icontains=name, is_active=True).first()
             )
 
+        # Freshmen are always 1st year; transferees pick their level.
+        year_level = 1 if d['student_type'] == 'new' else d.get('year_level', 1)
+
         pending = PendingEnrollment.objects.create(
             student_type   = d['student_type'],
             first_name     = first_name,
@@ -154,9 +157,10 @@ class PublicPreEnrollView(APIView):
             date_of_birth  = d.get('date_of_birth'),
             sex            = d.get('sex', ''),
             program        = program,
-            year_level     = d.get('year_level', 1),
+            year_level     = year_level,
             academic_term  = d.get('term_id'),
             assigned_student_id = student_id if d['student_type'] == 'returnee' else '',
+            details        = d.get('details') or {},
         )
 
         _audit(

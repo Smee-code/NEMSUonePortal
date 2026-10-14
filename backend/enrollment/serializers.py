@@ -342,6 +342,8 @@ class PendingEnrollmentCreateSerializer(serializers.Serializer):
     program_id     = serializers.IntegerField(required=False, allow_null=True, default=None)
     year_level     = serializers.IntegerField(min_value=1, max_value=4, default=1)
     term_id        = serializers.IntegerField(required=False, allow_null=True, default=None)
+    # Extended enrollment-form fields (address, civil status, education, parents…).
+    details        = serializers.DictField(required=False, default=dict)
 
     def validate_email(self, value):
         if PendingEnrollment.objects.filter(email=value, status__in=['pending', 'approved']).exists():
@@ -414,7 +416,7 @@ class PendingEnrollmentListSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'middle_name', 'suffix', 'full_name',
             'email', 'contact_number', 'date_of_birth', 'sex',
             'program_name', 'program_code', 'department_name', 'department_code', 'year_level',
-            'status', 'status_display', 'remarks', 'assigned_student_id',
+            'status', 'status_display', 'remarks', 'assigned_student_id', 'details',
             'term_display', 'created_at', 'reviewed_at', 'reviewed_by_name', 'documents',
         ]
 

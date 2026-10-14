@@ -791,7 +791,8 @@ const SUBJECTS = [
 ];
 
 const WIZARD_STEPS = ['Student type', 'Personal info', 'Requirements', 'Subjects', 'Review & confirm'];
-const FRESHMAN_STEPS = ['Personal information', 'Required documents', 'Review & confirm'];
+const FRESHMAN_STEPS = ['Personal information', 'Address & family', 'Education background', 'Required documents', 'Review & confirm'];
+const CIVIL_STATUS = ['Single', 'Married', 'Widowed', 'Separated', 'Annulled'];
 
 /* ══════════════════════════════════════════════════════════════
    HOOKS & HELPERS
@@ -1714,9 +1715,20 @@ function EnrollmentModal({ onClose, term, programs }) {
     () => SUBJECTS.reduce((a, s) => ({ ...a, [s.code]: true }), {})
   );
   const [form, setForm] = useState({
+    // Personal
     first: '', middle: '', last: '', suffix: '', email: '', contact: '', dob: '', sex: 'Male',
-    program: PROGRAMS_STATIC[0].name, year: '1st Year',
+    birthplace: '', civil_status: 'Single', citizenship: 'Filipino', religion: '', ethnicity: '',
+    program: PROGRAMS_STATIC[0].name, major: '', year: '1',
     student_id: '',   // returnee / old student
+    // Address & family
+    addr_brgy: '', addr_town: '', addr_province: '', zip: '',
+    spouse_name: '', spouse_address: '',
+    father_name: '', mother_name: '', parent_address: '',
+    // Education background
+    elem_school: '', elem_year: '', elem_address: '',
+    jhs_school: '', jhs_year: '', jhs_address: '',
+    shs_school: '', shs_year: '', shs_address: '',
+    last_school: '', last_year: '',   // transferee / second course
   });
 
   const progList = programs?.length
@@ -1743,9 +1755,45 @@ function EnrollmentModal({ onClose, term, programs }) {
 
   const go = n => { setDir(n > step ? 'fwd' : 'back'); setStep(n); };
   const back = () => (type !== 'returnee' && step > 1) ? go(step - 1) : onClose();
+
+  // All fields are required except: middle name, suffix, spouse (unless married),
+  // and the transferee-only "last school" fields.
+  const validateStep = (s) => {
+    const req = (v) => !!(v && String(v).trim());
+    if (s === 1) {
+      if (!req(form.first) || !req(form.last)) return 'Enter your first and last name.';
+      if (!req(form.email)) return 'Enter your email address.';
+      if (!req(form.contact)) return 'Enter your contact number.';
+      if (!req(form.dob)) return 'Enter your date of birth.';
+      if (!req(form.birthplace)) return 'Enter your birthplace.';
+      if (!req(form.citizenship)) return 'Enter your citizenship.';
+      if (!req(form.religion)) return 'Enter your religion.';
+      if (!req(form.ethnicity)) return 'Enter your ethnicity.';
+      if (!req(form.program)) return 'Select your program.';
+      if (!req(form.major)) return 'Enter your major (type N/A if none).';
+    }
+    if (s === 2) {
+      if (!req(form.addr_brgy) || !req(form.addr_town) || !req(form.addr_province)) return 'Complete your current address (Brgy, Town, Province).';
+      if (!req(form.zip)) return 'Enter your ZIP code.';
+      if (form.civil_status === 'Married' && (!req(form.spouse_name) || !req(form.spouse_address))) return 'Enter your spouse’s name and address.';
+      if (!req(form.father_name) || !req(form.mother_name)) return 'Enter your parents’ names.';
+      if (!req(form.parent_address)) return 'Enter your parent/guardian address.';
+    }
+    if (s === 3) {
+      if (!req(form.elem_school) || !req(form.elem_year) || !req(form.elem_address)) return 'Complete your Elementary school details.';
+      if (!req(form.jhs_school) || !req(form.jhs_year) || !req(form.jhs_address)) return 'Complete your Junior High School details.';
+      if (!req(form.shs_school) || !req(form.shs_year) || !req(form.shs_address)) return 'Complete your Senior High School details.';
+      if (type === 'transferee' && (!req(form.last_school) || !req(form.last_year))) return 'Enter the school last attended and year graduated.';
+    }
+    return null;
+  };
+
   const next = () => {
     if (type === 'returnee') return handleReturneeSubmit();
-    return step < 3 ? go(step + 1) : handleSubmit();
+    const err = validateStep(step);
+    if (err) { setSubErr(err); return; }
+    setSubErr('');
+    return step < totalSteps ? go(step + 1) : handleSubmit();
   };
 
   // Returnee / old student: already on record, so skip documents & review —
@@ -1777,15 +1825,32 @@ function EnrollmentModal({ onClose, term, programs }) {
     setSubErr('');
     try {
       const progObj = (programs || []).find(p => p.name === form.program);
+      const yearLevel = type === 'new' ? 1 : (parseInt(form.year, 10) || 1);
+      const details = {
+        major: form.major,
+        birthplace: form.birthplace,
+        civil_status: form.civil_status,
+        citizenship: form.citizenship,
+        religion: form.religion,
+        ethnicity: form.ethnicity,
+        address: { brgy: form.addr_brgy, town: form.addr_town, province: form.addr_province, zip: form.zip },
+        spouse: form.civil_status === 'Married' ? { name: form.spouse_name, address: form.spouse_address } : null,
+        parents: { father: form.father_name, mother: form.mother_name, address: form.parent_address },
+        education: {
+          elementary: { school: form.elem_school, year_graduated: form.elem_year, address: form.elem_address },
+          junior_high: { school: form.jhs_school, year_graduated: form.jhs_year, address: form.jhs_address },
+          senior_high: { school: form.shs_school, year_graduated: form.shs_year, address: form.shs_address },
+          last_attended: type === 'transferee' ? { school: form.last_school, year_graduated: form.last_year } : null,
+        },
+      };
       const res = await api.post('/enrollment/public/pre-enroll/', {
         student_type: type, first_name: form.first, last_name: form.last,
         middle_name: form.middle, suffix: form.suffix,
         email: form.email, contact_number: form.contact,
         date_of_birth: form.dob || null, sex: form.sex,
         program_id: progObj?.id, program_name: form.program,
-        // New students are 1st year; the registrar sets the year level for
-        // transferees/returnees during validation, so it's not asked here.
-        year_level: 1,
+        year_level: yearLevel,
+        details,
       });
       const ref = res.data?.reference_number
         || `NEMSU-${new Date().getFullYear()}-${String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5)}`;
@@ -1945,7 +2010,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <input style={fInput} value={form.first} onChange={e => update('first', e.target.value)} placeholder="Juan" />
                         </div>
                         <div className="flow-field">
-                          <label style={fLabel}>Middle name <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(optional)</span></label>
+                          <label style={fLabel}>Middle name <span style={optLbl}>(optional)</span></label>
                           <input style={fInput} value={form.middle} onChange={e => update('middle', e.target.value)} placeholder="Santos" />
                         </div>
                       </div>
@@ -1955,7 +2020,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <input style={fInput} value={form.last} onChange={e => update('last', e.target.value)} placeholder="Dela Cruz" />
                         </div>
                         <div className="flow-field">
-                          <label style={fLabel}>Suffix <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(optional)</span></label>
+                          <label style={fLabel}>Suffix <span style={optLbl}>(optional)</span></label>
                           <select style={fInput} value={form.suffix} onChange={e => update('suffix', e.target.value)}>
                             <option value="">None</option>
                             <option value="Jr.">Jr.</option>
@@ -1967,18 +2032,14 @@ function EnrollmentModal({ onClose, term, programs }) {
                           </select>
                         </div>
                       </div>
-                      <div className="flow-field">
-                        <label style={fLabel}>Email address</label>
-                        <input style={fInput} type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="juan.delacruz@nemsu.edu.ph" />
-                      </div>
                       <div style={fRow}>
-                        <div className="flow-field">
-                          <label style={fLabel}>Contact number</label>
-                          <input style={fInput} value={form.contact} onChange={e => update('contact', e.target.value)} placeholder="09171234567" />
-                        </div>
                         <div className="flow-field">
                           <label style={fLabel}>Date of birth</label>
                           <input style={fInput} type="date" value={form.dob} onChange={e => update('dob', e.target.value)} />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Birthplace</label>
+                          <input style={fInput} value={form.birthplace} onChange={e => update('birthplace', e.target.value)} placeholder="City / Municipality" />
                         </div>
                       </div>
                       <div style={fRow}>
@@ -1990,18 +2051,178 @@ function EnrollmentModal({ onClose, term, programs }) {
                           </select>
                         </div>
                         <div className="flow-field">
+                          <label style={fLabel}>Civil status</label>
+                          <select style={fInput} value={form.civil_status} onChange={e => update('civil_status', e.target.value)}>
+                            {CIVIL_STATUS.map(c => <option key={c}>{c}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div style={fRow}>
+                        <div className="flow-field">
+                          <label style={fLabel}>Citizenship</label>
+                          <input style={fInput} value={form.citizenship} onChange={e => update('citizenship', e.target.value)} placeholder="Filipino" />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Religion</label>
+                          <input style={fInput} value={form.religion} onChange={e => update('religion', e.target.value)} placeholder="Roman Catholic" />
+                        </div>
+                      </div>
+                      <div style={fRow}>
+                        <div className="flow-field">
+                          <label style={fLabel}>Ethnicity</label>
+                          <input style={fInput} value={form.ethnicity} onChange={e => update('ethnicity', e.target.value)} placeholder="e.g. Surigaonon" />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Contact number</label>
+                          <input style={fInput} value={form.contact} onChange={e => update('contact', e.target.value)} placeholder="09171234567" />
+                        </div>
+                      </div>
+                      <div className="flow-field">
+                        <label style={fLabel}>Email address</label>
+                        <input style={fInput} type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="juan.delacruz@nemsu.edu.ph" />
+                      </div>
+                      <div style={fRow}>
+                        <div className="flow-field">
                           <label style={fLabel}>Program</label>
                           <ProgramSearchSelect value={form.program} options={progList}
                             onChange={v => update('program', v)} />
                         </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Major</label>
+                          <input style={fInput} value={form.major} onChange={e => update('major', e.target.value)} placeholder="Type N/A if none" />
+                        </div>
+                      </div>
+                      <div className="flow-field" style={{ maxWidth: '48%' }}>
+                        <label style={fLabel}>Year level{type === 'new' && <span style={optLbl}> (freshman)</span>}</label>
+                        {type === 'new' ? (
+                          <input style={{ ...fInput, background: '#f3f4f6', color: '#6b7280' }} value="1st Year" readOnly />
+                        ) : (
+                          <select style={fInput} value={form.year} onChange={e => update('year', e.target.value)}>
+                            <option value="1">1st Year</option>
+                            <option value="2">2nd Year</option>
+                            <option value="3">3rd Year</option>
+                            <option value="4">4th Year</option>
+                          </select>
+                        )}
                       </div>
                     </div>
                     )}
                   </>
                 )}
 
-                {/* Step 2 — Document uploads */}
+                {/* Step 2 — Address & family */}
                 {step === 2 && (
+                  <>
+                    <h4>Address &amp; family</h4>
+                    <p className="wiz-sub">Your current home address and family details.</p>
+                    <div className="flow-form" style={{ gap: '1rem' }}>
+                      <div style={fRow}>
+                        <div className="flow-field">
+                          <label style={fLabel}>Barangay</label>
+                          <input style={fInput} value={form.addr_brgy} onChange={e => update('addr_brgy', e.target.value)} placeholder="Brgy." />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Town / City</label>
+                          <input style={fInput} value={form.addr_town} onChange={e => update('addr_town', e.target.value)} placeholder="Cantilan" />
+                        </div>
+                      </div>
+                      <div style={fRow}>
+                        <div className="flow-field">
+                          <label style={fLabel}>Province</label>
+                          <input style={fInput} value={form.addr_province} onChange={e => update('addr_province', e.target.value)} placeholder="Surigao del Sur" />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>ZIP code</label>
+                          <input style={fInput} value={form.zip} onChange={e => update('zip', e.target.value)} placeholder="8317" />
+                        </div>
+                      </div>
+
+                      {form.civil_status === 'Married' && (
+                        <>
+                          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 4 }}>Spouse</div>
+                          <div style={fRow}>
+                            <div className="flow-field">
+                              <label style={fLabel}>Spouse name</label>
+                              <input style={fInput} value={form.spouse_name} onChange={e => update('spouse_name', e.target.value)} placeholder="Full name" />
+                            </div>
+                            <div className="flow-field">
+                              <label style={fLabel}>Spouse address</label>
+                              <input style={fInput} value={form.spouse_address} onChange={e => update('spouse_address', e.target.value)} placeholder="Address" />
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 4 }}>Parent / Guardian</div>
+                      <div style={fRow}>
+                        <div className="flow-field">
+                          <label style={fLabel}>Father’s name</label>
+                          <input style={fInput} value={form.father_name} onChange={e => update('father_name', e.target.value)} placeholder="Full name" />
+                        </div>
+                        <div className="flow-field">
+                          <label style={fLabel}>Mother’s name</label>
+                          <input style={fInput} value={form.mother_name} onChange={e => update('mother_name', e.target.value)} placeholder="Full maiden name" />
+                        </div>
+                      </div>
+                      <div className="flow-field">
+                        <label style={fLabel}>Parent / Guardian address</label>
+                        <input style={fInput} value={form.parent_address} onChange={e => update('parent_address', e.target.value)} placeholder="Address" />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Step 3 — Education background */}
+                {step === 3 && (
+                  <>
+                    <h4>Education background</h4>
+                    <p className="wiz-sub">Schools attended and year graduated.</p>
+                    <div className="flow-form" style={{ gap: '1rem' }}>
+                      {[
+                        { key: 'elem', label: 'Elementary School' },
+                        { key: 'jhs',  label: 'Junior High School' },
+                        { key: 'shs',  label: 'Senior High School' },
+                      ].map(lvl => (
+                        <div key={lvl.key}>
+                          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>{lvl.label}</div>
+                          <div style={fRow}>
+                            <div className="flow-field">
+                              <label style={fLabel}>School name</label>
+                              <input style={fInput} value={form[`${lvl.key}_school`]} onChange={e => update(`${lvl.key}_school`, e.target.value)} placeholder="School name" />
+                            </div>
+                            <div className="flow-field">
+                              <label style={fLabel}>Year graduated</label>
+                              <input style={fInput} value={form[`${lvl.key}_year`]} onChange={e => update(`${lvl.key}_year`, e.target.value)} placeholder="e.g. 2024" />
+                            </div>
+                          </div>
+                          <div className="flow-field">
+                            <label style={fLabel}>School address</label>
+                            <input style={fInput} value={form[`${lvl.key}_address`]} onChange={e => update(`${lvl.key}_address`, e.target.value)} placeholder="Address" />
+                          </div>
+                        </div>
+                      ))}
+
+                      {type === 'transferee' && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>School last attended (transferee / second course)</div>
+                          <div style={fRow}>
+                            <div className="flow-field">
+                              <label style={fLabel}>School name</label>
+                              <input style={fInput} value={form.last_school} onChange={e => update('last_school', e.target.value)} placeholder="College / University" />
+                            </div>
+                            <div className="flow-field">
+                              <label style={fLabel}>Year graduated / last attended</label>
+                              <input style={fInput} value={form.last_year} onChange={e => update('last_year', e.target.value)} placeholder="e.g. 2023" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* Step 4 — Document uploads */}
+                {step === 4 && (
                   <>
                     <h4>Upload your documents</h4>
                     <p className="wiz-sub">Upload a clear <strong>PDF</strong> of each document (max 10&nbsp;MB each). The campus will validate them for admission.</p>
@@ -2045,26 +2266,34 @@ function EnrollmentModal({ onClose, term, programs }) {
                   </>
                 )}
 
-                {/* Step 3 — Review & confirm */}
-                {step === 3 && (
+                {/* Step 5 — Review & confirm */}
+                {step === 5 && (
                   <>
                     <h4>Review &amp; confirm</h4>
                     <p className="wiz-sub">Verify your details before submitting. Go back to edit any field.</p>
                     <div style={{ border:'1px solid var(--line)', background:'var(--warm)', marginBottom:12 }}>
                       {[
                         ['Applying as',   TYPE_LABELS[type] || 'New student'],
-                        ['Full name',     `${form.first} ${form.last}`.trim() || '-'],
+                        ['Full name',     [form.first, form.middle, form.last, form.suffix].filter(Boolean).join(' ') || '-'],
                         ['Email',         form.email  || '-'],
                         ['Contact',       form.contact || '-'],
                         ['Date of birth', form.dob    || '-'],
+                        ['Birthplace',    form.birthplace || '-'],
                         ['Sex',           form.sex],
-                        ['Program',       form.program],
+                        ['Civil status',  form.civil_status],
+                        ['Citizenship',   form.citizenship || '-'],
+                        ['Religion',      form.religion || '-'],
+                        ['Ethnicity',     form.ethnicity || '-'],
+                        ['Program',       `${form.program}${form.major ? ` (${form.major})` : ''}`],
+                        ['Year level',    type === 'new' ? '1st Year' : `${form.year}${['','st','nd','rd','th'][Math.min(+form.year,4)] || 'th'} Year`],
+                        ['Address',       [form.addr_brgy, form.addr_town, form.addr_province, form.zip].filter(Boolean).join(', ') || '-'],
+                        ['Father',        form.father_name || '-'],
+                        ['Mother',        form.mother_name || '-'],
                         ['Campus',        'NEMSU Cantilan Campus'],
-                        ['Academic year', `${term?.year ?? '2025–2026'}, 1st Semester`],
                       ].map((r, i, arr) => (
-                        <div key={r[0]} style={{ display:'flex', justifyContent:'space-between', padding:'10px 16px', fontSize:13, borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none' }}>
-                          <span style={{ color:'var(--muted)' }}>{r[0]}</span>
-                          <span style={{ color:'var(--ink)', fontWeight:500 }}>{r[1]}</span>
+                        <div key={r[0]} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'9px 16px', fontSize:12.5, borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none' }}>
+                          <span style={{ color:'var(--muted)', flexShrink:0 }}>{r[0]}</span>
+                          <span style={{ color:'var(--ink)', fontWeight:500, textAlign:'right' }}>{r[1]}</span>
                         </div>
                       ))}
                     </div>
@@ -2090,7 +2319,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                 <button className="wiz-btn primary" onClick={next} disabled={submitting}>
                   {type === 'returnee'
                     ? (submitting ? 'Submitting…' : <><i className="ti ti-send" /> Submit application</>)
-                    : step === 3
+                    : step === totalSteps
                       ? (submitting ? 'Submitting…' : <><i className="ti ti-check" /> Submit application</>)
                       : <>Continue <i className="ti ti-arrow-right" /></>}
                 </button>
@@ -2110,6 +2339,7 @@ const YEAR_LEVEL_MAP = { '1st Year':1, '2nd Year':2, '3rd Year':3, '4th Year':4 
 const panel      = dir => ({ display:'flex', flexDirection:'column', flex:1, animation:`${dir === 'back' ? 'lp-slideInLeft' : 'lp-slideInRight'} .22s cubic-bezier(.4,0,.2,1)` });
 const fRow       = { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 };
 const fLabel     = { fontSize:11, fontWeight:700, color:'#5a7a9a', display:'block', marginBottom:5, textTransform:'uppercase', letterSpacing:'.05em' };
+const optLbl     = { fontWeight:400, color:'var(--muted)', textTransform:'none', letterSpacing:0 };
 const fInput     = { width:'100%', padding:'9px 12px', border:'1px solid #d0dcea', borderRadius:8, fontSize:13, background:'#fff', color:'#0a1628', outline:'none', boxSizing:'border-box' };
 const progDrop   = { position:'absolute', top:'calc(100% + 4px)', left:0, right:0, zIndex:40, margin:0, padding:'4px 0', listStyle:'none', background:'#fff', border:'1px solid #d0dcea', borderRadius:8, boxShadow:'0 8px 24px rgba(10,58,110,.14)', maxHeight:220, overflowY:'auto' };
 const progOpt    = { padding:'8px 12px', fontSize:13, color:'#0a1628', cursor:'pointer', whiteSpace:'normal' };
