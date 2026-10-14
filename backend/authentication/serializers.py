@@ -545,6 +545,7 @@ class AdminFacultyAutoCreateSerializer(serializers.Serializer):
     generated server-side; the view emails the credentials to the faculty."""
     institutional_email = serializers.EmailField()
     full_name = serializers.CharField(max_length=255)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
     department = serializers.CharField(required=False, allow_blank=True)
     is_gec_faculty = serializers.BooleanField(required=False, default=False)
     program = serializers.IntegerField(required=False, allow_null=True)
@@ -593,6 +594,7 @@ class AdminFacultyAutoCreateSerializer(serializers.Serializer):
                     institutional_email=validated_data['institutional_email'],
                     student_id=faculty_id,
                     full_name=validated_data['full_name'].strip(),
+                    date_of_birth=validated_data.get('date_of_birth'),
                     password=password,
                     role='faculty',
                     department=dept,

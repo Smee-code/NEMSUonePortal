@@ -39,7 +39,7 @@ export default function RoleUserManager({ role, config }) {
 
   const EMPTY = {
     full_name: '', institutional_email: '', student_id: '', password: '',
-    department: '', program: '', is_gec_faculty: false,
+    date_of_birth: '', department: '', program: '', is_gec_faculty: false,
   };
   const [showAdd, setShowAdd]   = useState(false);
   const [form, setForm]         = useState(EMPTY);
@@ -92,6 +92,7 @@ export default function RoleUserManager({ role, config }) {
           department: form.department,
           is_gec_faculty: form.is_gec_faculty,
         };
+        if (form.date_of_birth) payload.date_of_birth = form.date_of_birth;
         if (!form.is_gec_faculty && form.program) payload.program = Number(form.program);
         const res = await api.post('/auth/admin/faculty/', payload);
         setCreated(res.data);          // show the generated credentials
@@ -337,6 +338,11 @@ export default function RoleUserManager({ role, config }) {
 
                 {role === 'faculty' && (
                   <>
+                    <div className="rum-field">
+                      <label htmlFor="rum-dob">Birthday</label>
+                      <input id="rum-dob" name="bday" type="date" lang="en-US"
+                        value={form.date_of_birth} onChange={e => setField('date_of_birth', e.target.value)} />
+                    </div>
                     <div className="rum-field">
                       <label>Department <span className="rum-opt">(optional)</span></label>
                       <select value={form.department} onChange={e => setField('department', e.target.value)}>
