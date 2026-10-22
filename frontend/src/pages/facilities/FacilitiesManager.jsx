@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../components/Toast';
 import { useConfirm } from '../../components/ConfirmDialog';
+import { titleCase } from '../../utils/text';
 
 /*
  * Rooms & Buildings — registrar + admin.
@@ -127,7 +128,22 @@ const CSS = `
     border:1px solid var(--fx-line);border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;
     cursor:pointer;font-family:inherit;}
   .fx-btn-ghost:hover{border-color:var(--fx-ink);}
+  .fx-btn-ghost:disabled{opacity:.55;cursor:default;}
   .fx-btn-sm{padding:6px 11px;font-size:12px;}
+  /* Add building modal */
+  .fx-ov{position:fixed;inset:0;background:rgba(10,22,40,.5);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:8vh 1rem;overflow-y:auto;}
+  .fx-modal{background:#fff;width:100%;max-width:440px;border-radius:12px;box-shadow:0 24px 60px -20px rgba(10,22,40,.5);overflow:hidden;}
+  .fx-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.15rem 1.4rem;border-bottom:1px solid var(--fx-line);}
+  .fx-modal-head h3{margin:0;font-size:17px;font-weight:700;color:var(--fx-ink);}
+  .fx-modal-head p{margin:.2rem 0 0;font-size:12.5px;color:var(--fx-muted);}
+  .fx-modal-x{background:none;border:1px solid var(--fx-line);border-radius:7px;color:var(--fx-muted);cursor:pointer;padding:6px 8px;display:inline-flex;}
+  .fx-modal-x:hover{border-color:var(--fx-ink);color:var(--fx-ink);}
+  .fx-modal-body{padding:1.2rem 1.4rem;display:flex;flex-direction:column;}
+  .fx-modal-label{font-size:12px;font-weight:600;color:var(--fx-ink);margin:0 0 5px;}
+  .fx-modal-label:not(:first-child){margin-top:1rem;}
+  .fx-modal-body .fx-input{width:100%;box-sizing:border-box;}
+  .fx-opt{font-weight:400;color:var(--fx-faint);}
+  .fx-modal-foot{display:flex;justify-content:flex-end;gap:.6rem;padding:1rem 1.4rem;border-top:1px solid var(--fx-line);}
   .fx-icon-btn{background:none;border:none;cursor:pointer;color:var(--fx-faint);padding:6px;
     border-radius:6px;display:flex;flex-shrink:0;}
   .fx-icon-btn:hover{color:#a8331e;background:#f8ebe7;}
@@ -350,30 +366,6 @@ export default function FacilitiesManager() {
               )}
             </div>
 
-            {addingBld && (
-              <div className="fx-add-bld">
-                <input
-                  className="fx-input fx-input-grow"
-                  placeholder="Building name, e.g. IT Building"
-                  value={bldForm.name}
-                  onChange={e => setBldForm(p => ({ ...p, name: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') saveBuilding(); if (e.key === 'Escape') setAddingBld(false); }}
-                  autoFocus
-                />
-                <input
-                  className="fx-input fx-input-sm"
-                  placeholder="Short code (optional)"
-                  value={bldForm.code}
-                  onChange={e => setBldForm(p => ({ ...p, code: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') saveBuilding(); if (e.key === 'Escape') setAddingBld(false); }}
-                />
-                <button className="fx-btn" onClick={saveBuilding} disabled={savingBld}>
-                  {savingBld ? 'Adding…' : 'Add building'}
-                </button>
-                <button className="fx-btn-ghost" onClick={() => setAddingBld(false)}>Cancel</button>
-              </div>
-            )}
-
             {active.buildings.length === 0 ? (
               <div className="fx-empty">
                 <i className="ti ti-building-off" />
@@ -474,6 +466,48 @@ export default function FacilitiesManager() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Add building modal ── */}
+      {addingBld && (
+        <div className="fx-ov" onMouseDown={() => !savingBld && setAddingBld(false)}>
+          <div className="fx-modal" onMouseDown={e => e.stopPropagation()}>
+            <div className="fx-modal-head">
+              <div>
+                <h3>Add building</h3>
+                {active && <p>{active.title}{active.code ? ` · ${active.code}` : ''}</p>}
+              </div>
+              <button className="fx-modal-x" onClick={() => setAddingBld(false)} aria-label="Close"><i className="ti ti-x" /></button>
+            </div>
+            <div className="fx-modal-body">
+              <label className="fx-modal-label" htmlFor="fx-bld-name">Building name</label>
+              <input
+                id="fx-bld-name"
+                className="fx-input"
+                placeholder="e.g. IT Building"
+                value={bldForm.name}
+                onChange={e => setBldForm(p => ({ ...p, name: titleCase(e.target.value) }))}
+                onKeyDown={e => { if (e.key === 'Enter') saveBuilding(); }}
+                autoFocus
+              />
+              <label className="fx-modal-label" htmlFor="fx-bld-code">Short code <span className="fx-opt">(optional)</span></label>
+              <input
+                id="fx-bld-code"
+                className="fx-input"
+                placeholder="e.g. ITB"
+                value={bldForm.code}
+                onChange={e => setBldForm(p => ({ ...p, code: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') saveBuilding(); }}
+              />
+            </div>
+            <div className="fx-modal-foot">
+              <button className="fx-btn-ghost" onClick={() => setAddingBld(false)} disabled={savingBld}>Cancel</button>
+              <button className="fx-btn" onClick={saveBuilding} disabled={savingBld}>
+                {savingBld ? 'Adding…' : <><i className="ti ti-plus" /> Add building</>}
+              </button>
+            </div>
           </div>
         </div>
       )}
