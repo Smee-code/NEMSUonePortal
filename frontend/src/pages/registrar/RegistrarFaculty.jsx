@@ -75,14 +75,36 @@ const CSS = `
 .fac-modal-backdrop{ position:fixed; inset:0; background:rgba(10,22,40,.5); display:flex; align-items:flex-start; justify-content:center; z-index:1000; padding:6vh 1rem; overflow-y:auto; }
 .fac-modal{ background:#fff; width:100%; max-width:900px; border:1px solid var(--reg-line); box-shadow:0 24px 60px -20px rgba(10,22,40,.5); display:flex; flex-direction:column; overflow:hidden; max-height:88vh; }
 .fac-modal-header{ display:flex; justify-content:space-between; align-items:flex-start; padding:1.25rem 1.5rem 1.1rem; border-bottom:1px solid var(--reg-line); flex-shrink:0; }
-.fac-modal-title{ margin:0; font:600 19px 'Inter',sans-serif; color:var(--reg-ink); }
-.fac-modal-x{ border:1px solid var(--reg-line); background:#fff; color:var(--reg-muted); cursor:pointer; padding:7px 9px; display:inline-flex; }
+.fac-modal-title{ margin:0; font:600 19px 'Inter',sans-serif; color:var(--reg-ink); letter-spacing:-.01em; line-height:1.2; overflow-wrap:anywhere; }
+.fac-modal-x{ border:1px solid var(--reg-line); background:#fff; color:var(--reg-muted); cursor:pointer; padding:7px 9px; display:inline-flex; align-items:center; justify-content:center; }
 .fac-modal-x:hover{ border-color:var(--reg-ink); color:var(--reg-ink); }
-.fac-modal-figs{ display:flex; flex-wrap:wrap; background:var(--reg-warm); border-bottom:1px solid var(--reg-line); flex-shrink:0; }
-.fac-fig{ padding:12px 20px; border-right:1px solid var(--reg-line-soft); }
+
+/* ── Detail-modal header (responsive) ──
+   Mobile: close pinned top-right, identity full width, Edit/Delete full-width row.
+   ≥560px: identity | actions | close, all on one row. */
+.fac-dh{ position:relative; display:flex; flex-wrap:wrap; align-items:flex-start; gap:14px 10px; }
+.fac-dh-id{ order:1; flex:1 1 100%; display:flex; align-items:center; gap:13px; min-width:0; padding-right:46px; }
+.fac-dh-text{ min-width:0; }
+.fac-dh-meta{ margin:.25rem 0 0; font-size:.85rem; color:var(--reg-muted); line-height:1.4; overflow-wrap:anywhere; }
+.fac-dh-email{ margin:.15rem 0 0; font-size:.82rem; color:var(--reg-faint); overflow-wrap:anywhere; }
+.fac-dh-x{ position:absolute; top:0; right:0; }
+.fac-dh-actions{ order:2; flex:1 1 100%; display:flex; gap:8px; }
+.fac-dh-actions .btn-sec, .fac-dh-actions .fac-del-btn{ flex:1 1 0; justify-content:center; }
+.fac-del-btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 15px; border:1px solid var(--reg-red); background:var(--reg-red-tint); color:var(--reg-red); font:600 12.5px 'Inter',sans-serif; cursor:pointer; }
+.fac-del-btn:disabled{ opacity:.65; cursor:default; }
+@media(min-width:560px){
+  .fac-dh-id{ flex:1 1 auto; padding-right:0; }
+  .fac-dh-actions{ flex:0 0 auto; }
+  .fac-dh-x{ position:static; }
+  .fac-dh-actions .btn-sec, .fac-dh-actions .fac-del-btn{ flex:0 0 auto; }
+}
+
+.fac-modal-figs{ display:grid; grid-template-columns:repeat(3,1fr); background:var(--reg-warm); border-bottom:1px solid var(--reg-line); flex-shrink:0; }
+.fac-fig{ padding:12px 16px; border-right:1px solid var(--reg-line-soft); min-width:0; }
 .fac-fig:last-child{ border-right:none; }
 .fac-fig b{ display:block; font:600 20px 'Inter',sans-serif; color:var(--reg-ink); font-variant-numeric:tabular-nums; }
-.fac-fig span{ font-size:11px; color:var(--reg-muted); }
+.fac-fig span{ font-size:11px; color:var(--reg-muted); line-height:1.3; display:block; }
+@media(max-width:380px){ .fac-fig{ padding:11px 12px; } .fac-fig span{ font-size:10px; } }
 .fac-modal-body{ padding:1.25rem 1.5rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:.85rem; }
 .fac-term-block{ border:1px solid var(--reg-line); overflow:hidden; }
 .fac-term-block.current{ border-color:var(--reg-ink); }
@@ -385,38 +407,30 @@ export default function RegistrarFaculty() {
           <div className="fac-modal" onClick={e => e.stopPropagation()}>
 
             {/* Header */}
-            <div className="fac-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+            <div className="fac-modal-header fac-dh">
+              <div className="fac-dh-id">
                 <div className="fac-av" style={{ width: 48, height: 48, fontSize: 15 }}>{initials(selected.full_name)}</div>
-                <div style={{ minWidth: 0 }}>
+                <div className="fac-dh-text">
                   <h2 className="fac-modal-title">{selected.full_name}</h2>
-                  <p style={{ margin: '.25rem 0 0', fontSize: '.85rem', color: 'var(--reg-muted)' }}>
+                  <p className="fac-dh-meta">
                     {selected.faculty_id}
                     {selected.rank && <> · {selected.rank}</>}
                     {selected.department_name && <> · {selected.department_name}</>}
                   </p>
-                  <p style={{ margin: '.15rem 0 0', fontSize: '.82rem', color: 'var(--reg-faint)' }}>
-                    {selected.email}
-                  </p>
+                  <p className="fac-dh-email">{selected.email}</p>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <div className="fac-dh-actions">
                 <button className="btn-sec" onClick={() => openEdit(selected)}>
                   <i className="ti ti-edit" /> Edit
                 </button>
-                <button
-                  onClick={() => handleDelete(selected)}
-                  disabled={deleting}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px',
-                    border: '1px solid var(--reg-red)', background: 'var(--reg-red-tint)', color: 'var(--reg-red)',
-                    font: "600 12.5px 'Inter',sans-serif", cursor: deleting ? 'default' : 'pointer' }}
-                >
+                <button className="fac-del-btn" onClick={() => handleDelete(selected)} disabled={deleting}>
                   <i className="ti ti-trash" /> {deleting ? 'Deleting…' : 'Delete'}
                 </button>
-                <button className="fac-modal-x" onClick={() => setSelected(null)}>
-                  <i className="ti ti-x" />
-                </button>
               </div>
+              <button className="fac-modal-x fac-dh-x" onClick={() => setSelected(null)} aria-label="Close">
+                <i className="ti ti-x" />
+              </button>
             </div>
 
             {/* Figures */}
