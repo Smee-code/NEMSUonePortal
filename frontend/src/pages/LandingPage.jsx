@@ -1759,6 +1759,23 @@ function EnrollmentModal({ onClose, term, programs }) {
     }
   }, [programs]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // On small screens, scroll the focused field into view so it (and any
+  // dropdown it opens, like the searchable Program picker) isn't hidden by the
+  // on-screen keyboard or clipped at the bottom of the modal.
+  useEffect(() => {
+    const onFocusIn = (e) => {
+      if (window.innerWidth > 768) return;
+      const el = e.target;
+      if (!(el instanceof HTMLElement) || !el.matches('input, select, textarea')) return;
+      // Delay so the keyboard / custom dropdown has started to appear first.
+      setTimeout(() => {
+        try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { /* ignore */ }
+      }, 180);
+    };
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
+  }, []);
+
   // Returnees/old students skip documents & review — one step only.
   const sideSteps  = type === 'returnee' ? ['Request access'] : FRESHMAN_STEPS;
   const totalSteps = sideSteps.length;
