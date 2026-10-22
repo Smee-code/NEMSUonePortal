@@ -766,8 +766,7 @@ const ALL_REQUIREMENTS = {
       { id:'r6', label:'Medical Certificate',                     tag:'Required'    },
     ]},
     { group:'Admission', items:[
-      { id:'r7', label:'Entrance Exam Result / Admission Slip',   tag:'If required' },
-      { id:'r8', label:'Accomplished Application Form',           tag:'Required'    },
+      { id:'r7', label:'Entrance Exam Result / Admission Slip',   tag:'Required' },
     ]},
   ],
   transferee: [
