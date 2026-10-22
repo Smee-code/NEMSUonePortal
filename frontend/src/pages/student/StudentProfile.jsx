@@ -83,10 +83,6 @@ export default function StudentProfile() {
     const prog = programs.find(p => String(p.id) === String(progId));
     return prog ? String(prog.department) : '';
   };
-  const deptObj = departments.find(d => String(d.id) === String(form.department));
-  const deptLabel = deptObj
-    ? `${deptObj.code} — ${deptObj.name}`
-    : (form.program ? 'Set from your program' : 'Select a program first');
 
   const verified = !!profile?.is_verified;
   const facts = [
@@ -179,15 +175,12 @@ export default function StudentProfile() {
               </div>
               <div className="pf-field">
                 <label className="pf-label">
-                  Department <span style={{ fontWeight: 400, color: 'var(--muted)', fontSize: '.8em' }}>· set automatically from your program</span>
+                  Department <span style={{ fontWeight: 400, color: 'var(--muted)', fontSize: '.8em' }}>· fills from your program, but you can change it</span>
                 </label>
-                <input
-                  className="pf-input"
-                  value={deptLabel}
-                  readOnly
-                  disabled
-                  style={{ background: '#f1f5f9', color: 'var(--muted)', cursor: 'not-allowed' }}
-                />
+                <select className="pf-input" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}>
+                  <option value="">Not set</option>
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+                </select>
               </div>
               <div className="pf-field">
                 <label className="pf-label">Year level</label>

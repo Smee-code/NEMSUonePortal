@@ -39,10 +39,6 @@ export default function AcademicSetup() {
     const prog = programs.find(p => String(p.id) === String(progId));
     return prog ? String(prog.department) : '';
   };
-  const deptObj = departments.find(d => String(d.id) === String(form.department));
-  const deptLabel = deptObj
-    ? `${deptObj.code} — ${deptObj.name}`
-    : (form.program ? 'Set from your program' : 'Select a program first');
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
@@ -50,6 +46,7 @@ export default function AcademicSetup() {
     e.preventDefault();
     setError('');
     if (!form.program)    { setError('Select your program.');    progRef.current?.focus(); return; }
+    if (!form.department) { setError('Select your department.'); deptRef.current?.focus(); return; }
     if (!form.year_level) { setError('Select your year level.'); yearRef.current?.focus(); return; }
     setSaving(true);
     try {
@@ -98,9 +95,11 @@ export default function AcademicSetup() {
             </Field>
 
             <Field label="Department" htmlFor="as-department">
-              <input id="as-department" name="department" className="as-input" ref={deptRef}
-                value={deptLabel} readOnly disabled
-                style={{ background: '#f1f5f9', color: '#6b7280', cursor: 'not-allowed' }} />
+              <select id="as-department" name="department" className="as-input" ref={deptRef}
+                value={form.department} onChange={e => set('department', e.target.value)}>
+                <option value="">Select your department…</option>
+                {departments.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+              </select>
             </Field>
 
             <Field label="Year level" htmlFor="as-year">

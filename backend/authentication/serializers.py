@@ -262,17 +262,17 @@ class AcademicProfileSerializer(serializers.Serializer):
                 prog_id = attrs['program']
                 if prog_id is None:
                     attrs['_program_obj'] = None
-                    # Clearing the program clears the derived department too.
-                    attrs['_department_obj'] = None
                 else:
                     try:
                         prog_obj = Program.objects.get(pk=prog_id, is_active=True)
                     except Program.DoesNotExist:
                         raise serializers.ValidationError({'program': 'Invalid or inactive program.'})
                     attrs['_program_obj'] = prog_obj
-                    # A student's department is always derived from their program,
-                    # so keep the two consistent regardless of what was sent.
-                    attrs['_department_obj'] = prog_obj.department
+                    # The department defaults to the program's department when none
+                    # was provided, but the student may override it, so a department
+                    # sent explicitly is kept as-is.
+                    if 'department' not in attrs:
+                        attrs['_department_obj'] = prog_obj.department
 
         return attrs
 
