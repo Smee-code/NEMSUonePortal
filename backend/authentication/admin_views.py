@@ -586,6 +586,215 @@ class BulkStudentImportView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+FACULTY_IMPORT_COLUMNS = [
+    'full_name', 'institutional_email', 'date_of_birth', 'contact_number',
+    'department', 'rank', 'is_gec_faculty', 'core_program',
+]
+
+
+def _build_faculty_template():
+    """Return an openpyxl Workbook for the faculty bulk-import template."""
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Faculty'
+    ws.append(FACULTY_IMPORT_COLUMNS)
+    examples = [
+        ['Dela Cruz, Juan A.', 'juan.delacruz@nemsu.edu.ph', '1990-01-01', '09171234567', 'DCS', 'COS', 'FALSE', 'BSCS'],
+        ['Santos, Maria B.', 'maria.santos@nemsu.edu.ph', '1988-06-15', '09981112222', '', '', 'TRUE', ''],
+        ['Reyes, Pedro C.', 'pedro.reyes@nemsu.edu.ph', '1985-11-30', '', 'CCJE', '', 'FALSE', ''],
+    ]
+    for row in examples:
+        ws.append(row)
+    fill = PatternFill('solid', fgColor='0A1628')
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color='FFFFFF')
+        cell.alignment = Alignment(horizontal='left')
+        cell.fill = fill
+    widths = [24, 34, 14, 16, 13, 8, 14, 14]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    for row in ws.iter_rows(min_row=2, min_col=3, max_col=3):  # keep DOB as literal text
+        for cell in row:
+            cell.number_format = '@'
+    ws.freeze_panes = 'A2'
+    return wb
+
+
+class RegistrarFacultyImportTemplateView(APIView):
+    """GET /api/auth/registrar/faculty/import-template/ — download the .xlsx template."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+
+    def get(self, request):
+        from django.http import HttpResponse
+        wb = _build_faculty_template()
+        resp = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = 'attachment; filename="faculty_import_template.xlsx"'
+        wb.save(resp)
+        return resp
+
+
+def _parse_faculty_rows(upload):
+    """Read an .xlsx/.csv of faculty into a list of dicts keyed by the template
+    columns. Returns None if the header lacks the required columns."""
+    import csv as _csv
+    import io as _io
+    name = (upload.name or '').lower()
+    records = []
+
+    if name.endswith('.csv'):
+        raw = upload.read()
+        text = raw.decode('utf-8-sig', errors='replace')
+        reader = _csv.reader(_io.StringIO(text))
+        rows = list(reader)
+        if not rows:
+            return []
+        header = [(h or '').strip().lower() for h in rows[0]]
+        data_rows = rows[1:]
+        def cell(r, idx):
+            return (r[idx] if idx < len(r) else '')
+    else:
+        import openpyxl
+        wb = openpyxl.load_workbook(upload, read_only=True, data_only=True)
+        ws = wb.active
+        it = ws.iter_rows(values_only=True)
+        try:
+            first = next(it)
+        except StopIteration:
+            return []
+        header = [(str(h).strip().lower() if h is not None else '') for h in first]
+        data_rows = list(it)
+        def cell(r, idx):
+            v = r[idx] if idx < len(r) else None
+            if v is None:
+                return ''
+            # openpyxl may hand back a datetime for the DOB cell
+            if hasattr(v, 'strftime'):
+                return v.strftime('%Y-%m-%d')
+            return str(v).strip()
+
+    if 'full_name' not in header or 'institutional_email' not in header:
+        return None
+
+    col = {name: header.index(name) for name in FACULTY_IMPORT_COLUMNS if name in header}
+    for r in data_rows:
+        rec = {name: str(cell(r, idx)).strip() for name, idx in col.items()}
+        if not any(rec.get(k) for k in ('full_name', 'institutional_email')):
+            continue  # skip blank rows
+        records.append(rec)
+    return records
+
+
+def _truthy(v):
+    return str(v).strip().lower() in ('true', '1', 'yes', 'y', 'gec')
+
+
+class RegistrarFacultyImportView(APIView):
+    """POST /api/auth/registrar/faculty/import/ — registrar/admin uploads an
+    .xlsx/.csv of faculty. Each valid row creates an account (auto Faculty ID, no
+    password) and emails a setup link. Returns a per-row result summary."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+    throttle_classes   = [AdminUserManageThrottle]
+    parser_classes     = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        from .serializers import FacultyInviteSerializer
+        from .models import PasswordResetToken
+        from django.utils import timezone as _tz
+        from datetime import timedelta as _td
+        from enrollment.models import Program
+        ip = get_client_ip(request)
+
+        upload = request.FILES.get('file')
+        if not upload:
+            return Response({'error': 'No file was uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        if upload.size > 5 * 1024 * 1024:
+            return Response({'error': 'File is too large (max 5 MB).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            rows = _parse_faculty_rows(upload)
+        except Exception:
+            logger.warning('Faculty import parse failed', exc_info=True)
+            return Response(
+                {'error': 'Could not read the file. Upload a valid .xlsx or .csv built from the template.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if rows is None:
+            return Response(
+                {'error': 'The header row must include at least "full_name" and "institutional_email". Use the downloadable template.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not rows:
+            return Response({'error': 'No faculty rows were found in the file.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        created = emailed = 0
+        errors = []
+        samples = []
+        seen_emails = set()
+
+        for i, rec in enumerate(rows, start=2):   # row 2 = first data row
+            email = (rec.get('institutional_email') or '').strip().lower()
+            if email and email in seen_emails:
+                errors.append({'row': i, 'email': email, 'error': 'Duplicate email within the file.'})
+                continue
+            if email:
+                seen_emails.add(email)
+
+            data = {
+                'full_name':      rec.get('full_name', ''),
+                'institutional_email': email,
+                'date_of_birth':  rec.get('date_of_birth') or None,
+                'contact_number': rec.get('contact_number', ''),
+                'department':     rec.get('department', ''),
+                'rank':           rec.get('rank', ''),
+                'is_gec_faculty': _truthy(rec.get('is_gec_faculty', '')),
+            }
+            prog_code = (rec.get('core_program') or '').strip()
+            if prog_code and not data['is_gec_faculty']:
+                prog = Program.objects.filter(code__iexact=prog_code).first()
+                if not prog:
+                    errors.append({'row': i, 'email': email, 'error': f"Unknown program code '{prog_code}'."})
+                    continue
+                data['program'] = prog.id
+
+            serializer = FacultyInviteSerializer(data=data)
+            if not serializer.is_valid():
+                msg = '; '.join(
+                    f'{k}: {" ".join(str(x) for x in (v if isinstance(v, list) else [v]))}'
+                    for k, v in serializer.errors.items()
+                )
+                errors.append({'row': i, 'email': email, 'error': msg or 'Invalid row.'})
+                continue
+            try:
+                with transaction.atomic():
+                    user = serializer.save()
+                    reset = PasswordResetToken.objects.create(user=user, expires_at=_tz.now() + _td(days=7))
+                sent = _email_faculty_setup(user, reset.token)
+                created += 1
+                if sent:
+                    emailed += 1
+                if len(samples) < 10:
+                    samples.append({'faculty_id': user.student_id, 'full_name': user.full_name})
+            except Exception:
+                logger.warning('Faculty import row %s failed', i, exc_info=True)
+                errors.append({'row': i, 'email': email, 'error': 'Could not be created.'})
+
+        _audit(
+            request.user, request.user.role, 'faculty_bulk_imported',
+            request.path, ip, 'success',
+            {'rows': len(rows), 'created': created, 'emailed': emailed, 'errors': len(errors)},
+        )
+        return Response({
+            'total_rows': len(rows),
+            'created':    created,
+            'emailed':    emailed,
+            'errors':     errors,
+            'samples':    samples,
+        }, status=status.HTTP_200_OK)
+
+
 class RegistrarFacultyUpdateView(APIView):
     """PATCH /api/auth/registrar/faculty/<uuid:pk>/ — registrar (or admin) edits a
     FACULTY account's info. Non-faculty targets are rejected so this endpoint can

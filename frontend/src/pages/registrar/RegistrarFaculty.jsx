@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../components/Toast';
 
@@ -29,6 +29,23 @@ const CSS = `
 .fac-lede{ margin:.4rem 0 0; font-size:13.5px; color:var(--reg-muted); max-width:66ch; line-height:1.5; }
 .fac-add{ display:inline-flex; align-items:center; gap:6px; padding:9px 15px; border:1px solid var(--reg-ink); background:var(--reg-ink); color:#fff; font:600 12.5px 'Inter',sans-serif; cursor:pointer; transition:filter .14s; }
 .fac-add:hover{ filter:brightness(1.15); }
+.fac-head-actions{ display:flex; gap:.5rem; flex-wrap:wrap; }
+.fac-import{ display:inline-flex; align-items:center; gap:6px; padding:9px 15px; border:1px solid var(--reg-line); background:#fff; color:var(--reg-ink); font:600 12.5px 'Inter',sans-serif; cursor:pointer; transition:border-color .14s, background .14s; }
+.fac-import:hover:not(:disabled){ border-color:var(--reg-ink); background:var(--reg-warm); }
+.fac-import:disabled{ opacity:.6; cursor:default; }
+.fac-tmpl{ display:inline-flex; align-items:center; gap:6px; padding:9px 13px; border:1px solid transparent; background:none; color:var(--reg-muted); font:600 12.5px 'Inter',sans-serif; cursor:pointer; transition:color .14s; }
+.fac-tmpl:hover{ color:var(--reg-ink); }
+/* Import result modal */
+.fir-row{ display:flex; gap:.6rem; }
+.fir-stat{ flex:1; border:1px solid var(--reg-line); border-radius:8px; padding:.7rem .85rem; }
+.fir-stat b{ display:block; font:600 22px 'Inter',sans-serif; color:var(--reg-ink); font-variant-numeric:tabular-nums; }
+.fir-stat span{ font-size:11px; color:var(--reg-muted); }
+.fir-stat.ok b{ color:var(--reg-green); }
+.fir-stat.err b{ color:var(--reg-red); }
+.fir-errs{ margin-top:1rem; border:1px solid var(--reg-line); border-radius:8px; max-height:220px; overflow:auto; }
+.fir-err{ display:flex; gap:.6rem; padding:8px 12px; font-size:12.5px; border-bottom:1px solid var(--reg-line-soft); }
+.fir-err:last-child{ border-bottom:none; }
+.fir-err b{ color:var(--reg-red); flex-shrink:0; font-variant-numeric:tabular-nums; }
 
 /* ── Ink avatar ── */
 .fac-av{ border-radius:50%; background:var(--reg-ink); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Inter',sans-serif; font-weight:600; flex-shrink:0; }
@@ -148,6 +165,11 @@ export default function RegistrarFaculty() {
   const [departments, setDepartments] = useState([]);
   const [programs,    setPrograms]    = useState([]);
 
+  // Import faculty
+  const [importing,     setImporting]     = useState(false);
+  const [importResult,  setImportResult]  = useState(null);  // { total_rows, created, emailed, errors, samples }
+  const importRef = useRef(null);
+
   // Edit-faculty modal
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState(null);   // { id, full_name, student_id, email, contact_number, department, program, is_gec_faculty, rank }
@@ -204,6 +226,40 @@ export default function RegistrarFaculty() {
       );
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleDownloadTemplate() {
+    try {
+      const res = await api.get('/auth/registrar/faculty/import-template/', { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'faculty_import_template.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast('Couldn’t download the template. Please try again.', { type: 'error' });
+    }
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await api.post('/auth/registrar/faculty/import/', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setImportResult(res.data);
+      if (res.data.created > 0) fetchFaculty();
+    } catch (err) {
+      toast(err.response?.data?.error || 'Import failed. Upload a valid .xlsx or .csv built from the template.', { type: 'error' });
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -341,9 +397,18 @@ export default function RegistrarFaculty() {
               : `${faculty.length} faculty across ${deptBlocks.length} department${deptBlocks.length !== 1 ? 's' : ''}. Open one to see its roster, or add a new member.`}
           </p>
         </div>
-        <button className="fac-add" onClick={() => { setCreateForm(EMPTY_FACULTY); setCreateErr(''); setShowCreate(true); }}>
-          <i className="ti ti-plus" /> Add faculty
-        </button>
+        <div className="fac-head-actions">
+          <input ref={importRef} type="file" accept=".xlsx,.csv" style={{ display: 'none' }} onChange={handleImportFile} />
+          <button className="fac-tmpl" onClick={handleDownloadTemplate} title="Download the Excel template with the expected columns">
+            <i className="ti ti-download" /> Template
+          </button>
+          <button className="fac-import" disabled={importing} onClick={() => importRef.current?.click()}>
+            <i className="ti ti-file-spreadsheet" /> {importing ? 'Importing…' : 'Import faculty'}
+          </button>
+          <button className="fac-add" onClick={() => { setCreateForm(EMPTY_FACULTY); setCreateErr(''); setShowCreate(true); }}>
+            <i className="ti ti-plus" /> Add faculty
+          </button>
+        </div>
       </header>
 
       {error && (
@@ -754,6 +819,56 @@ export default function RegistrarFaculty() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ── Import result modal ── */}
+      {importResult && (
+        <div className="fac-modal-backdrop" onClick={() => setImportResult(null)}>
+          <div className="fac-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+            <div className="fac-modal-header">
+              <div>
+                <h2 className="fac-modal-title">Faculty import</h2>
+                <p style={{ margin: '.25rem 0 0', fontSize: '.85rem', color: 'var(--reg-muted)' }}>
+                  {importResult.created} of {importResult.total_rows} row{importResult.total_rows !== 1 ? 's' : ''} created.
+                </p>
+              </div>
+              <button className="fac-modal-x" onClick={() => setImportResult(null)} aria-label="Close"><i className="ti ti-x" /></button>
+            </div>
+            <div className="fac-modal-body">
+              <div className="fir-row">
+                <div className="fir-stat ok"><b>{importResult.created}</b><span>Created</span></div>
+                <div className="fir-stat"><b>{importResult.emailed}</b><span>Setup emails sent</span></div>
+                <div className={`fir-stat${importResult.errors.length ? ' err' : ''}`}><b>{importResult.errors.length}</b><span>Skipped</span></div>
+              </div>
+
+              {importResult.created > 0 && (
+                <p style={{ fontSize: 12.5, color: 'var(--reg-muted)', margin: '.9rem 0 0' }}>
+                  <i className="ti ti-mail-forward" style={{ color: 'var(--reg-gold)', marginRight: 5 }} />
+                  Each new faculty was emailed a setup link to create their password.
+                </p>
+              )}
+
+              {importResult.errors.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--reg-muted)', margin: '1.1rem 0 .4rem' }}>
+                    Skipped rows
+                  </div>
+                  <div className="fir-errs">
+                    {importResult.errors.map((er, i) => (
+                      <div key={i} className="fir-err">
+                        <b>Row {er.row}</b>
+                        <span style={{ color: 'var(--reg-ink-2)' }}>{er.email ? `${er.email} — ` : ''}{er.error}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem', padding: '1rem 1.5rem', borderTop: '1px solid var(--reg-line)' }}>
+              <button className="btn-pri" onClick={() => setImportResult(null)}>Done</button>
+            </div>
+          </div>
         </div>
       )}
     </>
