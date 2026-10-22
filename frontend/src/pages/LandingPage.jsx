@@ -1799,7 +1799,7 @@ function EnrollmentModal({ onClose, term, programs }) {
     // Personal
     first: '', middle: '', last: '', suffix: '', email: '', contact: '', dob: '', sex: 'Male',
     birthplace: '', civil_status: 'Single', citizenship: 'Filipino', religion: '', ethnicity: '',
-    program: PROGRAMS_STATIC[0].name, major: '', year: '1',
+    program: PROGRAMS_STATIC[0].name, year: '1',
     student_id: '',   // returnee / old student
     // Address & family
     addr_brgy: '', addr_town: '', addr_province: '', zip: '',
@@ -1906,7 +1906,6 @@ function EnrollmentModal({ onClose, term, programs }) {
       if (!req(form.religion)) return 'Enter your religion.';
       if (!req(form.ethnicity)) return 'Enter your ethnicity.';
       if (!req(form.program)) return 'Select your program.';
-      if (!req(form.major)) return 'Enter your major (type N/A if none).';
     }
     if (s === 2) {
       if (!req(form.addr_brgy) || !req(form.addr_town) || !req(form.addr_province)) return 'Complete your current address (Brgy, Town, Province).';
@@ -1969,7 +1968,6 @@ function EnrollmentModal({ onClose, term, programs }) {
       const progObj = (programs || []).find(p => p.name === form.program);
       const yearLevel = type === 'new' ? 1 : (parseInt(form.year, 10) || 1);
       const details = {
-        major: form.major,
         birthplace: form.birthplace,
         civil_status: form.civil_status,
         citizenship: form.citizenship,
@@ -2272,16 +2270,10 @@ function EnrollmentModal({ onClose, term, programs }) {
                           </p>
                         )}
                       </div>
-                      <div className="adm-row">
-                        <div className="flow-field">
-                          <label style={fLabel}>Program</label>
-                          <ProgramSearchSelect value={form.program} options={progList}
-                            onChange={v => update('program', v)} />
-                        </div>
-                        <div className="flow-field">
-                          <label style={fLabel}>Major</label>
-                          <input style={fInput} value={form.major} onChange={e => update('major', e.target.value)} placeholder="Type N/A if none" />
-                        </div>
+                      <div className="flow-field">
+                        <label style={fLabel}>Program</label>
+                        <ProgramSearchSelect value={form.program} options={progList}
+                          onChange={v => update('program', v)} />
                       </div>
                       <div className="flow-field adm-yl">
                         <label style={fLabel}>Year level{type === 'new' && <span style={optLbl}> (freshman)</span>}</label>
@@ -2475,7 +2467,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                         ['Citizenship',   form.citizenship || '-'],
                         ['Religion',      form.religion || '-'],
                         ['Ethnicity',     form.ethnicity || '-'],
-                        ['Program',       `${form.program}${form.major ? ` (${form.major})` : ''}`],
+                        ['Program',       form.program],
                         ['Year level',    type === 'new' ? '1st Year' : `${form.year}${['','st','nd','rd','th'][Math.min(+form.year,4)] || 'th'} Year`],
                         ['Address',       [form.addr_brgy, form.addr_town, form.addr_province, form.zip].filter(Boolean).join(', ') || '-'],
                         ['Father',        form.father_name || '-'],
