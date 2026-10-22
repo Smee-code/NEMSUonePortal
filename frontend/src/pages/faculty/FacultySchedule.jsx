@@ -695,7 +695,7 @@ export default function FacultyTeachingLoad() {
               </button>
             </div>
             <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 1.25rem' }}>
-              Select a term first. Subjects will follow the selected term, program, and year level.
+              Subjects follow the current term, program, and year level.
             </p>
 
             {[
@@ -705,10 +705,12 @@ export default function FacultyTeachingLoad() {
                   <select
                     className="tl-modal-select"
                     value={declareForm.term_semester}
-                    onChange={e => handleDeclareTermChange(e.target.value)}
+                    disabled
+                    title="Set automatically to the current term"
                   >
-                    <option value="">Select Term</option>
-                    {TERM_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    <option value={declareForm.term_semester}>
+                      {TERM_OPTIONS.find(t => t.value === declareForm.term_semester)?.label || 'Current term'}
+                    </option>
                   </select>
                 ),
               },
