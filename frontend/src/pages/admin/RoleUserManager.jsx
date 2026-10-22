@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { titleCase } from '../../utils/text';
 import { useAdminShell } from '../../context/AdminShellContext';
 import { useConfirm } from '../../components/ConfirmDialog';
 import StudentBulkImport from '../../components/StudentBulkImport';
@@ -335,7 +336,7 @@ export default function RoleUserManager({ role, config }) {
                 <div className="rum-field">
                   <label>Full name</label>
                   <input required placeholder="Dela Cruz, Juan A."
-                    value={form.full_name} onChange={e => setField('full_name', e.target.value)} />
+                    value={form.full_name} onChange={e => setField('full_name', titleCase(e.target.value))} />
                 </div>
                 <div className="rum-field">
                   <label>Institutional email</label>

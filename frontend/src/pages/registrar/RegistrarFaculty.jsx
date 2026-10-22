@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../components/Toast';
+import { titleCase } from '../../utils/text';
 
 const EMPTY_FACULTY = {
   full_name: '', institutional_email: '', date_of_birth: '', contact_number: '',
@@ -659,7 +660,7 @@ export default function RegistrarFaculty() {
               <div className="rf-field">
                 <label className="rf-label">Full name</label>
                 <input className="rf-input" required value={createForm.full_name}
-                  onChange={e => setCF('full_name', e.target.value)} placeholder="Dela Cruz, Juan A." />
+                  onChange={e => setCF('full_name', titleCase(e.target.value))} placeholder="Dela Cruz, Juan A." />
               </div>
 
               <div className="rf-row">
@@ -756,7 +757,7 @@ export default function RegistrarFaculty() {
               <div className="rf-field">
                 <label className="rf-label">Full name</label>
                 <input className="rf-input" required value={editForm.full_name}
-                  onChange={e => setEF('full_name', e.target.value)} placeholder="Dela Cruz, Juan A." />
+                  onChange={e => setEF('full_name', titleCase(e.target.value))} placeholder="Dela Cruz, Juan A." />
               </div>
 
               <div className="rf-row">

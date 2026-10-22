@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../../api/axios';
+import { titleCase } from '../../utils/text';
 import { useAuth } from '../../context/AuthContext';
 import { useAdminShell } from '../../context/AdminShellContext';
 
@@ -566,7 +567,7 @@ export default function AdminUserManagement() {
                   className="um-modal-input" required
                   placeholder="Dela Cruz, Juan A."
                   value={createForm.full_name}
-                  onChange={e => setCreateField('full_name', e.target.value)}
+                  onChange={e => setCreateField('full_name', titleCase(e.target.value))}
                 />
               </div>
 

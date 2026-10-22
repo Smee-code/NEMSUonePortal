@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../components/Toast';
+import { titleCase } from '../../utils/text';
+
+// Name / place fields that auto-capitalize each word.
+const CAP_FIELDS = new Set([
+  'birthplace', 'citizenship', 'religion', 'ethnicity',
+  'addr_brgy', 'addr_town', 'addr_province',
+  'spouse_name', 'spouse_address', 'father', 'mother', 'parent_address',
+  'elem_school', 'jhs_school', 'shs_school',
+]);
 
 const CIVIL = ['Single', 'Married', 'Widowed', 'Separated', 'Annulled'];
 const EMPTY = {
@@ -56,7 +65,7 @@ export default function StudentPersonalInfoCard() {
       .finally(() => setLoad(false));
   }, []);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => setForm(f => ({ ...f, [k]: CAP_FIELDS.has(k) ? titleCase(v) : v }));
 
   const save = async (e) => {
     e.preventDefault();

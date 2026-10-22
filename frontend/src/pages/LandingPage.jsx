@@ -2,7 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
+import { titleCase } from '../utils/text';
 import AuthModal from '../components/AuthModal';
+
+// Admission-form fields that auto-capitalize each word (names, places, schools).
+const CAP_FIELDS = new Set([
+  'first', 'middle', 'last', 'birthplace', 'citizenship', 'religion', 'ethnicity',
+  'spouse_name', 'father_name', 'mother_name', 'parent_address',
+  'elem_school', 'elem_address', 'jhs_school', 'jhs_address',
+  'shs_school', 'shs_address', 'last_school',
+]);
 import ScrollMemory from '../components/ScrollMemory';
 
 /* ══════════════════════════════════════════════════════════════
@@ -1939,7 +1948,9 @@ function EnrollmentModal({ onClose, term, programs }) {
   const totalSteps = sideSteps.length;
   const stepNow    = Math.min(step, totalSteps);
 
-  const update  = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  // Name / place fields get title-cased as they're typed; email, contact, dates,
+  // IDs, year numbers, etc. are left exactly as entered.
+  const update  = (k, v) => setForm(p => ({ ...p, [k]: CAP_FIELDS.has(k) ? titleCase(v) : v }));
 
   // Date of birth is a typable MM/DD/YYYY field; auto-insert the slashes as the
   // applicant types, and convert to ISO (YYYY-MM-DD) for the API.
