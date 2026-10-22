@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { titleCase } from '../../utils/text';
@@ -54,6 +54,11 @@ export default function RoleUserManager({ role, config }) {
   const [editUser, setEditUser] = useState(null);
   const [infoId, setInfoId] = useState(null);
 
+  // Faculty bulk import
+  const [importing, setImporting]       = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const importRef = useRef(null);
+
   const autoCreate = !!config.autoCreate;
 
   useEffect(() => {
@@ -79,6 +84,40 @@ export default function RoleUserManager({ role, config }) {
   useEffect(() => { setOffset(0); fetchUsers(0); }, [searchQuery, fetchUsers]);
 
   function goTo(newOffset) { setOffset(newOffset); fetchUsers(newOffset); }
+
+  async function handleDownloadTemplate() {
+    try {
+      const res = await api.get('/auth/registrar/faculty/import-template/', { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'faculty_import_template.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast('Couldn’t download the template. Please try again.', { type: 'error' });
+    }
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await api.post('/auth/registrar/faculty/import/', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setImportResult(res.data);
+      if (res.data.created > 0) goTo(0);
+    } catch (err) {
+      toast(err.response?.data?.error || 'Import failed. Upload a valid .xlsx or .csv built from the template.', { type: 'error' });
+    } finally {
+      setImporting(false);
+    }
+  }
 
   function openAdd() { setForm(EMPTY); setCreateErr(''); setCreated(null); setCopied(false); setShowAdd(true); }
   function closeAdd() { setShowAdd(false); setCreated(null); setCopied(false); }
@@ -178,9 +217,22 @@ export default function RoleUserManager({ role, config }) {
               <StudentAddButton buttonClassName="btn-pri" onCreated={() => goTo(0)} />
             </>
           ) : (
-            <button className="btn-pri" onClick={openAdd}>
-              <i className={`ti ${config.addIcon}`} /> Add {config.singular.toLowerCase()}
-            </button>
+            <>
+              {role === 'faculty' && (
+                <>
+                  <input ref={importRef} type="file" accept=".xlsx,.csv" style={{ display: 'none' }} onChange={handleImportFile} />
+                  <button className="btn-sec" onClick={handleDownloadTemplate} title="Download the Excel template with the expected columns">
+                    <i className="ti ti-download" /> Template
+                  </button>
+                  <button className="btn-sec" disabled={importing} onClick={() => importRef.current?.click()}>
+                    <i className="ti ti-file-spreadsheet" /> {importing ? 'Importing…' : 'Import faculty'}
+                  </button>
+                </>
+              )}
+              <button className="btn-pri" onClick={openAdd}>
+                <i className={`ti ${config.addIcon}`} /> Add {config.singular.toLowerCase()}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -416,6 +468,57 @@ export default function RoleUserManager({ role, config }) {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Faculty import result */}
+      {importResult && (
+        <div className="rum-overlay" onMouseDown={() => setImportResult(null)}>
+          <div className="rum-modal" onMouseDown={e => e.stopPropagation()}>
+            <div className="rum-modal-head">
+              <div>
+                <h3>Faculty import</h3>
+                <div className="rum-modal-sub">{importResult.created} of {importResult.total_rows} row{importResult.total_rows !== 1 ? 's' : ''} created.</div>
+              </div>
+              <button className="rum-modal-x" onClick={() => setImportResult(null)}><i className="ti ti-x" /></button>
+            </div>
+            <div className="rum-modal-body">
+              <div style={{ display: 'flex', gap: '.6rem' }}>
+                {[
+                  { n: importResult.created, l: 'Created', c: 'var(--adm-green,#059669)' },
+                  { n: importResult.emailed, l: 'Setup emails sent', c: 'var(--adm-ink,#0a1628)' },
+                  { n: importResult.errors.length, l: 'Skipped', c: importResult.errors.length ? 'var(--adm-red,#dc2626)' : 'var(--adm-ink,#0a1628)' },
+                ].map((s, i) => (
+                  <div key={i} style={{ flex: 1, border: '1px solid var(--adm-line,#e2e8f0)', borderRadius: 8, padding: '.7rem .85rem' }}>
+                    <b style={{ display: 'block', font: "600 22px 'Inter',sans-serif", color: s.c, fontVariantNumeric: 'tabular-nums' }}>{s.n}</b>
+                    <span style={{ fontSize: 11, color: 'var(--adm-muted,#64748b)' }}>{s.l}</span>
+                  </div>
+                ))}
+              </div>
+              {importResult.created > 0 && (
+                <p style={{ fontSize: 12.5, color: 'var(--adm-muted,#64748b)', margin: '.9rem 0 0' }}>
+                  <i className="ti ti-mail-forward" style={{ color: 'var(--adm-gold,#b89043)', marginRight: 5 }} />
+                  Each new faculty was emailed a setup link to create their password.
+                </p>
+              )}
+              {importResult.errors.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--adm-muted,#64748b)', margin: '1.1rem 0 .4rem' }}>Skipped rows</div>
+                  <div style={{ border: '1px solid var(--adm-line,#e2e8f0)', borderRadius: 8, maxHeight: 220, overflow: 'auto' }}>
+                    {importResult.errors.map((er, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '.6rem', padding: '8px 12px', fontSize: 12.5, borderBottom: i < importResult.errors.length - 1 ? '1px solid var(--adm-line-soft,#f1f5f9)' : 'none' }}>
+                        <b style={{ color: 'var(--adm-red,#dc2626)', flexShrink: 0 }}>Row {er.row}</b>
+                        <span>{er.email ? `${er.email} — ` : ''}{er.error}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div className="rum-modal-foot">
+                <button className="btn-pri" onClick={() => setImportResult(null)}>Done</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
