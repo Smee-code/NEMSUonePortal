@@ -545,6 +545,9 @@ const CSS = `
   .modal-body h3 em{font-style:italic;color:var(--ink-2);font-weight:400}
   .modal-body > p.lead{font-size:14px;color:var(--muted);line-height:1.65;margin-bottom:2rem;max-width:480px}
   .modal-body--center > p.lead{margin-left:auto;margin-right:auto}
+  .adm-type-pick{display:flex;gap:12px;align-items:flex-start;padding:1rem 1.1rem;border:1.5px solid var(--line);background:#fff;cursor:pointer;font-family:inherit;text-align:left;transition:border-color .14s,background .14s;}
+  .adm-type-pick:hover{border-color:var(--ink);background:var(--cool);}
+  .adm-type-pick:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
   .modal-choices{display:flex;flex-direction:column;gap:12px;text-align:left}
   /* Freshman admission intro modal */
   .adm-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:var(--gold-tint,#f5edd9);padding:5px 11px;}
@@ -1703,7 +1706,7 @@ function ProgramSearchSelect({ value, options, onChange }) {
 function EnrollmentModal({ onClose, term, programs }) {
   const [step, setStep]       = useState(1);
   const [dir, setDir]         = useState('fwd');
-  const [type, setType]       = useState('new');   // new | transferee | returnee
+  const [type, setType]       = useState(null);    // new | transferee | returnee (null until picked)
   const [done, setDone]       = useState(false);
   const [submitting, setSub]  = useState(false);
   const [refNum, setRefNum]   = useState('');
@@ -1754,7 +1757,13 @@ function EnrollmentModal({ onClose, term, programs }) {
   const totalUnits = SUBJECTS.filter(s => selSubj[s.code]).reduce((a, s) => a + s.units, 0);
 
   const go = n => { setDir(n > step ? 'fwd' : 'back'); setStep(n); };
-  const back = () => (type !== 'returnee' && step > 1) ? go(step - 1) : onClose();
+  // From step 1 (or the returnee form) "Back" returns to the type picker so the
+  // applicant can change their type; deeper steps go one step back.
+  const back = () => {
+    setSubErr('');
+    if (type !== 'returnee' && step > 1) return go(step - 1);
+    return setType(null);
+  };
 
   // All fields are required except: middle name, suffix, spouse (unless married),
   // and the transferee-only "last school" fields.
@@ -1936,6 +1945,27 @@ function EnrollmentModal({ onClose, term, programs }) {
             </button>
           </div>
           )
+        ) : type === null ? (
+          <div className="modal-body modal-body--center">
+            <h3>Choose your <em>applicant type</em>.</h3>
+            <p className="lead">Pick the one that matches you — the right form opens next. You can change this later.</p>
+            <div style={{ display: 'grid', gap: '.6rem', maxWidth: 460, margin: '1.5rem auto 0', textAlign: 'left' }}>
+              {['new', 'transferee', 'returnee'].map(t => (
+                <button key={t} type="button" className="adm-type-pick"
+                  onClick={() => { setType(t); setStep(1); setSubErr(''); }}>
+                  <i className={`ti ${TYPE_ICONS[t]}`} style={{ fontSize: 22, color: 'var(--gold)', flexShrink: 0, marginTop: 2 }} />
+                  <span style={{ flex: 1 }}>
+                    <span style={{ display: 'block', fontWeight: 600, fontSize: 14, color: 'var(--ink)' }}>{TYPE_LABELS[t]}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginTop: 3, lineHeight: 1.5 }}>{TYPE_DESCS[t]}</span>
+                  </span>
+                  <i className="ti ti-arrow-right" style={{ color: 'var(--muted)', alignSelf: 'center', flexShrink: 0 }} />
+                </button>
+              ))}
+            </div>
+            <button className="wiz-btn" style={{ margin: '1.5rem auto 0' }} onClick={onClose}>
+              <i className="ti ti-x" /> Cancel
+            </button>
+          </div>
         ) : (
           <div className="wiz">
             <aside className="wiz-side">
@@ -1969,24 +1999,17 @@ function EnrollmentModal({ onClose, term, programs }) {
                 {step === 1 && (
                   <>
                     <h4>{type === 'returnee' ? 'Request access' : 'Personal information'}</h4>
+                    <p className="wiz-sub" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600, color: 'var(--ink)', background: 'var(--cool)', border: '1px solid var(--line)', padding: '2px 9px', fontSize: 12 }}>
+                        <i className={`ti ${TYPE_ICONS[type]}`} style={{ fontSize: 13 }} /> {TYPE_LABELS[type]}
+                      </span>
+                      <button type="button" onClick={() => setType(null)} style={{ background: 'none', border: 'none', color: 'var(--gold)', fontWeight: 600, cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }}>
+                        Change type
+                      </button>
+                    </p>
                     <p className="wiz-sub">{type === 'returnee'
                       ? "You're already on record. Enter your Student ID and institutional email to apply. Once the registrar approves, we'll email your login password."
-                      : 'Tell us who you are. Pick the type that matches you, then enter your details as they appear on official documents.'}</p>
-                    <div style={{ marginBottom: '1.1rem' }}>
-                      <label style={fLabel}>I am a…</label>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '.5rem', marginTop: 6 }}>
-                        {['new', 'transferee', 'returnee'].map(t => (
-                          <button key={t} type="button" onClick={() => setType(t)}
-                            style={{ textAlign: 'left', padding: '.7rem .8rem', border: `1.5px solid ${type === t ? 'var(--ink)' : 'var(--line)'}`, background: type === t ? 'var(--cool)' : '#fff', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                            <i className={`ti ${TYPE_ICONS[t]}`} style={{ fontSize: 18, color: type === t ? 'var(--ink)' : 'var(--muted)', marginTop: 2, flexShrink: 0 }} />
-                            <span>
-                              <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--ink)' }}>{TYPE_LABELS[t]}</span>
-                              <span style={{ display: 'block', fontSize: 11, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{TYPE_DESCS[t]}</span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                      : 'Enter your details as they appear on your official documents.'}</p>
 
                     {type === 'returnee' ? (
                     <div className="flow-form" style={{ gap: '1rem' }}>
@@ -2314,7 +2337,7 @@ function EnrollmentModal({ onClose, term, programs }) {
 
               <div className="wiz-actions">
                 <button className="wiz-btn" onClick={back}>
-                  <i className="ti ti-arrow-left" /> {step === 1 ? 'Cancel' : 'Back'}
+                  <i className="ti ti-arrow-left" /> {(type === 'returnee' || step === 1) ? 'Change type' : 'Back'}
                 </button>
                 <button className="wiz-btn primary" onClick={next} disabled={submitting}>
                   {type === 'returnee'
