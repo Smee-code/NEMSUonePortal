@@ -809,6 +809,8 @@ const SUBJECTS = [
 const WIZARD_STEPS = ['Student type', 'Personal info', 'Requirements', 'Subjects', 'Review & confirm'];
 const FRESHMAN_STEPS = ['Personal information', 'Address & family', 'Education background', 'Required documents', 'Review & confirm'];
 const CIVIL_STATUS = ['Single', 'Married', 'Widowed', 'Separated', 'Annulled'];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isValidEmail = (v) => EMAIL_RE.test((v || '').trim());
 
 /* ══════════════════════════════════════════════════════════════
    HOOKS & HELPERS
@@ -1726,6 +1728,7 @@ function EnrollmentModal({ onClose, term, programs }) {
   const [files, setFiles]     = useState({});   // { itemId: File } — uploaded PDFs
   const [uploadErr, setUpErr] = useState('');
   const [submitErr, setSubErr] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
   const [checked, setChecked] = useState({});
   const [selSubj, setSelSubj] = useState(
     () => SUBJECTS.reduce((a, s) => ({ ...a, [s.code]: true }), {})
@@ -1802,6 +1805,11 @@ function EnrollmentModal({ onClose, term, programs }) {
     return iso;
   };
 
+  // Live email-format check: flag an invalid email once the applicant has typed
+  // an "@" (so we don't nag mid-local-part) or left the field.
+  const emailValid = isValidEmail(form.email);
+  const emailError = !!form.email && !emailValid && (emailTouched || form.email.includes('@'));
+
   const toggle  = id   => setChecked(p => ({ ...p, [id]: !p[id] }));
   const toggleS = code => setSelSubj(p => ({ ...p, [code]: !p[code] }));
   const totalUnits = SUBJECTS.filter(s => selSubj[s.code]).reduce((a, s) => a + s.units, 0);
@@ -1822,6 +1830,7 @@ function EnrollmentModal({ onClose, term, programs }) {
     if (s === 1) {
       if (!req(form.first) || !req(form.last)) return 'Enter your first and last name.';
       if (!req(form.email)) return 'Enter your email address.';
+      if (!isValidEmail(form.email)) { setEmailTouched(true); return 'Enter a valid email address.'; }
       if (!req(form.contact)) return 'Enter your contact number.';
       if (!dobToISO(form.dob)) return 'Enter a valid date of birth (MM/DD/YYYY).';
       if (!req(form.birthplace)) return 'Enter your birthplace.';
@@ -1862,6 +1871,7 @@ function EnrollmentModal({ onClose, term, programs }) {
     setSubErr('');
     if (!form.student_id.trim())  { setSubErr('Enter your Student ID.'); return; }
     if (!form.email.trim())       { setSubErr('Enter your institutional email.'); return; }
+    if (!isValidEmail(form.email)) { setEmailTouched(true); setSubErr('Enter a valid email address.'); return; }
     setSub(true);
     try {
       const res = await api.post('/enrollment/public/pre-enroll/', {
@@ -2070,7 +2080,13 @@ function EnrollmentModal({ onClose, term, programs }) {
                       </div>
                       <div className="flow-field">
                         <label style={fLabel}>Institutional email</label>
-                        <input style={fInput} type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="juan.delacruz@nemsu.edu.ph" />
+                        <input
+                          style={{ ...fInput, ...(emailError ? { borderColor: '#dc2626' } : (emailValid && form.email) ? { borderColor: '#15803d' } : {}) }}
+                          type="email" value={form.email}
+                          onChange={e => update('email', e.target.value)}
+                          onBlur={() => setEmailTouched(true)}
+                          placeholder="juan.delacruz@nemsu.edu.ph" autoComplete="email" spellCheck={false} />
+                        {emailError && <p style={{ color: '#dc2626', fontSize: 11.5, margin: '4px 0 0' }}>Enter a valid email address (e.g. name@example.com).</p>}
                       </div>
                       <p className="lead" style={{ fontSize: 12, margin: 0, color: 'var(--muted)' }}>
                         No password needed yet. Once the registrar approves your application, we'll email your login password to this address.
@@ -2153,7 +2169,13 @@ function EnrollmentModal({ onClose, term, programs }) {
                       </div>
                       <div className="flow-field">
                         <label style={fLabel}>Email address</label>
-                        <input style={fInput} type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="juan.delacruz@nemsu.edu.ph" />
+                        <input
+                          style={{ ...fInput, ...(emailError ? { borderColor: '#dc2626' } : (emailValid && form.email) ? { borderColor: '#15803d' } : {}) }}
+                          type="email" value={form.email}
+                          onChange={e => update('email', e.target.value)}
+                          onBlur={() => setEmailTouched(true)}
+                          placeholder="juan.delacruz@nemsu.edu.ph" autoComplete="email" spellCheck={false} />
+                        {emailError && <p style={{ color: '#dc2626', fontSize: 11.5, margin: '4px 0 0' }}>Enter a valid email address (e.g. name@example.com).</p>}
                       </div>
                       <div className="adm-row">
                         <div className="flow-field">
