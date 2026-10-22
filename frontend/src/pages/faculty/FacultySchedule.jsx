@@ -307,7 +307,7 @@ export default function FacultyTeachingLoad() {
     setSlotForm(prev => {
       const current = prev[taId] || createSlotRows(1);
       const next = current.slice(0, count);
-      while (next.length < count) next.push({ ...EMPTY_SLOT, room: current[0]?.room || '' });
+      while (next.length < count) next.push({ ...EMPTY_SLOT });
       return { ...prev, [taId]: next };
     });
     setSlotError(prev => ({ ...prev, [taId]: '' }));
@@ -315,18 +315,13 @@ export default function FacultyTeachingLoad() {
 
   const handleAddSlot = async (taId) => {
     const forms = slotForm[taId] || createSlotRows(1);
-    const missingRoom = forms.findIndex(form => !form?.room?.trim());
-    if (missingRoom >= 0) {
-      setSlotError(prev => ({ ...prev, [taId]: `Room is required for meeting ${missingRoom + 1}.` }));
-      return;
-    }
     setSavingSlot(prev => ({ ...prev, [taId]: true }));
     setSlotError(prev => ({ ...prev, [taId]: '' }));
     try {
+      // The room is left to the registrar — faculty only set the day and time.
       await api.post('/schedules/faculty/slots/', {
         teaching_assignment_id: taId,
         slots: forms.map(form => ({
-          room: form.room.trim(),
           day_of_week: form.day_of_week,
           start_time: form.start_time,
           end_time: form.end_time,
@@ -589,87 +584,97 @@ export default function FacultyTeachingLoad() {
                     )}
                   </div>
 
-                  {/* Add slot form */}
+                  {/* Add slot modal */}
                   {slotOpen[taId] && (
-                    <div className="tl-slot-form">
-                      <div className="tl-slot-form-top">
-                        <div>
-                          <label className="tl-label-sm">Meetings per week</label>
-                          <select
-                            className="tl-input-sm"
-                            value={(slotForm[taId] || createSlotRows(1)).length}
-                            onChange={e => updateMeetingCount(taId, Number(e.target.value))}
-                          >
-                            <option value={1}>1 meeting</option>
-                            <option value={2}>2 meetings</option>
-                            <option value={3}>3 meetings</option>
-                          </select>
-                        </div>
-                        <div style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-end' }}>
-                          <button
-                            className="btn-pri"
-                            style={{ padding: '.4rem .9rem', fontSize: 13 }}
-                            onClick={() => handleAddSlot(taId)}
-                            disabled={savingSlot[taId]}
-                          >
-                            {savingSlot[taId] ? 'Saving…' : 'Save'}
+                    <div className="tl-overlay" onClick={e => { if (e.target === e.currentTarget) toggleSlotForm(taId); }}>
+                      <div className="tl-modal tl-modal--slot">
+                        <div className="tl-modal-head">
+                          <div>
+                            <div style={{ fontSize: 11, letterSpacing: '.1em', color: 'var(--gold)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
+                              Schedule
+                            </div>
+                            <h3 style={{ margin: 0, fontSize: 18, color: 'var(--ink)' }}>Add schedule slot</h3>
+                            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted)' }}>
+                              {ta.subject_code} — {ta.subject_name}
+                              {(ta.block_name || ta.section) ? ` · ${ta.block_name || ta.section}` : ''}
+                            </p>
+                          </div>
+                          <button className="tl-modal-close" onClick={() => toggleSlotForm(taId)} aria-label="Close">
+                            <i className="ti ti-x" />
                           </button>
+                        </div>
+
+                        <div className="tl-modal-body">
+                          <div className="tl-slot-field">
+                            <label className="tl-label-sm">Meetings per week</label>
+                            <select
+                              className="tl-input-sm"
+                              value={(slotForm[taId] || createSlotRows(1)).length}
+                              onChange={e => updateMeetingCount(taId, Number(e.target.value))}
+                            >
+                              <option value={1}>1 meeting</option>
+                              <option value={2}>2 meetings</option>
+                              <option value={3}>3 meetings</option>
+                            </select>
+                          </div>
+
+                          {(slotForm[taId] || createSlotRows(1)).map((slot, index) => (
+                            <div key={index} className="tl-slot-row tl-slot-row--modal">
+                              <div className="tl-meeting-label">Meeting {index + 1}</div>
+                              <div>
+                                <label className="tl-label-sm">Day</label>
+                                <select
+                                  className="tl-input-sm"
+                                  value={slot.day_of_week || 'monday'}
+                                  onChange={e => updateSlotField(taId, index, 'day_of_week', e.target.value)}
+                                >
+                                  {DAY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="tl-label-sm">Start time</label>
+                                <input
+                                  type="time"
+                                  className="tl-input-sm"
+                                  value={slot.start_time || '07:00'}
+                                  onChange={e => updateSlotField(taId, index, 'start_time', e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <label className="tl-label-sm">End time</label>
+                                <input
+                                  type="time"
+                                  className="tl-input-sm"
+                                  value={slot.end_time || '08:30'}
+                                  onChange={e => updateSlotField(taId, index, 'end_time', e.target.value)}
+                                />
+                              </div>
+                            </div>
+                          ))}
+
+                          <p className="tl-slot-note">
+                            <i className="ti ti-map-pin" /> The room is assigned by the registrar.
+                          </p>
+                          {slotError[taId] && <div className="tl-form-err">{slotError[taId]}</div>}
+                        </div>
+
+                        <div className="tl-modal-foot">
                           <button
                             className="btn-sec"
-                            style={{ padding: '.4rem .9rem', fontSize: 13 }}
                             onClick={() => toggleSlotForm(taId)}
+                            disabled={savingSlot[taId]}
                           >
                             Cancel
                           </button>
+                          <button
+                            className="btn-pri"
+                            onClick={() => handleAddSlot(taId)}
+                            disabled={savingSlot[taId]}
+                          >
+                            {savingSlot[taId] ? 'Saving…' : 'Add slot'}
+                          </button>
                         </div>
                       </div>
-                      {(slotForm[taId] || createSlotRows(1)).map((slot, index) => (
-                        <div key={index} className="tl-slot-row">
-                          <div className="tl-meeting-label">Meeting {index + 1}</div>
-                          <div>
-                            <label className="tl-label-sm">Day</label>
-                            <select
-                              className="tl-input-sm"
-                              value={slot.day_of_week || 'monday'}
-                              onChange={e => updateSlotField(taId, index, 'day_of_week', e.target.value)}
-                            >
-                              {DAY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="tl-label-sm">Start time</label>
-                            <input
-                              type="time"
-                              className="tl-input-sm"
-                              value={slot.start_time || '07:00'}
-                              onChange={e => updateSlotField(taId, index, 'start_time', e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="tl-label-sm">End time</label>
-                            <input
-                              type="time"
-                              className="tl-input-sm"
-                              value={slot.end_time || '08:30'}
-                              onChange={e => updateSlotField(taId, index, 'end_time', e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="tl-label-sm">Room</label>
-                            <input
-                              type="text"
-                              className="tl-input-sm"
-                              placeholder="e.g. Room 201"
-                              value={slot.room || ''}
-                              onChange={e => updateSlotField(taId, index, 'room', e.target.value)}
-                              style={{ minWidth: 120 }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                      {slotError[taId] && (
-                        <div className="tl-form-err">{slotError[taId]}</div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -992,6 +997,28 @@ const CSS = `
   }
   .tl-input-sm:focus { border-color: var(--ink); }
   .tl-form-err { color: var(--red); font-size: 12px; margin-top: .5rem; }
+  /* Add-slot modal */
+  .tl-modal--slot { max-width: 520px; }
+  .tl-modal-body { margin-top: 1rem; }
+  .tl-slot-field { margin-bottom: .25rem; }
+  .tl-slot-field .tl-input-sm, .tl-slot-row--modal .tl-input-sm { width: 100%; box-sizing: border-box; }
+  .tl-slot-row--modal {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; align-items: end;
+    padding-top: .85rem; margin-top: .85rem; border-top: 1px solid var(--line-soft);
+  }
+  .tl-slot-row--modal .tl-meeting-label {
+    grid-column: 1 / -1; min-width: 0; padding-bottom: 0;
+  }
+  .tl-slot-note {
+    display: flex; align-items: center; gap: 6px; margin: 1rem 0 0;
+    font-size: 12.5px; color: var(--muted);
+  }
+  .tl-slot-note i { color: var(--amber); font-size: 15px; }
+  .tl-modal-foot {
+    display: flex; justify-content: flex-end; gap: .6rem;
+    margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid var(--line-soft);
+  }
+  @media (max-width: 560px) { .tl-slot-row--modal { grid-template-columns: 1fr; } }
   .tl-help-text { color: var(--muted); font-size: 12px; margin-top: .35rem; }
 
   /* Modal */
