@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useRegistrarShell } from '../../context/RegistrarShellContext';
-import EnrollmentScheduleManager from '../../components/EnrollmentScheduleManager';
 
 function initials(name) {
   if (!name) return '?';
@@ -91,7 +90,6 @@ export default function RegistrarAdmissions() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
   const [filter, setFilter]   = useState('pending');
-  const [winOpen, setWinOpen] = useState(false);
 
   // Review modal
   const [selected,    setSelected]    = useState(null);
@@ -207,23 +205,6 @@ export default function RegistrarAdmissions() {
           </p>
         </div>
       </header>
-
-      {/* Enrollment-window panel (collapsible) */}
-      <div className="ad-win">
-        <button className="ad-win-hd" onClick={() => setWinOpen(o => !o)}>
-          <span className="ad-win-ic"><i className="ti ti-calendar-cog" /></span>
-          <span>
-            <span className="ad-win-tt">Enrollment window</span>
-            <span className="ad-win-sb">Status, academic year, and schedule shown on the public landing page</span>
-          </span>
-          <i className={`ti ti-chevron-${winOpen ? 'up' : 'down'} ad-win-chev`} />
-        </button>
-        {winOpen && (
-          <div className="ad-win-body">
-            <EnrollmentScheduleManager />
-          </div>
-        )}
-      </div>
 
       {/* Figures */}
       <div className="ad-figs">
