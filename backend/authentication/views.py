@@ -209,30 +209,41 @@ class LoginView(TokenObtainPairView):
 
 
 def _issue_login_otp(user):
-    """Generate, store, and email a fresh 6-digit login code. Returns the code."""
+    """Generate and store a fresh 6-digit login code, then email it on a
+    background thread so the login request returns immediately (email over SMTP
+    can take several seconds). The code is saved before sending, so verification
+    never depends on the email having gone out yet. Returns the code."""
     import secrets
+    import threading
     from datetime import timedelta as _td
     otp = f'{secrets.randbelow(1000000):06d}'
     user.login_otp = otp
     user.login_otp_expires = timezone.now() + _td(minutes=10)
     user.login_otp_attempts = 0
     user.save(update_fields=['login_otp', 'login_otp_expires', 'login_otp_attempts'])
-    try:
-        from nemsuoneportal.emails import send_branded_email
-        send_branded_email(
-            'Your NEMSUonePortal login code',
-            (
-                f'Hi {user.full_name},\n\n'
-                f'Use this one-time code to finish signing in:\n\n'
-                f'  {otp}\n\n'
-                f'The code expires in 10 minutes. If you did not try to sign in, '
-                f'you can ignore this email and your account stays secure.\n\n'
-                f'— NEMSU Cantilan Campus'
-            ),
-            [user.institutional_email],
-        )
-    except Exception:
-        logger.warning('Failed to send login OTP email', exc_info=True)
+
+    email = user.institutional_email
+    name = user.full_name
+
+    def _send():
+        try:
+            from nemsuoneportal.emails import send_branded_email
+            send_branded_email(
+                'Your NEMSUonePortal login code',
+                (
+                    f'Hi {name},\n\n'
+                    f'Use this one-time code to finish signing in:\n\n'
+                    f'  {otp}\n\n'
+                    f'The code expires in 10 minutes. If you did not try to sign in, '
+                    f'you can ignore this email and your account stays secure.\n\n'
+                    f'— NEMSU Cantilan Campus'
+                ),
+                [email],
+            )
+        except Exception:
+            logger.warning('Failed to send login OTP email', exc_info=True)
+
+    threading.Thread(target=_send, daemon=True).start()
     return otp
 
 

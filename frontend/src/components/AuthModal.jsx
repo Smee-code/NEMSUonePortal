@@ -45,19 +45,34 @@ export default function AuthModal({ mode = 'login', onClose }) {
 }
 
 function LoginForm({ onClose, toSignup }) {
-  const { login } = useAuth();
+  const { login, verifyLoginOtp, resendLoginOtp } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ institutional_email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [step, setStep] = useState('credentials'); // 'credentials' | 'otp'
+  const [otp, setOtp] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+  const [resendIn, setResendIn] = useState(0);
+  const [resent, setResent] = useState(false);
+
+  function finish(data) {
+    onClose();
+    navigate(data.user.needs_academic_setup ? '/setup-academic' : (ROLE_HOME[data.user.role] ?? '/'));
+  }
 
   const submit = async e => {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
       const data = await login(form);
-      onClose();
-      navigate(ROLE_HOME[data.user.role] ?? '/');
+      if (data.otp_required) {
+        setOtpEmail(data.email || form.institutional_email);
+        setStep('otp'); setResendIn(30);
+      } else {
+        finish(data);
+      }
     } catch (err) {
       setError(
         err.response?.data?.detail ||
@@ -66,6 +81,65 @@ function LoginForm({ onClose, toSignup }) {
       );
     } finally { setLoading(false); }
   };
+
+  const verify = async e => {
+    e.preventDefault();
+    setError(''); setLoading(true);
+    try {
+      const data = await verifyLoginOtp({ institutional_email: form.institutional_email, otp: otp.trim() });
+      finish(data);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'That code is incorrect. Please try again.');
+    } finally { setLoading(false); }
+  };
+
+  async function resend() {
+    if (resendIn > 0) return;
+    setError(''); setResent(false);
+    try { await resendLoginOtp(form.institutional_email); setResent(true); setResendIn(30); }
+    catch { setError('Couldn’t resend the code. Please try again.'); }
+  }
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setInterval(() => setResendIn(s => (s <= 1 ? 0 : s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendIn]);
+
+  if (step === 'otp') {
+    return (
+      <form onSubmit={verify} className="authm-body">
+        <div className="authm-head">
+          <img src="/logo.png" alt="" className="authm-logo" />
+          <h2>Enter your code</h2>
+          <p>We sent a 6-digit code to <strong>{otpEmail}</strong>.</p>
+        </div>
+
+        <label className="authm-label">Verification code</label>
+        <input
+          className="authm-input" inputMode="numeric" autoComplete="one-time-code" required autoFocus
+          value={otp}
+          onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="------" maxLength={6}
+          style={{ letterSpacing: '.5em', textAlign: 'center', fontSize: 20, fontWeight: 600 }}
+        />
+
+        {resent && <div style={{ color: '#15803d', fontSize: 12.5, margin: '.4rem 0 0' }}>A new code has been sent.</div>}
+        {error && <div className="authm-err">{error}</div>}
+
+        <button type="submit" className="authm-submit" disabled={loading || otp.length < 6}>
+          {loading ? 'Verifying…' : 'Verify & sign in'}
+        </button>
+
+        <div className="authm-switch" style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <button type="button" onClick={() => { setStep('credentials'); setOtp(''); setError(''); }}>← Back</button>
+          <button type="button" onClick={resend} disabled={resendIn > 0} style={{ opacity: resendIn > 0 ? 0.5 : 1 }}>
+            {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+          </button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={submit} className="authm-body">
