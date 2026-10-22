@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import PasswordInput from './PasswordInput';
+import { useLockCountdown, formatLockWait } from '../hooks/useLockCountdown';
 
 const ROLE_HOME = {
   student: '/student/dashboard',
@@ -56,6 +57,9 @@ function LoginForm({ onClose, toSignup }) {
   const [otpEmail, setOtpEmail] = useState('');
   const [resendIn, setResendIn] = useState(0);
   const [resent, setResent] = useState(false);
+  const [lockUntil, setLockUntil] = useState(null);
+  const lockRemaining = useLockCountdown(lockUntil);
+  const locked = lockRemaining > 0;
 
   function finish(data) {
     onClose();
@@ -67,6 +71,7 @@ function LoginForm({ onClose, toSignup }) {
     setError(''); setLoading(true);
     try {
       const data = await login(form);
+      setLockUntil(null);
       if (data.otp_required) {
         setOtpEmail(data.email || form.institutional_email);
         setStep('otp'); setResendIn(30);
@@ -74,11 +79,14 @@ function LoginForm({ onClose, toSignup }) {
         finish(data);
       }
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-        err.response?.data?.non_field_errors?.[0] ||
-        'Login failed. Please check your credentials and try again.'
-      );
+      const d = err.response?.data;
+      if (d?.locked && typeof d.retry_after === 'number') {
+        setLockUntil(new Date(Date.now() + d.retry_after * 1000));
+        setError('');
+      } else {
+        setLockUntil(null);
+        setError(d?.detail || d?.non_field_errors?.[0] || 'Login failed. Please check your credentials and try again.');
+      }
     } finally { setLoading(false); }
   };
 
@@ -165,10 +173,15 @@ function LoginForm({ onClose, toSignup }) {
         placeholder="Your password"
       />
 
-      {error && <div className="authm-err">{error}</div>}
+      {locked ? (
+        <div className="authm-err">
+          Account is temporarily locked due to multiple failed login attempts.
+          Please try again in {formatLockWait(lockRemaining)}.
+        </div>
+      ) : error && <div className="authm-err">{error}</div>}
 
-      <button type="submit" className="authm-submit" disabled={loading}>
-        {loading ? 'Signing in…' : 'Sign in'}
+      <button type="submit" className="authm-submit" disabled={loading || locked}>
+        {loading ? 'Signing in…' : locked ? `Try again in ${formatLockWait(lockRemaining)}` : 'Sign in'}
       </button>
 
       <div className="authm-forgot">

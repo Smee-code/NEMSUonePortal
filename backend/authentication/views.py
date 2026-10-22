@@ -182,9 +182,29 @@ class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
 
+    @staticmethod
+    def _locked_response(user):
+        """A 403 with the remaining lock time so the UI can count it down."""
+        retry_after = max(int((user.locked_until - timezone.now()).total_seconds()), 0)
+        return Response(
+            {
+                'detail': 'Account is temporarily locked due to multiple failed login attempts.',
+                'locked': True,
+                'locked_until': user.locked_until.isoformat(),
+                'retry_after': retry_after,
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     def post(self, request, *args, **kwargs):
         ip = get_client_ip(request)
         email = request.data.get('institutional_email', '').lower().strip()
+
+        # If the account is already locked, report the remaining time up front.
+        existing = User.objects.filter(institutional_email=email).first()
+        if existing and existing.is_locked():
+            _audit(existing, existing.role, 'login_blocked_locked', request.path, ip, 'failure')
+            return self._locked_response(existing)
 
         serializer = self.get_serializer(data=request.data)
         try:
@@ -194,6 +214,11 @@ class LoginView(TokenObtainPairView):
                 user = User.objects.get(institutional_email=email)
                 user.record_failed_login()
                 _audit(user, user.role, 'login_failed', request.path, ip, 'failure')
+                # If that failure just tripped the lockout, return the wait time
+                # instead of a bare "invalid credentials".
+                user.refresh_from_db()
+                if user.is_locked():
+                    return self._locked_response(user)
             except User.DoesNotExist:
                 _audit(None, '', 'login_failed_unknown_user', request.path, ip, 'failure')
             raise

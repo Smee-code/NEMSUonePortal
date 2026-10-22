@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PasswordInput from '../components/PasswordInput';
+import { useLockCountdown, formatLockWait } from '../hooks/useLockCountdown';
 
 const ROLE_HOME = {
   student:            '/student/dashboard',
@@ -23,11 +24,26 @@ export default function Login() {
   const [resent, setResent] = useState(false);
   const otpRef = useRef(null);
 
+  const [lockUntil, setLockUntil] = useState(null);
+  const lockRemaining = useLockCountdown(lockUntil);
+  const locked = lockRemaining > 0;
+
   const { login, verifyLoginOtp, resendLoginOtp } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  function handleError(err, fallback) {
+    const d = err.response?.data;
+    if (d?.locked && typeof d.retry_after === 'number') {
+      setLockUntil(new Date(Date.now() + d.retry_after * 1000));
+      setError('');
+      return;
+    }
+    setLockUntil(null);
+    setError(d?.detail || d?.non_field_errors?.[0] || fallback);
+  }
 
   function goToDashboard(data) {
     if (data.user.needs_academic_setup) navigate('/setup-academic');
@@ -40,6 +56,7 @@ export default function Login() {
     setLoading(true);
     try {
       const data = await login(form);
+      setLockUntil(null);
       if (data.otp_required) {
         setOtpEmail(data.email || form.institutional_email);
         setStep('otp');
@@ -48,11 +65,7 @@ export default function Login() {
         goToDashboard(data); // 2FA somehow disabled — proceed as before
       }
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-        err.response?.data?.non_field_errors?.[0] ||
-        'Login failed. Please check your credentials and try again.'
-      );
+      handleError(err, 'Login failed. Please check your credentials and try again.');
     } finally {
       setLoading(false);
     }
@@ -134,10 +147,15 @@ export default function Login() {
               />
             </div>
 
-            {error && <p className="error-message" role="alert">{error}</p>}
+            {locked ? (
+              <p className="error-message" role="alert">
+                Account is temporarily locked due to multiple failed login attempts.
+                Please try again in {formatLockWait(lockRemaining)}.
+              </p>
+            ) : error && <p className="error-message" role="alert">{error}</p>}
 
-            <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? 'Signing in…' : 'Sign In'}
+            <button type="submit" disabled={loading || locked} className="btn-primary">
+              {loading ? 'Signing in…' : locked ? `Try again in ${formatLockWait(lockRemaining)}` : 'Sign In'}
             </button>
           </form>
         ) : (
