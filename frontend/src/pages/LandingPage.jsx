@@ -825,6 +825,55 @@ const isValidEmail = (v) => {
   return !!m && KNOWN_TLDS.has(m[1]);
 };
 
+// Domains we recognise as real (so we never "suggest a fix" for them).
+const KNOWN_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.com.ph', 'ymail.com', 'rocketmail.com',
+  'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'icloud.com', 'me.com', 'mac.com',
+  'aol.com', 'protonmail.com', 'proton.me', 'zoho.com', 'gmx.com', 'mail.com', 'yandex.com',
+  'nemsu.edu.ph', 'deped.gov.ph', 'dlsu.edu.ph', 'up.edu.ph', 'addu.edu.ph',
+]);
+// Big providers we correct obvious typos toward (e.g. 36gmail.com, gmial.com).
+const TYPO_TARGETS = [
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.com.ph', 'ymail.com',
+  'outlook.com', 'hotmail.com', 'live.com', 'icloud.com', 'protonmail.com', 'aol.com',
+  'nemsu.edu.ph', 'deped.gov.ph',
+];
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+  }
+  return dp[m][n];
+}
+
+// Returns a corrected email if the domain looks like a typo of a popular
+// provider (e.g. dasdas@36gmail.com -> dasdas@gmail.com), else null.
+function suggestEmail(email) {
+  const raw = (email || '').trim();
+  const at = raw.lastIndexOf('@');
+  if (at < 1) return null;
+  const local = raw.slice(0, at);
+  const domain = raw.slice(at + 1).toLowerCase();
+  if (!domain || KNOWN_DOMAINS.has(domain)) return null;
+  for (const pd of TYPO_TARGETS) {
+    if (domain === pd) return null;
+    // "36gmail.com" ends with "gmail.com" but with junk glued on (no dot before it)
+    if (domain.endsWith(pd) && domain[domain.length - pd.length - 1] !== '.') return `${local}@${pd}`;
+    // near-miss spellings: gmial.com, gmai.com, yaho.com, outlok.com …
+    if (levenshtein(domain, pd) <= 2) return `${local}@${pd}`;
+  }
+  return null;
+}
+
+// Acceptable = valid format/TLD AND not an obvious provider typo.
+const emailAcceptable = (v) => isValidEmail(v) && !suggestEmail(v);
+
 /* ══════════════════════════════════════════════════════════════
    HOOKS & HELPERS
 ══════════════════════════════════════════════════════════════ */
@@ -1818,10 +1867,12 @@ function EnrollmentModal({ onClose, term, programs }) {
     return iso;
   };
 
-  // Live email-format check: flag an invalid email once the applicant has typed
-  // an "@" (so we don't nag mid-local-part) or left the field.
-  const emailValid = isValidEmail(form.email);
-  const emailError = !!form.email && !emailValid && (emailTouched || form.email.includes('@'));
+  // Live email check: flag a bad format/TLD or an obvious provider typo once the
+  // applicant has typed an "@" (so we don't nag mid-local-part) or left the field.
+  const emailSuggest = suggestEmail(form.email);
+  const emailValid = isValidEmail(form.email) && !emailSuggest;
+  const emailShow = !!form.email && (emailTouched || form.email.includes('@'));
+  const emailError = emailShow && !emailValid;
 
   const toggle  = id   => setChecked(p => ({ ...p, [id]: !p[id] }));
   const toggleS = code => setSelSubj(p => ({ ...p, [code]: !p[code] }));
@@ -1843,7 +1894,11 @@ function EnrollmentModal({ onClose, term, programs }) {
     if (s === 1) {
       if (!req(form.first) || !req(form.last)) return 'Enter your first and last name.';
       if (!req(form.email)) return 'Enter your email address.';
-      if (!isValidEmail(form.email)) { setEmailTouched(true); return 'Enter a valid email address.'; }
+      if (!emailAcceptable(form.email)) {
+        setEmailTouched(true);
+        const s = suggestEmail(form.email);
+        return s ? `Check your email — did you mean ${s}?` : 'Enter a valid email address.';
+      }
       if (!req(form.contact)) return 'Enter your contact number.';
       if (!dobToISO(form.dob)) return 'Enter a valid date of birth (MM/DD/YYYY).';
       if (!req(form.birthplace)) return 'Enter your birthplace.';
@@ -1884,7 +1939,12 @@ function EnrollmentModal({ onClose, term, programs }) {
     setSubErr('');
     if (!form.student_id.trim())  { setSubErr('Enter your Student ID.'); return; }
     if (!form.email.trim())       { setSubErr('Enter your institutional email.'); return; }
-    if (!isValidEmail(form.email)) { setEmailTouched(true); setSubErr('Enter a valid email address.'); return; }
+    if (!emailAcceptable(form.email)) {
+      setEmailTouched(true);
+      const s = suggestEmail(form.email);
+      setSubErr(s ? `Check your email — did you mean ${s}?` : 'Enter a valid email address.');
+      return;
+    }
     setSub(true);
     try {
       const res = await api.post('/enrollment/public/pre-enroll/', {
@@ -2099,7 +2159,18 @@ function EnrollmentModal({ onClose, term, programs }) {
                           onChange={e => update('email', e.target.value)}
                           onBlur={() => setEmailTouched(true)}
                           placeholder="juan.delacruz@nemsu.edu.ph" autoComplete="email" spellCheck={false} />
-                        {emailError && <p style={{ color: '#dc2626', fontSize: 11.5, margin: '4px 0 0' }}>Enter a valid email address (e.g. name@example.com).</p>}
+                        {emailError && (
+                          <p style={{ color: '#dc2626', fontSize: 11.5, margin: '4px 0 0' }}>
+                            {emailSuggest
+                              ? <>Did you mean{' '}
+                                  <button type="button" onClick={() => { update('email', emailSuggest); setEmailTouched(true); }}
+                                    style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 11.5, textDecoration: 'underline' }}>
+                                    {emailSuggest}
+                                  </button>?
+                                </>
+                              : 'Enter a valid email address (e.g. name@example.com).'}
+                          </p>
+                        )}
                       </div>
                       <p className="lead" style={{ fontSize: 12, margin: 0, color: 'var(--muted)' }}>
                         No password needed yet. Once the registrar approves your application, we'll email your login password to this address.
@@ -2188,7 +2259,18 @@ function EnrollmentModal({ onClose, term, programs }) {
                           onChange={e => update('email', e.target.value)}
                           onBlur={() => setEmailTouched(true)}
                           placeholder="juan.delacruz@nemsu.edu.ph" autoComplete="email" spellCheck={false} />
-                        {emailError && <p style={{ color: '#dc2626', fontSize: 11.5, margin: '4px 0 0' }}>Enter a valid email address (e.g. name@example.com).</p>}
+                        {emailError && (
+                          <p style={{ color: '#dc2626', fontSize: 11.5, margin: '4px 0 0' }}>
+                            {emailSuggest
+                              ? <>Did you mean{' '}
+                                  <button type="button" onClick={() => { update('email', emailSuggest); setEmailTouched(true); }}
+                                    style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 11.5, textDecoration: 'underline' }}>
+                                    {emailSuggest}
+                                  </button>?
+                                </>
+                              : 'Enter a valid email address (e.g. name@example.com).'}
+                          </p>
+                        )}
                       </div>
                       <div className="adm-row">
                         <div className="flow-field">
