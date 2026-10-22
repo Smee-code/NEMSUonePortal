@@ -1780,6 +1780,95 @@ function ProgramSearchSelect({ value, options, onChange }) {
   );
 }
 
+/* Cascading PH address picker: Province -> Town/City -> Barangay (PSGC data
+   served by the backend, loaded per-province). Each level filters the next, with
+   an "Other (type manually)" fallback so no applicant is blocked by missing data. */
+function AddressCascade({ province, town, brgy, zip, onField }) {
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities]       = useState({});   // { "City Name": ["Barangay", …] }
+  const [loadingBrgy, setLoading] = useState(false);
+  const [manTown, setManTown]     = useState(false);
+  const [manBrgy, setManBrgy]     = useState(false);
+
+  useEffect(() => {
+    api.get('/enrollment/psgc/provinces/').then(r => setProvinces(r.data || [])).catch(() => {});
+  }, []);
+
+  // Load the selected province's cities + barangays.
+  useEffect(() => {
+    const p = provinces.find(x => x.name === province);
+    if (!p) { setCities({}); return; }
+    setLoading(true);
+    api.get(`/enrollment/psgc/province/${p.slug}/`)
+      .then(r => setCities(r.data || {}))
+      .catch(() => setCities({}))
+      .finally(() => setLoading(false));
+  }, [province, provinces]);
+
+  const cityNames = Object.keys(cities);
+  const brgyList  = (town && cities[town]) || [];
+
+  const onProvince = (v) => { onField('addr_province', v); onField('addr_town', ''); onField('addr_brgy', ''); setManTown(false); setManBrgy(false); };
+  const onTown = (v) => {
+    if (v === '__other__') { setManTown(true); setManBrgy(true); onField('addr_town', ''); onField('addr_brgy', ''); return; }
+    setManTown(false); setManBrgy(false); onField('addr_town', v); onField('addr_brgy', '');
+  };
+  const onBrgy = (v) => {
+    if (v === '__other__') { setManBrgy(true); onField('addr_brgy', ''); return; }
+    setManBrgy(false); onField('addr_brgy', v);
+  };
+
+  return (
+    <>
+      <div className="adm-row">
+        <div className="flow-field">
+          <label style={fLabel}>Province</label>
+          <select style={fInput} value={province} onChange={e => onProvince(e.target.value)}>
+            <option value="">Select province…</option>
+            {provinces.map(p => <option key={p.slug} value={p.name}>{p.name}</option>)}
+          </select>
+        </div>
+        <div className="flow-field">
+          <label style={fLabel}>Town / City</label>
+          {manTown ? (
+            <input style={fInput} value={town} onChange={e => onField('addr_town', e.target.value)} placeholder="Type your town / city" />
+          ) : (
+            <select style={fInput} value={town} onChange={e => onTown(e.target.value)} disabled={!province || loadingBrgy}>
+              <option value="">{!province ? 'Select province first' : loadingBrgy ? 'Loading…' : 'Select town / city…'}</option>
+              {cityNames.map(c => <option key={c} value={c}>{c}</option>)}
+              {province && !loadingBrgy && <option value="__other__">Other (type manually)…</option>}
+            </select>
+          )}
+        </div>
+      </div>
+      <div className="adm-row">
+        <div className="flow-field">
+          <label style={fLabel}>Barangay</label>
+          {manBrgy ? (
+            <input style={fInput} value={brgy} onChange={e => onField('addr_brgy', e.target.value)} placeholder="Type your barangay" />
+          ) : (
+            <select style={fInput} value={brgy} onChange={e => onBrgy(e.target.value)} disabled={!town}>
+              <option value="">{!town ? 'Select town first' : 'Select barangay…'}</option>
+              {brgyList.map(bn => <option key={bn} value={bn}>{bn}</option>)}
+              {town && <option value="__other__">Other (type manually)…</option>}
+            </select>
+          )}
+        </div>
+        <div className="flow-field">
+          <label style={fLabel}>ZIP code</label>
+          <input style={fInput} value={zip} onChange={e => onField('zip', e.target.value)} placeholder="8317" inputMode="numeric" />
+        </div>
+      </div>
+      {(manTown || manBrgy) && (
+        <button type="button" onClick={() => { setManTown(false); setManBrgy(false); onField('addr_town', ''); onField('addr_brgy', ''); }}
+          style={{ background: 'none', border: 'none', color: 'var(--gold)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+          ↺ Pick from the list instead
+        </button>
+      )}
+    </>
+  );
+}
+
 function EnrollmentModal({ onClose, term, programs }) {
   const [step, setStep]       = useState(1);
   const [dir, setDir]         = useState('fwd');
@@ -2299,26 +2388,9 @@ function EnrollmentModal({ onClose, term, programs }) {
                     <h4>Address &amp; family</h4>
                     <p className="wiz-sub">Your current home address and family details.</p>
                     <div className="flow-form" style={{ gap: '1rem' }}>
-                      <div className="adm-row">
-                        <div className="flow-field">
-                          <label style={fLabel}>Barangay</label>
-                          <input style={fInput} value={form.addr_brgy} onChange={e => update('addr_brgy', e.target.value)} placeholder="Brgy." />
-                        </div>
-                        <div className="flow-field">
-                          <label style={fLabel}>Town / City</label>
-                          <input style={fInput} value={form.addr_town} onChange={e => update('addr_town', e.target.value)} placeholder="Cantilan" />
-                        </div>
-                      </div>
-                      <div className="adm-row">
-                        <div className="flow-field">
-                          <label style={fLabel}>Province</label>
-                          <input style={fInput} value={form.addr_province} onChange={e => update('addr_province', e.target.value)} placeholder="Surigao del Sur" />
-                        </div>
-                        <div className="flow-field">
-                          <label style={fLabel}>ZIP code</label>
-                          <input style={fInput} value={form.zip} onChange={e => update('zip', e.target.value)} placeholder="8317" />
-                        </div>
-                      </div>
+                      <AddressCascade
+                        province={form.addr_province} town={form.addr_town}
+                        brgy={form.addr_brgy} zip={form.zip} onField={update} />
 
                       {form.civil_status === 'Married' && (
                         <>

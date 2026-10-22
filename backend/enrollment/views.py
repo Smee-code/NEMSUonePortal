@@ -1,8 +1,11 @@
 import csv
 import io
+import json
 import logging
 import os
+import re
 from decimal import Decimal, InvalidOperation
+from functools import lru_cache
 
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -177,6 +180,52 @@ class PublicPreEnrollView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+# ── PSGC address data (public) ─────────────────────────────────────────────────
+# Serves the Philippine Standard Geographic Code data for the cascading
+# Province -> City/Municipality -> Barangay address picker. The data is split per
+# province, so each request reads one tiny JSON file (memory-safe) rather than
+# loading all ~42k barangays.
+
+_PSGC_DIR = os.path.join(os.path.dirname(__file__), 'psgc_data')
+_PSGC_SLUG_RE = re.compile(r'^[a-z0-9-]{1,60}$')
+
+
+@lru_cache(maxsize=1)
+def _psgc_provinces():
+    with open(os.path.join(_PSGC_DIR, 'provinces.json'), encoding='utf-8') as f:
+        return json.load(f)
+
+
+class PSGCProvincesView(APIView):
+    """GET /api/enrollment/psgc/provinces/ — list of provinces [{slug, name}]."""
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def get(self, request):
+        resp = Response(_psgc_provinces())
+        resp['Cache-Control'] = 'public, max-age=86400'
+        return resp
+
+
+class PSGCProvinceView(APIView):
+    """GET /api/enrollment/psgc/province/<slug>/ — that province's cities as
+    {"City Name": ["Barangay", …]} so the client gets cities + barangays at once."""
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def get(self, request, slug):
+        if not _PSGC_SLUG_RE.match(slug):
+            return Response({'error': 'Invalid province.'}, status=status.HTTP_400_BAD_REQUEST)
+        path = os.path.join(_PSGC_DIR, 'brgy', f'{slug}.json')
+        if not os.path.isfile(path):
+            return Response({'error': 'Province not found.'}, status=status.HTTP_404_NOT_FOUND)
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+        resp = Response(data)
+        resp['Cache-Control'] = 'public, max-age=86400'
+        return resp
 
 
 # ── Enrollment schedule CRUD (registrar / admin) ───────────────────────────────
