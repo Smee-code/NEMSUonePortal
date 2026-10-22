@@ -1782,6 +1782,26 @@ function EnrollmentModal({ onClose, term, programs }) {
   const stepNow    = Math.min(step, totalSteps);
 
   const update  = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  // Date of birth is a typable MM/DD/YYYY field; auto-insert the slashes as the
+  // applicant types, and convert to ISO (YYYY-MM-DD) for the API.
+  const onDobChange = (v) => {
+    const d = v.replace(/\D/g, '').slice(0, 8);
+    let out = d;
+    if (d.length > 4) out = `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+    else if (d.length > 2) out = `${d.slice(0, 2)}/${d.slice(2)}`;
+    update('dob', out);
+  };
+  const dobToISO = (s) => {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((s || '').trim());
+    if (!m) return null;
+    const [, mm, dd, yyyy] = m;
+    const iso = `${yyyy}-${mm}-${dd}`;
+    const dt = new Date(`${iso}T00:00:00`);
+    if (isNaN(dt) || dt.getMonth() + 1 !== +mm || dt.getDate() !== +dd || +yyyy < 1900) return null;
+    return iso;
+  };
+
   const toggle  = id   => setChecked(p => ({ ...p, [id]: !p[id] }));
   const toggleS = code => setSelSubj(p => ({ ...p, [code]: !p[code] }));
   const totalUnits = SUBJECTS.filter(s => selSubj[s.code]).reduce((a, s) => a + s.units, 0);
@@ -1803,7 +1823,7 @@ function EnrollmentModal({ onClose, term, programs }) {
       if (!req(form.first) || !req(form.last)) return 'Enter your first and last name.';
       if (!req(form.email)) return 'Enter your email address.';
       if (!req(form.contact)) return 'Enter your contact number.';
-      if (!req(form.dob)) return 'Enter your date of birth.';
+      if (!dobToISO(form.dob)) return 'Enter a valid date of birth (MM/DD/YYYY).';
       if (!req(form.birthplace)) return 'Enter your birthplace.';
       if (!req(form.citizenship)) return 'Enter your citizenship.';
       if (!req(form.religion)) return 'Enter your religion.';
@@ -1886,7 +1906,7 @@ function EnrollmentModal({ onClose, term, programs }) {
         student_type: type, first_name: form.first, last_name: form.last,
         middle_name: form.middle, suffix: form.suffix,
         email: form.email, contact_number: form.contact,
-        date_of_birth: form.dob || null, sex: form.sex,
+        date_of_birth: dobToISO(form.dob), sex: form.sex,
         program_id: progObj?.id, program_name: form.program,
         year_level: yearLevel,
         details,
@@ -2089,7 +2109,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                       <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Date of birth</label>
-                          <input style={fInput} type="date" value={form.dob} onChange={e => update('dob', e.target.value)} />
+                          <input style={fInput} value={form.dob} onChange={e => onDobChange(e.target.value)} placeholder="MM/DD/YYYY" inputMode="numeric" maxLength={10} autoComplete="bday" />
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Birthplace</label>
