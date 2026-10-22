@@ -115,14 +115,6 @@ export default function RegistrarEnrollmentRequests() {
   const [availCourses, setAvailCourses] = useState([]);   // offered courses to add
   const [addCourseId,  setAddCourseId]  = useState('');
 
-  // Block assignment modal
-  const [blockModal,    setBlockModal]    = useState(null);
-  const [blockOptions,  setBlockOptions]  = useState([]);
-  const [blockLoading,  setBlockLoading]  = useState(false);
-  const [blockSelected, setBlockSelected] = useState('');
-  const [blockSaving,   setBlockSaving]   = useState(false);
-  const [blockError,    setBlockError]    = useState('');
-
   useEffect(() => { fetchTerms(); }, []);
   useEffect(() => { fetchRequests(); }, [filterStatus, filterTerm]);   // eslint-disable-line
 
@@ -225,45 +217,6 @@ export default function RegistrarEnrollmentRequests() {
     if (failed) toast(`${failed} request${failed !== 1 ? 's' : ''} failed.`, 'error');
   }
 
-  // ── Block assignment ──
-  async function openBlockModal(req) {
-    setBlockModal(req);
-    setBlockSelected(req.block_name ? req.block_id ?? '' : '');
-    setBlockError('');
-    setBlockOptions([]);
-    setBlockLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (req.academic_term?.id) params.append('term',       req.academic_term.id);
-      if (req.program_id)        params.append('program',    req.program_id);
-      if (req.year_level)        params.append('year_level', req.year_level);
-      const res = await api.get(`/enrollment/blocks/?${params.toString()}`);
-      setBlockOptions(Array.isArray(res.data) ? res.data : (res.data.results ?? []));
-    } catch {
-      setBlockError('Failed to load blocks.');
-    } finally {
-      setBlockLoading(false);
-    }
-  }
-
-  async function saveBlock() {
-    setBlockSaving(true);
-    setBlockError('');
-    try {
-      const payload = blockSelected ? { block_id: Number(blockSelected) } : { block_id: null };
-      const res = await api.patch(`/enrollment/requests/${blockModal.id}/block/`, payload);
-      setRequests(prev => prev.map(r =>
-        r.id === blockModal.id ? { ...r, block_name: res.data.block_name, block_id: res.data.block_id } : r
-      ));
-      toast(`Block ${res.data.block_name ? `set to ${res.data.block_name}` : 'cleared'} for ${blockModal.student_name}.`, 'success');
-      setBlockModal(null);
-    } catch (err) {
-      setBlockError(err.response?.data?.error || 'Failed to save block assignment.');
-    } finally {
-      setBlockSaving(false);
-    }
-  }
-
   // ── Derived data ──
   const allWithOptimistic = requests.map(r => ({ ...r, status: optimisticStatus[r.id] ?? r.status }));
   const statsBar = {
@@ -322,7 +275,7 @@ export default function RegistrarEnrollmentRequests() {
           <h1>Enrollment <em>requests</em></h1>
           <p className="er-lede">
             Validate and finalize continuing students&rsquo; enrollment for the term — review each course load,
-            assign a block, and approve or reject.
+            then approve or reject. Blocks are assigned automatically on approval.
           </p>
         </div>
         {selectedIds.size > 0 && (
@@ -521,10 +474,10 @@ export default function RegistrarEnrollmentRequests() {
                                       </button>
                                     </>
                                   )}
-                                  {effStatus !== 'rejected' && (
-                                    <button className="er-rq-btn er-rq-block" onClick={() => openBlockModal(req)}>
-                                      <i className="ti ti-layout-grid" /> {req.block_name ? req.block_name : 'Assign block'}
-                                    </button>
+                                  {effStatus !== 'rejected' && req.block_name && (
+                                    <span className="er-rq-btn er-rq-block" style={{ cursor: 'default', pointerEvents: 'none' }} title="Block is assigned automatically">
+                                      <i className="ti ti-layout-grid" /> {req.block_name}
+                                    </span>
                                   )}
                                   <button className="er-rq-btn" onClick={() => openReview(req)}>
                                     <i className="ti ti-eye" /> Details
@@ -609,41 +562,6 @@ export default function RegistrarEnrollmentRequests() {
         </div>
       )}
 
-      {/* Block Assignment Modal */}
-      {blockModal && (
-        <div style={styles.modalBackdrop} onClick={() => setBlockModal(null)}>
-          <div style={{ ...styles.modal, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 .25rem', color: 'var(--reg-ink)', fontSize: '1.05rem' }}>Assign block</h3>
-            <p style={{ fontSize: '.85rem', color: 'var(--reg-muted)', margin: '0 0 1rem' }}>
-              <strong>{blockModal.student_name}</strong> · {blockModal.program_code} · {blockModal.academic_term?.semester_display} {blockModal.academic_term?.year}
-              <br />Current block: <strong>{blockModal.block_name || 'None'}</strong>
-            </p>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: '.85rem', color: 'var(--reg-ink-2)', marginBottom: '.35rem' }}>Block</label>
-            {blockLoading ? (
-              <p style={{ fontSize: '.85rem', color: 'var(--reg-muted)' }}>Loading blocks…</p>
-            ) : blockOptions.length === 0 ? (
-              <p style={{ fontSize: '.85rem', color: 'var(--reg-muted)', background: '#f9fafb', padding: '.6rem .75rem', border: '1px solid var(--reg-line)' }}>
-                No blocks found for this program and year level.
-              </p>
-            ) : (
-              <select value={blockSelected} onChange={e => setBlockSelected(e.target.value)}
-                style={{ width: '100%', padding: '.5rem .75rem', border: '1px solid var(--reg-line)', fontSize: '.9rem', marginBottom: '.75rem', boxSizing: 'border-box' }}>
-                <option value="">- Clear block assignment -</option>
-                {blockOptions.map(b => (
-                  <option key={b.id} value={b.id}>{b.name} - {b.enrolled_count}/{b.capacity} students{b.is_full ? ' (Full)' : ''}</option>
-                ))}
-              </select>
-            )}
-            {blockError && (<p style={{ color: 'var(--reg-red)', fontSize: '.85rem', margin: '0 0 .5rem' }}>{blockError}</p>)}
-            <div style={{ display: 'flex', gap: '.75rem', marginTop: '.5rem', justifyContent: 'flex-end' }}>
-              <button className="btn-sec" onClick={() => setBlockModal(null)}>Cancel</button>
-              <button className="btn-pri" onClick={saveBlock} disabled={blockSaving || (blockOptions.length === 0 && !blockModal.block_name)}>
-                {blockSaving ? 'Saving…' : 'Save block'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
