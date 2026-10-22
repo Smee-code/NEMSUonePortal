@@ -1360,15 +1360,25 @@ def _activate_returnee_account(pending):
     name  = (pending.full_name or sid).strip()
     password = generate_temp_password()
 
-    # Refuse to attach an email already used by a different account.
-    clash = User.objects.filter(institutional_email__iexact=email).exclude(student_id__iexact=sid).first()
-    if clash:
-        raise ValueError('That email is already linked to another account.')
+    def _is_placeholder_email(addr):
+        # Bulk-imported accounts carry a synthetic address and no real inbox.
+        return (not addr) or addr.lower().endswith('@placeholder.nemsu')
 
     with transaction.atomic():
         user = User.objects.filter(student_id__iexact=sid).first()
         if user:
-            user.institutional_email  = email
+            # SECURITY: a public pre-enrollment must NEVER change the login email
+            # of an account that already exists. The Student ID is a public
+            # identifier, so allowing the application's email to overwrite the
+            # account's email would let anyone who knows a Student ID redirect the
+            # account (and its reset password) to their own inbox and take it over.
+            # Keep the on-record email and send the new password there. The only
+            # exception is a placeholder with no real email yet — then this
+            # application supplies the first real address.
+            if _is_placeholder_email(user.institutional_email):
+                if User.objects.filter(institutional_email__iexact=email).exclude(pk=user.pk).exists():
+                    raise ValueError('That email is already linked to another account.')
+                user.institutional_email = email
             if name:
                 user.full_name = name
             user.role                 = 'student'
@@ -1381,6 +1391,9 @@ def _activate_returnee_account(pending):
             user.set_password(password)
             user.save()
         else:
+            # No account on record for this ID — nothing to take over; create one.
+            if User.objects.filter(institutional_email__iexact=email).exists():
+                raise ValueError('That email is already linked to another account.')
             user = User.objects.create_user(
                 institutional_email=email,
                 student_id=sid,
@@ -1392,6 +1405,8 @@ def _activate_returnee_account(pending):
                 needs_academic_setup=True,
             )
 
+    # Credentials always go to the account's on-record email (unchanged above for
+    # existing accounts), so an attacker's submitted address never receives them.
     email_sent = _email_returnee_password(user, password)
     return user, email_sent
 
