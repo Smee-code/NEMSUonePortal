@@ -809,8 +809,21 @@ const SUBJECTS = [
 const WIZARD_STEPS = ['Student type', 'Personal info', 'Requirements', 'Subjects', 'Review & confirm'];
 const FRESHMAN_STEPS = ['Personal information', 'Address & family', 'Education background', 'Required documents', 'Review & confirm'];
 const CIVIL_STATUS = ['Single', 'Married', 'Widowed', 'Separated', 'Annulled'];
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const isValidEmail = (v) => EMAIL_RE.test((v || '').trim());
+// Structural check: local@label(.label)+.tld — tld must be letters only.
+const EMAIL_RE = /^[^\s@]+@(?:[^\s@.]+\.)+([A-Za-z]{2,})$/;
+// Known top-level domains, so obvious typos (.coms, .con, .ccom) are caught.
+// Covers common gTLDs plus the TLDs applicants here realistically use.
+const KNOWN_TLDS = new Set([
+  'com', 'net', 'org', 'edu', 'gov', 'mil', 'int', 'info', 'biz', 'name', 'pro',
+  'io', 'co', 'me', 'app', 'dev', 'xyz', 'online', 'site', 'tech', 'store', 'live', 'icu', 'cloud',
+  'ph', 'us', 'uk', 'ca', 'au', 'nz', 'jp', 'cn', 'in', 'sg', 'my', 'id', 'hk', 'kr', 'tw', 'th', 'vn',
+  'de', 'fr', 'es', 'it', 'nl', 'be', 'ch', 'se', 'no', 'fi', 'dk', 'ie', 'pt', 'pl', 'ru', 'ua',
+  'br', 'mx', 'ar', 'cl', 'za', 'ae', 'sa', 'eu',
+]);
+const isValidEmail = (v) => {
+  const m = EMAIL_RE.exec((v || '').trim().toLowerCase());
+  return !!m && KNOWN_TLDS.has(m[1]);
+};
 
 /* ══════════════════════════════════════════════════════════════
    HOOKS & HELPERS
