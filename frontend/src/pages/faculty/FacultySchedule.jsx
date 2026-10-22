@@ -445,10 +445,22 @@ export default function FacultyTeachingLoad() {
       {/* ── Load summary ── */}
       {!loading && load.length > 0 && (
         <div className="tl-summary">
-          <div className="tl-sum"><b>{load.length}</b><span>Subjects</span></div>
-          <div className="tl-sum"><b>{totalStudents}</b><span>Students</span></div>
-          <div className="tl-sum"><b>{totalUnits}</b><span>Total units</span></div>
-          <div className="tl-sum"><b>{totalSlots}</b><span>Schedule slots</span></div>
+          <div className="tl-sum">
+            <span className="tl-sum-ic"><i className="ti ti-books" /></span>
+            <div className="tl-sum-body"><b>{load.length}</b><span>Subjects</span></div>
+          </div>
+          <div className="tl-sum">
+            <span className="tl-sum-ic"><i className="ti ti-users" /></span>
+            <div className="tl-sum-body"><b>{totalStudents}</b><span>Students</span></div>
+          </div>
+          <div className="tl-sum">
+            <span className="tl-sum-ic"><i className="ti ti-stack-2" /></span>
+            <div className="tl-sum-body"><b>{totalUnits}</b><span>Total units</span></div>
+          </div>
+          <div className={`tl-sum${totalSlots === 0 ? ' tl-sum--warn' : ''}`}>
+            <span className="tl-sum-ic"><i className="ti ti-calendar-time" /></span>
+            <div className="tl-sum-body"><b>{totalSlots}</b><span>Schedule slots</span></div>
+          </div>
         </div>
       )}
 
@@ -481,20 +493,18 @@ export default function FacultyTeachingLoad() {
               <div key={taId} className={`tl-card${sortedSlots.length === 0 ? ' tl-card--noslot' : ''}`}>
                 {/* Card header */}
                 <div className="tl-card-head">
+                  <div className="tl-code-tile">{ta.subject_code}</div>
                   <div className="tl-head-info">
                     <div className="tl-head-title">
-                      <span className="tl-code">{ta.subject_code}</span>
-                      {(ta.block_name || ta.section) && <span className="tl-sec">{ta.block_name || ta.section}</span>}
                       <span className="tl-name">{ta.subject_name}</span>
+                      {(ta.block_name || ta.section) && <span className="tl-sec">{ta.block_name || ta.section}</span>}
                     </div>
-                    <div className="tl-meta">
+                    <div className="tl-chips">
                       {[ta.program_code, ta.year_level_display].filter(Boolean).length > 0 && (
-                        <><span>{[ta.program_code, ta.year_level_display].filter(Boolean).join(' · ')}</span><span className="tl-dot">·</span></>
+                        <span className="tl-chip"><i className="ti ti-school" />{[ta.program_code, ta.year_level_display].filter(Boolean).join(' · ')}</span>
                       )}
-                      <span>{ta.subject_units} unit{Number(ta.subject_units) !== 1 ? 's' : ''}</span>
-                      <span className="tl-dot">·</span>
-                      <span>{ta.student_count} student{ta.student_count !== 1 ? 's' : ''}</span>
-                      {ta.term && <><span className="tl-dot">·</span><span className="tl-term">{ta.term}</span></>}
+                      <span className="tl-chip"><i className="ti ti-stack-2" />{ta.subject_units} unit{Number(ta.subject_units) !== 1 ? 's' : ''}</span>
+                      <span className="tl-chip"><i className="ti ti-users" />{ta.student_count} student{ta.student_count !== 1 ? 's' : ''}</span>
                     </div>
                   </div>
                   <button
@@ -503,12 +513,16 @@ export default function FacultyTeachingLoad() {
                     onClick={() => handleDeleteAssignment(taId)}
                     title="Remove assignment"
                   >
-                    {deletingAssignment === taId ? '…' : <><i className="ti ti-trash" /> Remove</>}
+                    {deletingAssignment === taId ? '…' : <><i className="ti ti-trash" /> <span className="tl-remove-txt">Remove</span></>}
                   </button>
                 </div>
 
                 {/* Schedule slots */}
                 <div className="tl-slots-section">
+                  <div className="tl-slots-label">
+                    <i className="ti ti-calendar-week" /> Weekly schedule
+                    {sortedSlots.length > 0 && <span className="tl-slots-count">{sortedSlots.length} meeting{sortedSlots.length !== 1 ? 's' : ''}/week</span>}
+                  </div>
                   <div className="tl-slots-row">
                     {sortedSlots.map(slot => (
                       editSlot && editSlot.id === slot.id ? (
@@ -879,11 +893,19 @@ const CSS = `
   .tl-loading { color: var(--muted); font-size: 13px; padding: 2rem 0; }
 
   /* Load summary strip */
-  .tl-summary { display: grid; grid-template-columns: repeat(4, 1fr); background: #fff; border: 1px solid var(--line); margin-bottom: 1.5rem; }
-  .tl-sum { padding: 1.1rem 1.35rem; border-right: 1px solid var(--line); }
+  .tl-summary { display: grid; grid-template-columns: repeat(4, 1fr); background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 1.5rem; }
+  .tl-sum { display: flex; align-items: center; gap: .85rem; padding: 1.1rem 1.25rem; border-right: 1px solid var(--line); }
   .tl-sum:last-child { border-right: none; }
-  .tl-sum b { display: block; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 28px; color: var(--ink); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-  .tl-sum span { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 7px; }
+  .tl-sum-ic {
+    flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    background: var(--gold-tint); border-radius: 10px;
+  }
+  .tl-sum-ic i { font-size: 21px; line-height: 1; color: var(--ink-2); display: block; }
+  .tl-sum-body { min-width: 0; }
+  .tl-sum b { display: block; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 26px; color: var(--ink); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .tl-sum span { display: block; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 6px; }
+  .tl-sum--warn .tl-sum-ic { background: var(--amber-tint); }
+  .tl-sum--warn .tl-sum-ic i { color: var(--amber); }
   @media (max-width: 620px) {
     .tl-summary { grid-template-columns: repeat(2, 1fr); }
     .tl-sum:nth-child(2) { border-right: none; }
@@ -896,47 +918,71 @@ const CSS = `
 
   /* Course card */
   .tl-card {
+    position: relative;
     background: #fff;
     border: 1px solid var(--line);
-    padding: 1.15rem 1.3rem;
+    border-radius: 10px;
+    padding: 1.2rem 1.35rem;
     transition: border-color .15s, box-shadow .15s;
   }
-  .tl-card:hover { border-color: var(--line); box-shadow: 0 1px 3px rgba(16,24,40,.05); }
+  .tl-card:hover { border-color: #cbd5e1; box-shadow: 0 4px 16px -6px rgba(16,24,40,.12); }
   .tl-card--noslot { border-left: 3px solid var(--amber); }
   .tl-card-head {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    gap: 1rem;
+    gap: .9rem;
+  }
+  .tl-code-tile {
+    flex-shrink: 0; min-width: 62px; height: 46px; padding: 0 .6rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--ink); color: #fff; border-radius: 8px;
+    font-size: 13px; font-weight: 700; letter-spacing: .02em; text-align: center;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
   }
   .tl-head-info { min-width: 0; flex: 1; }
-  .tl-head-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .tl-code { font-size: 11px; letter-spacing: .07em; color: var(--gold); text-transform: uppercase; font-weight: 700; flex-shrink: 0; }
-  .tl-sec { font-size: 10px; font-weight: 700; background: var(--gold-tint); color: var(--gold); padding: 1px 6px; }
-  .tl-name { font-size: 15px; font-weight: 600; color: var(--ink); letter-spacing: -.005em; }
-  .tl-meta { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-  .tl-dot { color: var(--faint); }
-  .tl-term { color: var(--ink-2); font-weight: 500; }
+  .tl-head-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tl-sec { font-size: 10px; font-weight: 700; letter-spacing: .03em; background: var(--gold-tint); color: var(--gold); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; }
+  .tl-name { font-size: 15.5px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+  .tl-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .tl-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 500; color: var(--ink-2);
+    background: var(--cool); border: 1px solid var(--line-soft); border-radius: 999px;
+    padding: 2px 9px 2px 7px;
+  }
+  .tl-chip i { font-size: 13px; color: var(--muted); }
   .tl-btn-remove {
     display: inline-flex; align-items: center; gap: 5px;
     background: none; border: 1px solid var(--line); color: var(--muted);
-    padding: .3rem .7rem; font-size: 12px; font-weight: 600;
+    padding: .35rem .65rem; font-size: 12px; font-weight: 600; border-radius: 7px;
     cursor: pointer; white-space: nowrap; flex-shrink: 0;
     transition: background .15s, border-color .15s, color .15s;
   }
-  .tl-btn-remove:hover:not(:disabled) { background: #fee2e2; border-color: #fca5a5; color: var(--red); }
+  .tl-btn-remove:hover:not(:disabled) { background: var(--red-tint); border-color: #fca5a5; color: var(--red); }
   .tl-btn-remove:disabled { opacity: .6; cursor: default; }
+  @media (max-width: 520px) { .tl-remove-txt { display: none; } }
 
   /* Weekly meetings — the focal element: day/time with the room status */
-  .tl-slots-section { border-top: 1px solid var(--line-soft); padding-top: .9rem; margin-top: .9rem; }
+  .tl-slots-section { border-top: 1px solid var(--line-soft); padding-top: 1rem; margin-top: 1.1rem; }
+  .tl-slots-label {
+    display: flex; align-items: center; gap: 7px; margin-bottom: .7rem;
+    font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; font-weight: 700; color: var(--muted);
+  }
+  .tl-slots-label i { font-size: 14px; color: var(--gold); }
+  .tl-slots-count { margin-left: 2px; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); font-size: 11px; }
   .tl-slots-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: stretch; }
   .tl-meeting {
-    display: flex; flex-direction: column; gap: 6px;
-    background: var(--warm); border: 1px solid var(--line);
-    padding: 9px 13px; min-width: 176px;
+    display: flex; flex-direction: column; gap: 7px;
+    background: var(--warm); border: 1px solid var(--line); border-radius: 9px;
+    padding: 10px 13px; min-width: 182px;
+    transition: border-color .15s, box-shadow .15s;
   }
-  .tl-meeting-top { display: flex; align-items: baseline; gap: 10px; }
-  .tl-meeting-day { font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: .01em; }
+  .tl-meeting:hover { border-color: #cbd5e1; box-shadow: 0 2px 8px -4px rgba(16,24,40,.1); }
+  .tl-meeting-top { display: flex; align-items: center; gap: 9px; }
+  .tl-meeting-day {
+    font-size: 10.5px; font-weight: 700; color: var(--ink); letter-spacing: .04em; text-transform: uppercase;
+    background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px;
+  }
   .tl-meeting-time { font-size: 13.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: auto; }
   .tl-meeting-x {
     background: none; border: none; color: var(--faint); font-size: 13px;
@@ -956,19 +1002,25 @@ const CSS = `
   .tl-meeting-edit-row > div { display: flex; flex-direction: column; gap: 3px; }
   .tl-meeting-edit-err { font-size: 11.5px; color: var(--red); }
   .tl-meeting-edit-actions { display: flex; gap: .5rem; }
-  .tl-meeting-room { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
-  .tl-meeting-room i { font-size: 15px; color: var(--muted); }
-  .tl-meeting-room.pending { color: var(--amber); }
-  .tl-meeting-room.pending i { color: var(--amber); }
-  .tl-noslots { display: inline-flex; align-items: center; align-self: center; gap: 6px; font-size: 12.5px; color: var(--amber); font-weight: 500; }
-  .tl-noslots i { font-size: 14px; }
-  .tl-btn-add-slot {
-    display: inline-flex; align-items: center; align-self: center; gap: 4px;
-    background: none; border: 1px dashed var(--line); color: var(--muted);
-    padding: 7px 12px; font-size: 12px; cursor: pointer;
-    transition: border-color .15s, color .15s;
+  .tl-meeting-room {
+    display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
+    font-size: 11.5px; font-weight: 500; color: var(--green);
+    background: var(--green-tint); border-radius: 999px; padding: 2px 9px 2px 7px;
   }
-  .tl-btn-add-slot:hover { border-color: var(--ink); color: var(--ink); }
+  .tl-meeting-room i { font-size: 13px; }
+  .tl-meeting-room.pending { color: var(--amber); background: var(--amber-tint); }
+  .tl-noslots {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--amber); font-weight: 500;
+    background: var(--amber-tint); border-radius: 8px; padding: 8px 13px;
+  }
+  .tl-noslots i { font-size: 15px; }
+  .tl-btn-add-slot {
+    display: inline-flex; align-items: center; align-self: center; gap: 5px;
+    background: none; border: 1px dashed #cbd5e1; color: var(--muted);
+    padding: 9px 14px; font-size: 12.5px; font-weight: 600; border-radius: 9px; cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .tl-btn-add-slot:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-tint); }
 
   /* Slot form */
   .tl-slot-form {
