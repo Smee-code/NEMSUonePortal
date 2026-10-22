@@ -412,7 +412,7 @@ export default function RegistrarAdmissions() {
                           </div>
                         </div>
                         {ok && (
-                          <button type="button" onClick={() => setPreviewDoc(doc)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '.75rem', color: 'var(--reg-ink)', background: 'none', border: '1px solid var(--reg-line)', padding: '4px 9px', borderRadius: 5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                          <button type="button" onClick={() => setPreviewDoc({ ...doc, pendingId: selected.id })} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '.75rem', color: 'var(--reg-ink)', background: 'none', border: '1px solid var(--reg-line)', padding: '4px 9px', borderRadius: 5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                             <i className="ti ti-eye" style={{ fontSize: 14 }} /> Preview
                           </button>
                         )}
@@ -429,7 +429,7 @@ export default function RegistrarAdmissions() {
                             <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--reg-ink-2)' }}>{doc.requirement_label}</div>
                             <div style={{ fontSize: '.75rem', color: 'var(--reg-muted)' }}>{doc.file_name} · {(doc.file_size / 1024).toFixed(0)} KB</div>
                           </div>
-                          <button type="button" onClick={() => setPreviewDoc(doc)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '.75rem', color: 'var(--reg-ink)', background: 'none', border: '1px solid var(--reg-line)', padding: '4px 9px', borderRadius: 5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                          <button type="button" onClick={() => setPreviewDoc({ ...doc, pendingId: selected.id })} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '.75rem', color: 'var(--reg-ink)', background: 'none', border: '1px solid var(--reg-line)', padding: '4px 9px', borderRadius: 5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                             <i className="ti ti-eye" style={{ fontSize: 14 }} /> Preview
                           </button>
                         </div>
@@ -522,11 +522,32 @@ export default function RegistrarAdmissions() {
 }
 
 function PdfPreviewModal({ doc, onClose }) {
+  const [blobUrl, setBlobUrl] = useState('');
+  const [status, setStatus]   = useState('loading'); // loading | ready | error
+
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  // Fetch the PDF through the authenticated API as a blob. A blob: URL renders
+  // in the iframe regardless of X-Frame-Options and without needing /media to be
+  // reachable from the browser, so this works in dev (proxy) and in production.
+  useEffect(() => {
+    let objUrl;
+    let active = true;
+    setStatus('loading'); setBlobUrl('');
+    api.get(`/enrollment/pending/${doc.pendingId}/documents/${doc.id}/file/`, { responseType: 'blob' })
+      .then(res => {
+        if (!active) return;
+        objUrl = URL.createObjectURL(res.data);
+        setBlobUrl(objUrl);
+        setStatus('ready');
+      })
+      .catch(() => { if (active) setStatus('error'); });
+    return () => { active = false; if (objUrl) URL.revokeObjectURL(objUrl); };
+  }, [doc.pendingId, doc.id]);
 
   const sizeKB = doc.file_size ? `${(doc.file_size / 1024).toFixed(0)} KB` : '';
   return (
@@ -548,18 +569,42 @@ function PdfPreviewModal({ doc, onClose }) {
               {doc.file_name}{sizeKB && ` · ${sizeKB}`}
             </div>
           </div>
-          <a href={doc.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.78rem', fontWeight: 600, color: '#0a3a6e', textDecoration: 'none', border: '1px solid #cdd7e5', padding: '5px 11px', borderRadius: 6, flexShrink: 0 }}>
+          <a
+            href={blobUrl || undefined}
+            target="_blank"
+            rel="noreferrer"
+            aria-disabled={!blobUrl}
+            onClick={e => { if (!blobUrl) e.preventDefault(); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.78rem', fontWeight: 600, color: blobUrl ? '#0a3a6e' : '#9aa4b2', textDecoration: 'none', border: '1px solid #cdd7e5', padding: '5px 11px', borderRadius: 6, flexShrink: 0, pointerEvents: blobUrl ? 'auto' : 'none' }}
+          >
             <i className="ti ti-external-link" style={{ fontSize: 14 }} /> Open
           </a>
           <button onClick={onClose} aria-label="Close preview" style={{ background: 'none', border: 'none', color: '#9aa4b2', fontSize: 22, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>
             <i className="ti ti-x" aria-hidden="true" />
           </button>
         </div>
-        <iframe
-          title={`Preview of ${doc.file_name}`}
-          src={`${doc.url}#toolbar=1&view=FitH`}
-          style={{ flex: 1, width: '100%', border: 'none', background: '#525659' }}
-        />
+        <div style={{ flex: 1, display: 'flex', background: '#525659', minHeight: 0 }}>
+          {status === 'loading' && (
+            <div style={{ margin: 'auto', color: '#e5e7eb', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <i className="ti ti-loader-2" style={{ fontSize: 26, animation: 'spin 1s linear infinite' }} />
+              Loading document…
+              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+            </div>
+          )}
+          {status === 'error' && (
+            <div style={{ margin: 'auto', color: '#fecaca', fontSize: 13, textAlign: 'center', maxWidth: 320, padding: 20 }}>
+              <i className="ti ti-file-alert" style={{ fontSize: 28, display: 'block', marginBottom: 8 }} />
+              Couldn’t load this document. It may have been removed or is temporarily unavailable.
+            </div>
+          )}
+          {status === 'ready' && (
+            <iframe
+              title={`Preview of ${doc.file_name}`}
+              src={`${blobUrl}#toolbar=1&view=FitH`}
+              style={{ flex: 1, width: '100%', border: 'none' }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

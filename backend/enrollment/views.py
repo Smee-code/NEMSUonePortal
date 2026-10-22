@@ -1215,6 +1215,29 @@ class RegistrarPreEnrollDocumentsView(generics.ListAPIView):
         return ctx
 
 
+class RegistrarPreEnrollDocumentFileView(APIView):
+    """GET /api/enrollment/pending/<uuid:pk>/documents/<int:doc_pk>/file/
+    Streams one uploaded PDF inline so the registrar/admin can preview it in the
+    dashboard. Served through the authenticated API (not the raw media URL) so it
+    works behind the dev proxy and does not depend on media being publicly
+    reachable; the modal loads it as a blob, which sidesteps X-Frame-Options."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+
+    def get(self, request, pk, doc_pk):
+        from django.http import FileResponse, Http404
+        try:
+            doc = PreEnrollmentDocument.objects.get(pk=doc_pk, pending_id=pk)
+        except PreEnrollmentDocument.DoesNotExist:
+            raise Http404('Document not found.')
+        try:
+            fh = doc.file.open('rb')
+        except (FileNotFoundError, ValueError):
+            raise Http404('File is no longer available.')
+        resp = FileResponse(fh, content_type='application/pdf')
+        resp['Content-Disposition'] = f'inline; filename="{doc.file_name}"'
+        return resp
+
+
 class RegistrarPreEnrollFollowupView(APIView):
     """POST /api/enrollment/pending/<uuid:pk>/followup-email/
     Send a custom follow-up email to the applicant about missing requirements."""

@@ -50,6 +50,7 @@ urlpatterns = [
     path('pending/', views.RegistrarPendingEnrollmentListView.as_view(), name='pending-enrollments'),
     path('pending/<uuid:pk>/review/', views.RegistrarPendingEnrollmentReviewView.as_view(), name='pending-enrollment-review'),
     path('pending/<uuid:pk>/documents/', views.RegistrarPreEnrollDocumentsView.as_view(), name='pending-enrollment-documents'),
+    path('pending/<uuid:pk>/documents/<int:doc_pk>/file/', views.RegistrarPreEnrollDocumentFileView.as_view(), name='pending-enrollment-document-file'),
     path('pending/<uuid:pk>/followup-email/', views.RegistrarPreEnrollFollowupView.as_view(), name='pending-enrollment-followup'),
     path('public/pre-enroll/<uuid:pk>/', views.PublicPreEnrollDetailView.as_view(), name='pre-enroll-detail'),
     path('public/pre-enroll/<uuid:pk>/upload/', views.PublicPreEnrollUploadView.as_view(), name='pre-enroll-upload'),
