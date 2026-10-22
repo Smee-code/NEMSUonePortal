@@ -2480,7 +2480,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                 {step === 4 && (
                   <>
                     <h4>Upload your documents</h4>
-                    <p className="wiz-sub">Upload a clear <strong>PDF</strong> of each document (max 10&nbsp;MB each). The campus will validate them for admission.</p>
+                    <p className="wiz-sub">Upload a clear <strong>PDF</strong> of each document (max 2&nbsp;MB each). The campus will validate them for admission.</p>
                     {uploadErr && (
                       <div style={{ background:'#fef2f2', border:'1px solid #fca5a5', color:'#dc2626', fontSize:12, padding:'8px 12px', marginBottom:12 }}>{uploadErr}</div>
                     )}
@@ -2504,7 +2504,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                                     const file = e.target.files?.[0]; if (e.target) e.target.value = '';
                                     if (!file) return;
                                     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) { setUpErr(`${item.label}: only PDF files are accepted.`); return; }
-                                    if (file.size > 10 * 1024 * 1024) { setUpErr(`${item.label}: file must be under 10 MB.`); return; }
+                                    if (file.size > 2 * 1024 * 1024) { setUpErr(`${item.label}: file must be under 2 MB.`); return; }
                                     setUpErr('');
                                     setFiles(p => ({ ...p, [item.id]: { file, label: item.label } }));
                                   }}

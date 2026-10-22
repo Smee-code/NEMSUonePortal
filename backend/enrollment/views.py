@@ -1157,8 +1157,8 @@ class PublicPreEnrollUploadView(APIView):
             return Response({'error': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
         if not file.name.lower().endswith('.pdf'):
             return Response({'error': 'Only PDF files are accepted.'}, status=status.HTTP_400_BAD_REQUEST)
-        if file.size > 10 * 1024 * 1024:
-            return Response({'error': 'File size must not exceed 10 MB.'}, status=status.HTTP_400_BAD_REQUEST)
+        if file.size > 2 * 1024 * 1024:
+            return Response({'error': 'File size must not exceed 2 MB.'}, status=status.HTTP_400_BAD_REQUEST)
 
         doc = PreEnrollmentDocument.objects.create(
             pending=pending,
