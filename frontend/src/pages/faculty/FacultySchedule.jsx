@@ -897,10 +897,13 @@ const CSS = `
   .tl-sum { display: flex; align-items: center; gap: .85rem; padding: 1.1rem 1.25rem; border-right: 1px solid var(--line); }
   .tl-sum:last-child { border-right: none; }
   .tl-sum-ic {
-    flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; width: 40px; height: 40px;
     background: var(--gold-tint); border-radius: 10px;
   }
-  .tl-sum-ic i { font-size: 21px; line-height: 1; color: var(--ink-2); display: block; }
+  .tl-sum-ic i {
+    display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+    font-size: 20px; line-height: 1; color: var(--ink-2);
+  }
   .tl-sum-body { min-width: 0; }
   .tl-sum b { display: block; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 26px; color: var(--ink); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
   .tl-sum span { display: block; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 6px; }
