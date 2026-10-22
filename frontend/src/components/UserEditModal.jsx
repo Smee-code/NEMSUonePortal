@@ -225,4 +225,13 @@ const CSS = `
   .uem-btn-pri:hover:not(:disabled){background:#0c4a8a;}
   .uem-btn-pri:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
   .uem-btn-pri:disabled{opacity:.6;cursor:not-allowed;}
+  @media(max-width:768px){
+    .uem-overlay{padding:1.25rem .75rem;}
+    .uem-modal{border-radius:10px;}
+    .uem-head,.uem-body{padding-left:1.1rem;padding-right:1.1rem;}
+    /* 16px avoids iOS zoom-on-focus; taller inputs hit the 44px touch target */
+    .uem-field input,.uem-field select{font-size:16px;padding-top:11px;padding-bottom:11px;}
+    .uem-foot{flex-direction:column-reverse;}
+    .uem-foot button{width:100%;min-height:44px;}
+  }
 `;

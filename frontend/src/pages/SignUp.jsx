@@ -140,7 +140,11 @@ function ErrMsg({ children }) {
 
 const CSS = `
   .su-pw-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-  @media(max-width:480px){.su-pw-grid{grid-template-columns:1fr}}
+  @media(max-width:768px){
+    .su-pw-grid{grid-template-columns:1fr}
+    /* 16px avoids iOS zoom-on-focus */
+    .su-input{font-size:16px !important;padding-top:11px !important;padding-bottom:11px !important;}
+  }
   .su-input:focus-visible{outline:2px solid #0a3a6e;outline-offset:1px;}
   .su-btn:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
   .su-btn{filter:brightness(1);transition:filter .12s}

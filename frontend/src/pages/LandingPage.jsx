@@ -623,6 +623,9 @@ const CSS = `
   .wiz-main .wiz-sub{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem;max-width:440px}
   .wiz-progress{height:2px;background:var(--line-soft);margin-bottom:1.5rem}
   .wiz-progress > div{height:100%;background:var(--ink);transition:width .35s cubic-bezier(.4,0,.2,1)}
+  .adm-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .adm-yl{max-width:48%}
+  .wiz-mobile-steps{display:none}
   .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
   .type-card{padding:1.25rem;border:1px solid var(--line);cursor:pointer;background:#fff;text-align:left;font-family:inherit;transition:border-color .15s,background .15s}
   .type-card:hover{border-color:var(--muted)}
@@ -640,15 +643,25 @@ const CSS = `
   .success-icon i{font-size:32px;color:#0a7c52}
   @keyframes lp-slideInRight{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
   @keyframes lp-slideInLeft{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
-  @media(max-width:680px){
+  @media(max-width:768px){
     .wiz{grid-template-columns:1fr}
     .wiz-side{display:none}
-    .modal-head,.modal-body,.modal-foot{padding-left:1.5rem;padding-right:1.5rem}
+    .wiz-main{padding:1.5rem 1.25rem}
+    .modal-head,.modal-body,.modal-foot{padding-left:1.25rem;padding-right:1.25rem}
+    .adm-row{grid-template-columns:1fr;gap:10px;margin-bottom:10px}
+    .adm-yl{max-width:100%}
+    .wiz-mobile-steps{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:10px}
+    /* 16px avoids iOS zoom-on-focus; taller inputs hit the 44px touch target */
+    .modal input,.modal select,.modal textarea{font-size:16px !important;padding-top:11px !important;padding-bottom:11px !important}
+    .wiz-actions{padding-top:1rem}
+    .wiz-btn{padding:12px 16px;min-height:44px}
+    .adm-type-pick{padding:.85rem 1rem}
   }
   @media(max-width:480px){
     .flow-field-row{grid-template-columns:1fr}
     .type-grid{grid-template-columns:1fr}
     .modal-back{padding:1rem}
+    .modal-body h3{font-size:24px}
   }
 `;
 
@@ -1990,6 +2003,7 @@ function EnrollmentModal({ onClose, term, programs }) {
             </aside>
 
             <main className="wiz-main">
+              <div className="wiz-mobile-steps">Step {stepNow} of {totalSteps} · {sideSteps[stepNow - 1]}</div>
               <div className="wiz-progress">
                 <div style={{ width: `${(stepNow / totalSteps) * 100}%` }} />
               </div>
@@ -2027,7 +2041,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                     </div>
                     ) : (
                     <div className="flow-form" style={{ gap: '1rem' }}>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>First name</label>
                           <input style={fInput} value={form.first} onChange={e => update('first', e.target.value)} placeholder="Juan" />
@@ -2037,7 +2051,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <input style={fInput} value={form.middle} onChange={e => update('middle', e.target.value)} placeholder="Santos" />
                         </div>
                       </div>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Last name</label>
                           <input style={fInput} value={form.last} onChange={e => update('last', e.target.value)} placeholder="Dela Cruz" />
@@ -2055,7 +2069,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                           </select>
                         </div>
                       </div>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Date of birth</label>
                           <input style={fInput} type="date" value={form.dob} onChange={e => update('dob', e.target.value)} />
@@ -2065,7 +2079,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <input style={fInput} value={form.birthplace} onChange={e => update('birthplace', e.target.value)} placeholder="City / Municipality" />
                         </div>
                       </div>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Sex</label>
                           <select style={fInput} value={form.sex} onChange={e => update('sex', e.target.value)}>
@@ -2080,7 +2094,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                           </select>
                         </div>
                       </div>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Citizenship</label>
                           <input style={fInput} value={form.citizenship} onChange={e => update('citizenship', e.target.value)} placeholder="Filipino" />
@@ -2090,7 +2104,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <input style={fInput} value={form.religion} onChange={e => update('religion', e.target.value)} placeholder="Roman Catholic" />
                         </div>
                       </div>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Ethnicity</label>
                           <input style={fInput} value={form.ethnicity} onChange={e => update('ethnicity', e.target.value)} placeholder="e.g. Surigaonon" />
@@ -2104,7 +2118,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                         <label style={fLabel}>Email address</label>
                         <input style={fInput} type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="juan.delacruz@nemsu.edu.ph" />
                       </div>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Program</label>
                           <ProgramSearchSelect value={form.program} options={progList}
@@ -2115,7 +2129,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <input style={fInput} value={form.major} onChange={e => update('major', e.target.value)} placeholder="Type N/A if none" />
                         </div>
                       </div>
-                      <div className="flow-field" style={{ maxWidth: '48%' }}>
+                      <div className="flow-field adm-yl">
                         <label style={fLabel}>Year level{type === 'new' && <span style={optLbl}> (freshman)</span>}</label>
                         {type === 'new' ? (
                           <input style={{ ...fInput, background: '#f3f4f6', color: '#6b7280' }} value="1st Year" readOnly />
@@ -2139,7 +2153,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                     <h4>Address &amp; family</h4>
                     <p className="wiz-sub">Your current home address and family details.</p>
                     <div className="flow-form" style={{ gap: '1rem' }}>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Barangay</label>
                           <input style={fInput} value={form.addr_brgy} onChange={e => update('addr_brgy', e.target.value)} placeholder="Brgy." />
@@ -2149,7 +2163,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <input style={fInput} value={form.addr_town} onChange={e => update('addr_town', e.target.value)} placeholder="Cantilan" />
                         </div>
                       </div>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Province</label>
                           <input style={fInput} value={form.addr_province} onChange={e => update('addr_province', e.target.value)} placeholder="Surigao del Sur" />
@@ -2163,7 +2177,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                       {form.civil_status === 'Married' && (
                         <>
                           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 4 }}>Spouse</div>
-                          <div style={fRow}>
+                          <div className="adm-row">
                             <div className="flow-field">
                               <label style={fLabel}>Spouse name</label>
                               <input style={fInput} value={form.spouse_name} onChange={e => update('spouse_name', e.target.value)} placeholder="Full name" />
@@ -2177,7 +2191,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                       )}
 
                       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 4 }}>Parent / Guardian</div>
-                      <div style={fRow}>
+                      <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Father’s name</label>
                           <input style={fInput} value={form.father_name} onChange={e => update('father_name', e.target.value)} placeholder="Full name" />
@@ -2208,7 +2222,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                       ].map(lvl => (
                         <div key={lvl.key}>
                           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>{lvl.label}</div>
-                          <div style={fRow}>
+                          <div className="adm-row">
                             <div className="flow-field">
                               <label style={fLabel}>School name</label>
                               <input style={fInput} value={form[`${lvl.key}_school`]} onChange={e => update(`${lvl.key}_school`, e.target.value)} placeholder="School name" />
@@ -2228,7 +2242,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                       {type === 'transferee' && (
                         <div>
                           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>School last attended (transferee / second course)</div>
-                          <div style={fRow}>
+                          <div className="adm-row">
                             <div className="flow-field">
                               <label style={fLabel}>School name</label>
                               <input style={fInput} value={form.last_school} onChange={e => update('last_school', e.target.value)} placeholder="College / University" />
@@ -2360,7 +2374,6 @@ function EnrollmentModal({ onClose, term, programs }) {
 ══════════════════════════════════════════════════════════════ */
 const YEAR_LEVEL_MAP = { '1st Year':1, '2nd Year':2, '3rd Year':3, '4th Year':4 };
 const panel      = dir => ({ display:'flex', flexDirection:'column', flex:1, animation:`${dir === 'back' ? 'lp-slideInLeft' : 'lp-slideInRight'} .22s cubic-bezier(.4,0,.2,1)` });
-const fRow       = { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 };
 const fLabel     = { fontSize:11, fontWeight:700, color:'#5a7a9a', display:'block', marginBottom:5, textTransform:'uppercase', letterSpacing:'.05em' };
 const optLbl     = { fontWeight:400, color:'var(--muted)', textTransform:'none', letterSpacing:0 };
 const fInput     = { width:'100%', padding:'9px 12px', border:'1px solid #d0dcea', borderRadius:8, fontSize:13, background:'#fff', color:'#0a1628', outline:'none', boxSizing:'border-box' };

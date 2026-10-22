@@ -160,4 +160,9 @@ const CSS = `
   .as-link{background:none;border:none;color:#1d4ed8;font-weight:600;cursor:pointer;padding:0;font-size:12px;}
   .as-link:hover{text-decoration:underline;}
   .as-link:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px;border-radius:2px;}
+  @media(max-width:768px){
+    /* 16px avoids iOS zoom-on-focus; taller inputs hit the 44px touch target */
+    .as-input{font-size:16px;padding-top:11px;padding-bottom:11px;}
+    .as-btn{min-height:44px;}
+  }
 `;
