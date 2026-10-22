@@ -774,3 +774,29 @@ class AcademicProfileView(APIView):
         _audit(user, user.role, 'academic_profile_updated', request.path,
                get_client_ip(request), 'success')
         return Response(UserProfileSerializer(user).data)
+
+
+class StudentSelfInfoView(APIView):
+    """GET/PATCH /auth/my/details/ — the logged-in student views and edits their
+    own extended personal information (address, education background, parents, …).
+    Seeded from their admission application the first time it's opened."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .admin_views import student_profile_payload
+        if request.user.role != 'student':
+            return Response({'error': 'Only students have a personal profile here.'}, status=status.HTTP_403_FORBIDDEN)
+        return Response(student_profile_payload(request.user))
+
+    def patch(self, request):
+        from .admin_views import student_profile_payload
+        if request.user.role != 'student':
+            return Response({'error': 'Only students can edit this profile.'}, status=status.HTTP_403_FORBIDDEN)
+        incoming = request.data.get('details')
+        if not isinstance(incoming, dict):
+            return Response({'error': 'details must be an object.'}, status=status.HTTP_400_BAD_REQUEST)
+        request.user.details = incoming
+        request.user.save(update_fields=['details'])
+        _audit(request.user, request.user.role, 'student_details_updated', request.path,
+               get_client_ip(request), 'success')
+        return Response(student_profile_payload(request.user))

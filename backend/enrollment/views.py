@@ -1173,6 +1173,34 @@ class PublicPreEnrollUploadView(APIView):
         )
 
 
+class PublicPreEnrollDetailView(APIView):
+    """GET /api/enrollment/public/pre-enroll/<uuid:pk>/
+    Public summary of one application so an applicant can see which documents
+    are still missing and upload them. No authentication — the UUID in the
+    emailed link is the access token. Returns which required documents have
+    already been received."""
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def get(self, request, pk):
+        try:
+            pending = PendingEnrollment.objects.get(pk=pk)
+        except PendingEnrollment.DoesNotExist:
+            return Response({'error': 'Application not found.'}, status=status.HTTP_404_NOT_FOUND)
+        docs = PreEnrollmentDocument.objects.filter(pending=pending).order_by('uploaded_at')
+        return Response({
+            'id': str(pending.id),
+            'full_name': pending.full_name,
+            'reference_number': pending.reference_number,
+            'student_type': pending.student_type,
+            'status': pending.status,
+            'uploaded': [
+                {'requirement_label': d.requirement_label, 'file_name': d.file_name}
+                for d in docs
+            ],
+        })
+
+
 class RegistrarPreEnrollDocumentsView(generics.ListAPIView):
     """GET /api/enrollment/pending/<uuid:pk>/documents/"""
     serializer_class = PreEnrollmentDocumentSerializer
@@ -1203,10 +1231,15 @@ class RegistrarPreEnrollFollowupView(APIView):
             return Response({'error': 'Message is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         from nemsuoneportal.emails import send_branded_email
+        from django.conf import settings as _settings
+        upload_url = f"{_settings.FRONTEND_URL}/admission/upload/{pending.id}"
         subject = f"Follow-up on Your NEMSU Cantilan Pre-Enrollment Application (Ref: {pending.reference_number})"
         body = (
             f"Dear {pending.full_name},\n\n"
             f"{message}\n\n"
+            f"Use the button below to upload your missing documents. You can return to it "
+            f"anytime using the same link.\n\n"
+            f"{upload_url}\n\n"
             f"Reference Number: {pending.reference_number}\n\n"
             f"If you have any questions, please contact the Registrar's Office at cantilan@nemsu.edu.ph.\n\n"
             f"— NEMSU Cantilan Registrar's Office"

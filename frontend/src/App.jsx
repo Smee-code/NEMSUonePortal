@@ -17,6 +17,7 @@ import CookiePolicy from './pages/CookiePolicy';
 import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import AdmissionUpload from './pages/AdmissionUpload';
 import Unauthorized from './pages/Unauthorized';
 import ActivateAccount from './pages/auth/ActivateAccount';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -86,6 +87,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/activate/:token" element={<ActivateAccount />} />
+          <Route path="/admission/upload/:id" element={<AdmissionUpload />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* ── First-login academic setup (returnee / old student) ─── */}

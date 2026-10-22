@@ -68,6 +68,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     # reaching the dashboard. Cleared once that profile is complete.
     needs_academic_setup = models.BooleanField(default=False)
 
+    # Extended personal information (address, civil status, education background,
+    # parents, etc.). Seeded from the admission application and editable by the
+    # student; viewable by the registrar/admin. JSON to mirror the admission form.
+    details = models.JSONField(default=dict, blank=True)
+
     # Registrar validation of student self-registration.
     # 'approved' by default so existing rows and admin-created staff are unaffected;
     # only public student registration sets this to 'pending'.

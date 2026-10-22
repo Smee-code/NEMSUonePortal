@@ -104,6 +104,8 @@ def _button_label(url):
         return 'Verify my email'
     if 'reset-password' in url:
         return 'Reset my password'
+    if '/admission/upload' in url:
+        return 'Upload my documents'
     if '/signup' in url or '/sign-up' in url:
         return 'Create my account'
     if '/login' in url:

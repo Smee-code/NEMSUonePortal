@@ -15,7 +15,7 @@ const REQUIRED_DOCS = {
   new: [
     'SHS Form 138 / Report Card', 'PSA Birth Certificate', 'Good Moral Certificate',
     'SHS Diploma / Certificate of Completion', '2x2 ID photos (4 copies)',
-    'Medical Certificate', 'Accomplished Application Form',
+    'Medical Certificate', 'Entrance Exam Result / Admission Slip',
   ],
   transferee: [
     'Transcript of Records (TOR)', 'Honorable Dismissal', 'Good Moral Certificate',
@@ -100,6 +100,7 @@ export default function RegistrarAdmissions() {
   const [reviewError, setReviewError] = useState('');
   const [docs,        setDocs]        = useState([]);
   const [docsLoading, setDocsLoading] = useState(false);
+  const [previewDoc,  setPreviewDoc]  = useState(null);
 
   // Follow-up email composer
   const [followupOpen,    setFollowupOpen]    = useState(false);
@@ -381,30 +382,63 @@ export default function RegistrarAdmissions() {
               );
             })()}
 
-            {/* Documents */}
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 600, fontSize: '.85rem', color: 'var(--reg-ink-2)', marginBottom: '.5rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <i className="ti ti-paperclip" style={{ fontSize: 15 }} /> Submitted documents
-                {docsLoading && <span style={{ fontSize: 11, color: 'var(--reg-muted)', fontWeight: 400 }}>Loading…</span>}
-              </div>
-              {!docsLoading && docs.length === 0 && (
-                <p style={{ fontSize: '.8rem', color: 'var(--reg-muted)', margin: 0, padding: '8px 12px', background: '#f9fafb' }}>
-                  No documents uploaded by applicant.
-                </p>
-              )}
-              {docs.map(doc => (
-                <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', background: '#fff', border: '1px solid var(--reg-line)', marginBottom: 5 }}>
-                  <i className="ti ti-file-type-pdf" style={{ fontSize: 18, color: '#dc2626', flexShrink: 0 }} />
-                  <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--reg-ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.requirement_label}</div>
-                    <div style={{ fontSize: '.75rem', color: 'var(--reg-muted)' }}>{doc.file_name} · {(doc.file_size / 1024).toFixed(0)} KB</div>
+            {/* Document checklist */}
+            {(() => {
+              const required = REQUIRED_DOCS[selected.student_type] || [];
+              const byLabel = {};
+              (docs || []).forEach(d => { byLabel[d.requirement_label] = d; });
+              const submittedCount = required.filter(l => byLabel[l]).length;
+              const extras = (docs || []).filter(d => !required.includes(d.requirement_label));
+              return (
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '.85rem', color: 'var(--reg-ink-2)', marginBottom: '.5rem', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <i className="ti ti-list-check" style={{ fontSize: 15 }} /> Document checklist
+                    {docsLoading
+                      ? <span style={{ fontSize: 11, color: 'var(--reg-muted)', fontWeight: 400 }}>Loading…</span>
+                      : <span style={{ fontSize: 11, fontWeight: 600, color: submittedCount === required.length ? 'var(--reg-green)' : '#b45309' }}>
+                          {submittedCount} of {required.length} submitted
+                        </span>}
                   </div>
-                  <a href={doc.url} target="_blank" rel="noreferrer" style={{ fontSize: '.75rem', color: 'var(--reg-ink)', textDecoration: 'underline', textUnderlineOffset: 2, fontWeight: 600, flexShrink: 0 }}>
-                    View PDF
-                  </a>
+                  {required.map(label => {
+                    const doc = byLabel[label];
+                    const ok = !!doc;
+                    return (
+                      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', background: ok ? '#fff' : '#fff7ed', border: `1px solid ${ok ? 'var(--reg-line)' : '#fed7aa'}`, marginBottom: 5 }}>
+                        <i className={`ti ${ok ? 'ti-circle-check-filled' : 'ti-alert-circle'}`} style={{ fontSize: 18, color: ok ? 'var(--reg-green)' : '#d97706', flexShrink: 0 }} />
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                          <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--reg-ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+                          <div style={{ fontSize: '.75rem', color: ok ? 'var(--reg-muted)' : '#b45309' }}>
+                            {ok ? `${doc.file_name} · ${(doc.file_size / 1024).toFixed(0)} KB` : 'Missing — not uploaded'}
+                          </div>
+                        </div>
+                        {ok && (
+                          <button type="button" onClick={() => setPreviewDoc(doc)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '.75rem', color: 'var(--reg-ink)', background: 'none', border: '1px solid var(--reg-line)', padding: '4px 9px', borderRadius: 5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                            <i className="ti ti-eye" style={{ fontSize: 14 }} /> Preview
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {extras.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--reg-muted)', margin: '.6rem 0 .35rem' }}>Other uploaded</div>
+                      {extras.map(doc => (
+                        <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', background: '#fff', border: '1px solid var(--reg-line)', marginBottom: 5 }}>
+                          <i className="ti ti-file-type-pdf" style={{ fontSize: 18, color: '#dc2626', flexShrink: 0 }} />
+                          <div style={{ flex: 1, overflow: 'hidden' }}>
+                            <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--reg-ink-2)' }}>{doc.requirement_label}</div>
+                            <div style={{ fontSize: '.75rem', color: 'var(--reg-muted)' }}>{doc.file_name} · {(doc.file_size / 1024).toFixed(0)} KB</div>
+                          </div>
+                          <button type="button" onClick={() => setPreviewDoc(doc)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '.75rem', color: 'var(--reg-ink)', background: 'none', border: '1px solid var(--reg-line)', padding: '4px 9px', borderRadius: 5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                            <i className="ti ti-eye" style={{ fontSize: 14 }} /> Preview
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
 
             <p style={{ fontSize: '.8rem', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '8px 12px', color: '#1e40af', margin: '0 0 .85rem' }}>
               <i className="ti ti-info-circle" style={{ marginRight: 5 }} />
@@ -481,7 +515,53 @@ export default function RegistrarAdmissions() {
           </div>
         </div>
       )}
+
+      {previewDoc && <PdfPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />}
     </>
+  );
+}
+
+function PdfPreviewModal({ doc, onClose }) {
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const sizeKB = doc.file_size ? `${(doc.file_size / 1024).toFixed(0)} KB` : '';
+  return (
+    <div
+      onMouseDown={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,.6)', zIndex: 1300, display: 'flex', flexDirection: 'column', padding: '2.5vh 2vw', boxSizing: 'border-box' }}
+    >
+      <div
+        onMouseDown={e => e.stopPropagation()}
+        style={{ background: '#fff', borderRadius: 10, width: '100%', maxWidth: 960, margin: '0 auto', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 60px -18px rgba(10,22,40,.5)' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '.75rem 1.1rem', borderBottom: '1px solid #e9edf3' }}>
+          <i className="ti ti-file-type-pdf" style={{ fontSize: 20, color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '.9rem', fontWeight: 700, color: '#0a1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {doc.requirement_label || doc.file_name}
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {doc.file_name}{sizeKB && ` · ${sizeKB}`}
+            </div>
+          </div>
+          <a href={doc.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.78rem', fontWeight: 600, color: '#0a3a6e', textDecoration: 'none', border: '1px solid #cdd7e5', padding: '5px 11px', borderRadius: 6, flexShrink: 0 }}>
+            <i className="ti ti-external-link" style={{ fontSize: 14 }} /> Open
+          </a>
+          <button onClick={onClose} aria-label="Close preview" style={{ background: 'none', border: 'none', color: '#9aa4b2', fontSize: 22, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>
+            <i className="ti ti-x" aria-hidden="true" />
+          </button>
+        </div>
+        <iframe
+          title={`Preview of ${doc.file_name}`}
+          src={`${doc.url}#toolbar=1&view=FitH`}
+          style={{ flex: 1, width: '100%', border: 'none', background: '#525659' }}
+        />
+      </div>
+    </div>
   );
 }
 

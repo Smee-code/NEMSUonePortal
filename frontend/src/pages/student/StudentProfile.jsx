@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
+import StudentPersonalInfoCard from './StudentPersonalInfoCard';
 
 const YEAR_LABELS = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year' };
 
@@ -187,6 +188,9 @@ export default function StudentProfile() {
               </button>
             </form>
           </div>
+
+          {/* Personal information (address, family, education) — editable */}
+          <StudentPersonalInfoCard />
         </div>
 
         {/* ── Right: summary + status ────────────────────── */}

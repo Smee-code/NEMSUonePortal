@@ -6,6 +6,7 @@ import { useConfirm } from '../../components/ConfirmDialog';
 import StudentBulkImport from '../../components/StudentBulkImport';
 import StudentAddButton from '../../components/StudentAddButton';
 import UserEditModal from '../../components/UserEditModal';
+import StudentInfoModal from '../../components/StudentInfoModal';
 
 const PAGE_LIMIT = 20;
 
@@ -50,6 +51,7 @@ export default function RoleUserManager({ role, config }) {
   const [copied, setCopied]     = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [editUser, setEditUser] = useState(null);
+  const [infoId, setInfoId] = useState(null);
 
   const autoCreate = !!config.autoCreate;
 
@@ -240,6 +242,11 @@ export default function RoleUserManager({ role, config }) {
                 <div className="rum-c-date">{fmtDate(u.date_joined || u.created_at)}</div>
                 <div className="rum-c-act">
                   {role === 'student' && (
+                    <button className="rum-edit" title="View information" onClick={() => setInfoId(u.id)}>
+                      <i className="ti ti-eye" />
+                    </button>
+                  )}
+                  {role === 'student' && (
                     <Link className="rum-edit" title="View grades & curriculum" to={`/admin/grades/student/${u.id}`}>
                       <i className="ti ti-school" />
                     </Link>
@@ -278,6 +285,8 @@ export default function RoleUserManager({ role, config }) {
           onSaved={() => { setEditUser(null); goTo(offset); toast(`${config.singular} information updated.`, { type: 'success' }); }}
         />
       )}
+
+      {infoId && <StudentInfoModal studentId={infoId} onClose={() => setInfoId(null)} />}
 
       {showAdd && (
         <div className="rum-overlay" onMouseDown={() => !creating && closeAdd()}>
@@ -425,7 +434,7 @@ const CSS = `
   .rum-flash-err{background:#fee2e2;color:#991b1b;padding:.6rem .85rem;font-size:12.5px;margin-bottom:1rem;}
 
   .rum-table{border:1px solid var(--adm-line);background:#fff;}
-  .rum-row{display:grid;grid-template-columns:1fr 150px 150px 130px 120px;align-items:center;gap:1rem;padding:.85rem 1.1rem;border-bottom:1px solid var(--adm-line-soft);}
+  .rum-row{display:grid;grid-template-columns:1fr 140px 140px 120px 158px;align-items:center;gap:1rem;padding:.85rem 1.1rem;border-bottom:1px solid var(--adm-line-soft);}
   .rum-row:last-child{border-bottom:none;}
   .rum-row--head{background:var(--adm-warm);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--adm-muted);font-weight:600;padding-top:.7rem;padding-bottom:.7rem;}
   .rum-c-user{display:flex;align-items:center;gap:12px;min-width:0;}
@@ -493,7 +502,7 @@ const CSS = `
   .rum-cred-row b{color:var(--adm-ink);font-weight:600;text-align:right;word-break:break-all;}
   .rum-cred-pw{font-family:'Courier New',monospace;font-size:14px;letter-spacing:.02em;}
   @media(max-width:720px){
-    .rum-row{grid-template-columns:1fr 80px 112px;}
+    .rum-row{grid-template-columns:1fr 70px 150px;}
     .rum-c-meta,.rum-c-date{display:none;}
   }
 `;

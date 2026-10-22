@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import StudentBulkImport from '../../components/StudentBulkImport';
 import StudentAddButton from '../../components/StudentAddButton';
 import UserEditModal from '../../components/UserEditModal';
+import StudentInfoModal from '../../components/StudentInfoModal';
 
 function initials(name) {
   const p = (name || '').trim().split(/\s+/);
@@ -26,6 +27,7 @@ export default function RegistrarStudents() {
   const [counts, setCounts] = useState({ total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
   const [reloadKey, setReloadKey] = useState(0);
   const [editUser, setEditUser] = useState(null);
+  const [infoId, setInfoId] = useState(null);
 
   // Summary counts + program list (mount only).
   useEffect(() => {
@@ -172,6 +174,9 @@ export default function RegistrarStudents() {
                     </td>
                     <td className="r">
                       <div className="st-actions">
+                        <button className="st-link" onClick={() => setInfoId(s.id)}>
+                          <i className="ti ti-eye" /> View
+                        </button>
                         <button className="st-link" onClick={() => setEditUser({ ...s, role: 'student' })}>
                           <i className="ti ti-pencil" /> Edit
                         </button>
@@ -212,6 +217,8 @@ export default function RegistrarStudents() {
           onSaved={() => { setEditUser(null); setReloadKey(k => k + 1); }}
         />
       )}
+
+      {infoId && <StudentInfoModal studentId={infoId} onClose={() => setInfoId(null)} />}
     </>
   );
 }

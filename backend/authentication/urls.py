@@ -11,12 +11,14 @@ from .admin_views import (
     RegistrarFacultyCreateView,
     RegistrarFacultyUpdateView,
     RegistrarStudentUpdateView,
+    RegistrarStudentInfoView,
     RegistrarStudentListView,
     RegistrationRequestListView,
     RegistrationReviewView,
 )
 from .views import (
     AcademicProfileView,
+    StudentSelfInfoView,
     ActivateByRefView,
     ActivateCompleteView,
     ActivateRequestOTPView,
@@ -58,10 +60,12 @@ urlpatterns = [
     # Profile
     path('profile/', UserProfileView.as_view(), name='auth-profile'),
     path('academic-profile/', AcademicProfileView.as_view(), name='auth-academic-profile'),
+    path('my/details/', StudentSelfInfoView.as_view(), name='auth-my-details'),
 
     # Registrar — student list + faculty creation
     path('registrar/students/', RegistrarStudentListView.as_view(), name='registrar-student-list'),
     path('registrar/students/<uuid:pk>/', RegistrarStudentUpdateView.as_view(), name='registrar-student-update'),
+    path('registrar/students/<uuid:pk>/info/', RegistrarStudentInfoView.as_view(), name='registrar-student-info'),
     path('registrar/faculty/', RegistrarFacultyCreateView.as_view(), name='registrar-faculty-create'),
     path('registrar/faculty/<uuid:pk>/', RegistrarFacultyUpdateView.as_view(), name='registrar-faculty-update'),
     path('registrar/registrations/', RegistrationRequestListView.as_view(), name='registrar-registration-list'),

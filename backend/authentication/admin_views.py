@@ -616,6 +616,80 @@ class RegistrarStudentUpdateView(APIView):
         return Response(AdminUserListSerializer(user).data)
 
 
+def _matched_admission(user):
+    """The student's admission application, matched by Student ID (returnees keep
+    theirs) or by the email they applied with. Most recent wins."""
+    from enrollment.models import PendingEnrollment
+    return (
+        PendingEnrollment.objects.filter(assigned_student_id__iexact=user.student_id).order_by('-created_at').first()
+        or PendingEnrollment.objects.filter(email__iexact=user.institutional_email).order_by('-created_at').first()
+    )
+
+
+def seed_student_details(user):
+    """Populate user.details from the admission application the first time it's
+    needed, so admission-origin students start with what they entered."""
+    if user.details:
+        return user.details
+    app = _matched_admission(user)
+    if app and app.details:
+        user.details = dict(app.details)
+        user.save(update_fields=['details'])
+    return user.details
+
+
+def student_profile_payload(user):
+    """Full read-only profile dict for a student (shared by registrar/admin)."""
+    seed_student_details(user)
+    app = _matched_admission(user)
+    return {
+        'student': {
+            'id': str(user.id),
+            'student_id': user.student_id,
+            'full_name': user.full_name,
+            'institutional_email': user.institutional_email,
+            'contact_number': user.contact_number,
+            'date_of_birth': user.date_of_birth.isoformat() if user.date_of_birth else None,
+            'is_active': user.is_active,
+            'is_verified': user.is_verified,
+            'is_placeholder': user.is_placeholder,
+            'registration_status': user.registration_status,
+            'department_name': user.department.name if user.department_id else None,
+            'department_code': user.department.code if user.department_id else None,
+            'program_name': user.program.name if user.program_id else None,
+            'program_code': user.program.code if user.program_id else None,
+            'year_level': user.year_level,
+            'year_level_display': user.get_year_level_display() if user.year_level else None,
+            'curriculum_code': user.curriculum.code if user.curriculum_id else None,
+            'date_joined': user.date_joined.isoformat() if user.date_joined else None,
+            'details': user.details or {},
+        },
+        'admission': ({
+            'reference_number': app.reference_number,
+            'student_type': app.student_type,
+            'student_type_display': app.get_student_type_display(),
+            'status': app.status,
+            'status_display': app.get_status_display(),
+            'submitted_at': app.created_at.isoformat() if app.created_at else None,
+        } if app else None),
+    }
+
+
+class RegistrarStudentInfoView(APIView):
+    """GET /api/auth/registrar/students/<uuid:pk>/info/ — full read-only profile for
+    one student (registrar/admin), including the details entered at admission."""
+    permission_classes = [IsAuthenticated, IsRegistrarOrAdmin]
+
+    def get(self, request, pk):
+        try:
+            u = User.objects.select_related('program', 'department', 'curriculum').get(pk=pk, role='student')
+        except User.DoesNotExist:
+            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+        _audit(request.user, request.user.role, 'student_info_viewed',
+               f'user:{u.id}', get_client_ip(request), 'success', {'target_user': str(u.id)})
+        return Response(student_profile_payload(u))
+
+
 class AdminUserDetailView(APIView):
     """GET + PATCH + DELETE /api/auth/admin/users/<uuid:pk>/"""
     permission_classes = [IsAuthenticated, IsAdmin]
