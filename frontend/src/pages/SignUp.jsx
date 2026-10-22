@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import api from '../api/axios';
 import PasswordInput from '../components/PasswordInput';
 
@@ -10,8 +10,15 @@ const EMPTY = {
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [form,    setForm]    = useState(EMPTY);
+  // Pre-fill the Student ID and institutional email from the approval email link
+  // (…/signup?student_id=…&email=…) so applicants don't have to retype them.
+  const [form,    setForm]    = useState(() => ({
+    ...EMPTY,
+    student_id:          searchParams.get('student_id') || '',
+    institutional_email: searchParams.get('email') || '',
+  }));
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
   const [done,    setDone]    = useState(false);

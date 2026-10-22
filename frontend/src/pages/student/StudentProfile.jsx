@@ -31,11 +31,16 @@ export default function StudentProfile() {
       api.get('/enrollment/my/'),
     ]).then(([profileRes, deptRes, progRes, enrollRes]) => {
       const p = profileRes.data;
+      const progList = progRes.data;
       setProfile(p);
       setDepartments(deptRes.data);
-      setPrograms(progRes.data);
+      setPrograms(progList);
+      // Department is derived from the program, so prefer the program's department.
+      const derivedDept = p.program_id
+        ? (progList.find(pr => String(pr.id) === String(p.program_id))?.department ?? p.department_id ?? '')
+        : (p.department_id ?? '');
       setForm({
-        department: p.department_id ?? '',
+        department: derivedDept ?? '',
         program:    p.program_id ?? '',
         year_level: p.year_level ?? '',
       });
@@ -74,9 +79,14 @@ export default function StudentProfile() {
 
   if (loading) return <div className="page"><p style={{ color: 'var(--muted)' }}>Loading profile…</p></div>;
 
-  const programsForDept = form.department
-    ? programs.filter(p => String(p.department) === String(form.department))
-    : programs;
+  const deptOfProgram = (progId) => {
+    const prog = programs.find(p => String(p.id) === String(progId));
+    return prog ? String(prog.department) : '';
+  };
+  const deptObj = departments.find(d => String(d.id) === String(form.department));
+  const deptLabel = deptObj
+    ? `${deptObj.code} — ${deptObj.name}`
+    : (form.program ? 'Set from your program' : 'Select a program first');
 
   const verified = !!profile?.is_verified;
   const facts = [
@@ -154,18 +164,30 @@ export default function StudentProfile() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="pf-field">
-                <label className="pf-label">Department</label>
-                <select className="pf-input" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value, program: '' }))}>
+                <label className="pf-label">Program</label>
+                <select
+                  className="pf-input"
+                  value={form.program}
+                  onChange={e => {
+                    const program = e.target.value;
+                    setForm(f => ({ ...f, program, department: program ? deptOfProgram(program) : '' }));
+                  }}
+                >
                   <option value="">Not set</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+                  {programs.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
                 </select>
               </div>
               <div className="pf-field">
-                <label className="pf-label">Program</label>
-                <select className="pf-input" value={form.program} onChange={e => setForm(f => ({ ...f, program: e.target.value }))}>
-                  <option value="">Not set</option>
-                  {programsForDept.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
-                </select>
+                <label className="pf-label">
+                  Department <span style={{ fontWeight: 400, color: 'var(--muted)', fontSize: '.8em' }}>· set automatically from your program</span>
+                </label>
+                <input
+                  className="pf-input"
+                  value={deptLabel}
+                  readOnly
+                  disabled
+                  style={{ background: '#f1f5f9', color: 'var(--muted)', cursor: 'not-allowed' }}
+                />
               </div>
               <div className="pf-field">
                 <label className="pf-label">Year level</label>

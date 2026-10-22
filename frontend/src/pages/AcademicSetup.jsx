@@ -35,16 +35,20 @@ export default function AcademicSetup() {
       .finally(() => setLoad(false));
   }, []);
 
-  const programsForDept = form.department
-    ? programs.filter(p => String(p.department) === String(form.department))
-    : [];
+  const deptOfProgram = (progId) => {
+    const prog = programs.find(p => String(p.id) === String(progId));
+    return prog ? String(prog.department) : '';
+  };
+  const deptObj = departments.find(d => String(d.id) === String(form.department));
+  const deptLabel = deptObj
+    ? `${deptObj.code} — ${deptObj.name}`
+    : (form.program ? 'Set from your program' : 'Select a program first');
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.department) { setError('Select your department.'); deptRef.current?.focus(); return; }
     if (!form.program)    { setError('Select your program.');    progRef.current?.focus(); return; }
     if (!form.year_level) { setError('Select your year level.'); yearRef.current?.focus(); return; }
     setSaving(true);
@@ -84,21 +88,19 @@ export default function AcademicSetup() {
           <p style={{ textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading…</p>
         ) : (
           <form onSubmit={handleSubmit}>
-            <Field label="Department" htmlFor="as-department">
-              <select id="as-department" name="department" className="as-input" ref={deptRef}
-                value={form.department}
-                onChange={e => setForm(f => ({ ...f, department: e.target.value, program: '' }))}>
-                <option value="">Select your department…</option>
-                {departments.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+            <Field label="Program" htmlFor="as-program">
+              <select id="as-program" name="program" className="as-input" ref={progRef}
+                value={form.program}
+                onChange={e => { const program = e.target.value; setForm(f => ({ ...f, program, department: program ? deptOfProgram(program) : '' })); }}>
+                <option value="">Select your program…</option>
+                {programs.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
               </select>
             </Field>
 
-            <Field label="Program" htmlFor="as-program">
-              <select id="as-program" name="program" className="as-input" ref={progRef}
-                value={form.program} onChange={e => set('program', e.target.value)} disabled={!form.department}>
-                <option value="">{form.department ? 'Select your program…' : 'Choose a department first'}</option>
-                {programsForDept.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
-              </select>
+            <Field label="Department" htmlFor="as-department">
+              <input id="as-department" name="department" className="as-input" ref={deptRef}
+                value={deptLabel} readOnly disabled
+                style={{ background: '#f1f5f9', color: '#6b7280', cursor: 'not-allowed' }} />
             </Field>
 
             <Field label="Year level" htmlFor="as-year">

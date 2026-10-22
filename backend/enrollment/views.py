@@ -1372,8 +1372,15 @@ def _send_admission_decision_email(pending, decision):
     program = pending.program.name if pending.program_id else 'your chosen program'
 
     if decision == 'approved':
+        from urllib.parse import urlencode
         subject = "NEMSU Cantilan — Admission Approved · Create Your Account"
-        signup_url = f"{_settings.FRONTEND_URL}/signup"
+        # Pre-fill the sign-up form with the assigned Student ID and the email the
+        # applicant used during admission (where this notice is sent).
+        qs = urlencode({
+            'student_id': pending.assigned_student_id or '',
+            'email': pending.email or '',
+        })
+        signup_url = f"{_settings.FRONTEND_URL}/signup?{qs}"
         body = (
             f"Dear {pending.full_name},\n\n"
             f"Your application (Ref: {pending.reference_number}) for {program} has been "
