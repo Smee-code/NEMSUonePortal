@@ -1666,9 +1666,9 @@ function DetailModal({ item, onClose }) {
 
 function AdmissionIntroModal({ onClose, onStart, onLogin }) {
   const steps = [
-    { icon: 'ti-folder', t: 'Gather & upload your documents', d: 'Prepare your admission requirements (Form 138, PSA birth certificate, good moral, etc.) and upload them in the application.' },
-    { icon: 'ti-checklist', t: 'We validate your documents', d: "The campus reviews your submission to confirm you're eligible for admission." },
-    { icon: 'ti-mail-check', t: 'Get your entrance-exam invite', d: "You'll receive an email letting you know if you qualified for the next step: the college entrance examination." },
+    { icon: 'ti-writing', t: 'Take the entrance examination first', d: 'New & transferee applicants must take the NEMSU Cantilan college entrance examination before applying. Keep your exam result / admission slip — you’ll upload it here.' },
+    { icon: 'ti-folder', t: 'Gather & upload your documents', d: 'Prepare your requirements (Form 138, PSA birth certificate, good moral, your entrance-exam result, etc.) and upload them in the application.' },
+    { icon: 'ti-checklist', t: 'We validate & notify you', d: 'The campus reviews your submission and emails you the status of your admission.' },
   ];
   return (
     <div className="modal-back" onClick={onClose}>
@@ -1688,10 +1688,14 @@ function AdmissionIntroModal({ onClose, onStart, onLogin }) {
         <div className="modal-body">
           <span className="adm-badge"><i className="ti ti-school" /> For new, transferee &amp; returning students</span>
           <h3 style={{ marginTop: '.9rem' }}>Apply for <em>admission</em> to NEMSU Cantilan.</h3>
-          <p className="lead" style={{ marginBottom: '1.25rem' }}>
+          <p className="lead" style={{ marginBottom: '1rem' }}>
             For <strong>new, transferee, and returning students</strong> who want to enroll at the university.
             Here's how it works:
           </p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: '#fef3c7', border: '1px solid #f0d786', padding: '10px 12px', marginBottom: '1.25rem', fontSize: 12.5, color: '#8a6a12', lineHeight: 1.5 }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }} />
+            <span><strong>New &amp; transferee applicants:</strong> you must take the college entrance examination <strong>first</strong>, then apply here and upload your exam result / admission slip. (Returnee / old students may skip the exam.)</span>
+          </div>
           <div className="adm-steps">
             {steps.map((s, i) => (
               <div key={i} className="adm-step">
