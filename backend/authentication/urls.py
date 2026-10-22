@@ -23,6 +23,8 @@ from .views import (
     ActivateCompleteView,
     ActivateRequestOTPView,
     ActivateTokenInfoView,
+    FacultySetupInfoView,
+    FacultySetupCompleteView,
     CookieTokenRefreshView,
     LoginView,
     LogoutView,
@@ -85,4 +87,8 @@ urlpatterns = [
     path('activate/<uuid:token>/',              ActivateTokenInfoView.as_view(),  name='activate-token-info'),
     path('activate/<uuid:token>/request-otp/', ActivateRequestOTPView.as_view(), name='activate-request-otp'),
     path('activate/<uuid:token>/complete/',    ActivateCompleteView.as_view(),   name='activate-complete'),
+
+    # Faculty account setup (invited by the registrar; faculty sets their password)
+    path('faculty-setup/<uuid:token>/',          FacultySetupInfoView.as_view(),     name='faculty-setup-info'),
+    path('faculty-setup/<uuid:token>/complete/', FacultySetupCompleteView.as_view(), name='faculty-setup-complete'),
 ]

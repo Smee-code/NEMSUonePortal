@@ -3,8 +3,8 @@ import api from '../../api/axios';
 import { useToast } from '../../components/Toast';
 
 const EMPTY_FACULTY = {
-  full_name: '', institutional_email: '', student_id: '', contact_number: '',
-  department: '', is_gec_faculty: false, program: '', rank: '', password: '',
+  full_name: '', institutional_email: '', date_of_birth: '', contact_number: '',
+  department: '', is_gec_faculty: false, program: '', rank: '',
 };
 
 // Academic ranks — COS through the NBC 461 ladder (must match the backend list).
@@ -120,6 +120,10 @@ const CSS = `
 .rf-input{padding:9px 12px;border:1px solid var(--reg-line);background:#fff;font:13px/1.4 'Inter',sans-serif;color:var(--reg-ink);outline:none;width:100%;box-sizing:border-box}
 .rf-input:focus{border-color:var(--reg-ink)}
 .rf-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--reg-ink);cursor:pointer}
+.rf-note{display:flex;align-items:center;gap:6px;margin:-.35rem 0 .1rem;font-size:11.5px;color:var(--reg-muted)}
+.rf-note i{color:var(--reg-gold);font-size:14px}
+.rf-info{display:flex;gap:8px;margin:.35rem 0 0;padding:10px 12px;background:var(--reg-cool,#eff6ff);border:1px solid var(--reg-line);border-radius:8px;font-size:12px;line-height:1.5;color:var(--reg-ink-2)}
+.rf-info i{color:var(--reg-gold);font-size:16px;flex-shrink:0;margin-top:1px}
 `;
 
 export default function RegistrarFaculty() {
@@ -175,17 +179,21 @@ export default function RegistrarFaculty() {
       const payload = {
         full_name:           createForm.full_name.trim(),
         institutional_email: createForm.institutional_email.trim(),
-        student_id:          createForm.student_id.trim(),
         contact_number:      createForm.contact_number.trim(),
-        role:                'faculty',
-        password:            createForm.password,
+        date_of_birth:       createForm.date_of_birth || null,
         department:          createForm.department,
         is_gec_faculty:      createForm.is_gec_faculty,
       };
       if (createForm.rank) payload.rank = createForm.rank;
       if (!createForm.is_gec_faculty && createForm.program) payload.program = Number(createForm.program);
-      await api.post('/auth/registrar/faculty/', payload);
-      toast(`Faculty account for ${payload.full_name} created.`, { type: 'success' });
+      const res = await api.post('/auth/registrar/faculty/', payload);
+      const idText = res.data?.faculty_id ? ` (${res.data.faculty_id})` : '';
+      toast(
+        res.data?.email_sent === false
+          ? `Faculty${idText} created, but the setup email couldn’t be sent. Please resend it.`
+          : `Faculty${idText} created. A setup link was emailed to ${payload.institutional_email}.`,
+        { type: res.data?.email_sent === false ? 'error' : 'success' },
+      );
       setShowCreate(false);
       setCreateForm(EMPTY_FACULTY);
       fetchFaculty();
@@ -570,7 +578,7 @@ export default function RegistrarFaculty() {
               <div>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--reg-ink)' }}>Add faculty</h3>
                 <div style={{ fontSize: 12, color: 'var(--reg-muted)', marginTop: 4 }}>
-                  Create a new faculty account. Share the initial password with the faculty member.
+                  Create a new faculty account. A setup link is emailed to the faculty to finish signing up.
                 </div>
               </div>
               <button type="button" className="reg-icon-btn" onClick={() => setShowCreate(false)} disabled={creating}>
@@ -591,9 +599,10 @@ export default function RegistrarFaculty() {
 
               <div className="rf-row">
                 <div className="rf-field">
-                  <label className="rf-label">Faculty ID</label>
-                  <input className="rf-input" required value={createForm.student_id}
-                    onChange={e => setCF('student_id', e.target.value)} placeholder="FAC-2026-001" />
+                  <label className="rf-label">Date of birth</label>
+                  <input className="rf-input" type="date" required value={createForm.date_of_birth}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={e => setCF('date_of_birth', e.target.value)} />
                 </div>
                 <div className="rf-field">
                   <label className="rf-label">Contact number <span className="rf-opt">(optional)</span></label>
@@ -601,6 +610,7 @@ export default function RegistrarFaculty() {
                     onChange={e => setCF('contact_number', e.target.value)} placeholder="09xxxxxxxxx" />
                 </div>
               </div>
+              <p className="rf-note"><i className="ti ti-id-badge-2" /> The Faculty ID is generated automatically.</p>
 
               <div className="rf-field">
                 <label className="rf-label">Institutional email</label>
@@ -641,11 +651,10 @@ export default function RegistrarFaculty() {
                 </div>
               )}
 
-              <div className="rf-field">
-                <label className="rf-label">Initial password</label>
-                <input className="rf-input" type="text" required minLength={12} value={createForm.password}
-                  onChange={e => setCF('password', e.target.value)} placeholder="At least 12 characters" />
-              </div>
+              <p className="rf-info">
+                <i className="ti ti-mail-forward" />
+                When you create the account, a setup link is emailed to the faculty. They click it to set their own password and are signed in automatically — no initial password needed.
+              </p>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem', padding: '1rem 1.5rem', borderTop: '1px solid var(--reg-line)' }}>

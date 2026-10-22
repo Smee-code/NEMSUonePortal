@@ -745,6 +745,88 @@ class ActivateCompleteView(APIView):
         return response
 
 
+class FacultySetupInfoView(APIView):
+    """GET /api/auth/faculty-setup/<token>/ — validate an invited faculty's setup
+    token and return who it belongs to, so the page can greet them."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        from .models import PasswordResetToken
+        try:
+            t = PasswordResetToken.objects.select_related('user').get(token=token)
+        except PasswordResetToken.DoesNotExist:
+            return Response({'error': 'This setup link is invalid.'}, status=status.HTTP_404_NOT_FOUND)
+        if not t.is_valid():
+            return Response({'error': 'This setup link has expired or was already used.'}, status=status.HTTP_400_BAD_REQUEST)
+        u = t.user
+        if u.role != 'faculty':
+            return Response({'error': 'This setup link is invalid.'}, status=status.HTTP_400_BAD_REQUEST)
+        if u.has_usable_password():
+            return Response({'error': 'This account is already set up. Please log in instead.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'full_name': u.full_name,
+            'email': u.institutional_email,
+            'faculty_id': u.student_id,
+        })
+
+
+class FacultySetupCompleteView(APIView):
+    """POST /api/auth/faculty-setup/<token>/complete/ — the faculty sets their
+    password; the account is activated and they are signed in immediately."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, token):
+        from django.contrib.auth.password_validation import validate_password as _vp
+        from django.core.exceptions import ValidationError as _DVE
+        from .models import PasswordResetToken
+        try:
+            t = PasswordResetToken.objects.select_related('user').get(token=token)
+        except PasswordResetToken.DoesNotExist:
+            return Response({'error': 'This setup link is invalid.'}, status=status.HTTP_404_NOT_FOUND)
+        if not t.is_valid():
+            return Response({'error': 'This setup link has expired or was already used.'}, status=status.HTTP_400_BAD_REQUEST)
+        u = t.user
+        if u.role != 'faculty':
+            return Response({'error': 'This setup link is invalid.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        password = request.data.get('password', '')
+        confirm = request.data.get('confirm', None)
+        if confirm is not None and password != confirm:
+            return Response({'error': 'The two passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            _vp(password, user=u)
+        except _DVE as e:
+            return Response({'error': ' '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+        u.set_password(password)
+        u.is_verified = True
+        u.is_active = True
+        u.save(update_fields=['password', 'is_verified', 'is_active'])
+        # Burn this and any other outstanding setup tokens for the account.
+        PasswordResetToken.objects.filter(user=u, used=False).update(used=True)
+
+        _audit(u, u.role, 'faculty_account_setup', request.path, get_client_ip(request), 'success', {})
+
+        from .serializers import CustomTokenObtainPairSerializer as _CTS
+        refresh = _CTS.get_token(u)
+        response = Response({
+            'access': str(refresh.access_token),
+            'role': u.role,
+            'full_name': u.full_name,
+            'email': u.institutional_email,
+        })
+        response.set_cookie(
+            key='refresh_token',
+            value=str(refresh),
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Strict',
+            max_age=7 * 24 * 60 * 60,
+            path='/api/auth/token/refresh/',
+        )
+        return response
+
+
 # ── User profile ──────────────────────────────────────────────────────────────
 
 class UserProfileView(generics.RetrieveUpdateAPIView):

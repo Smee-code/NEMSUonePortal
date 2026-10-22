@@ -342,20 +342,60 @@ class RegistrarFacultyCreateView(APIView):
 
     def post(self, request):
         ip = get_client_ip(request)
-        data = {**request.data, 'role': 'faculty'}   # force faculty — no privilege escalation
-        serializer = AdminUserCreateSerializer(data=data)
+        from .serializers import FacultyInviteSerializer
+        serializer = FacultyInviteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        # Create a long-lived setup token and email the faculty a link to set
+        # their own password (no initial password is ever typed by the registrar).
+        from .models import PasswordResetToken
+        from django.utils import timezone as _tz
+        from datetime import timedelta as _td
+        reset = PasswordResetToken.objects.create(user=user, expires_at=_tz.now() + _td(days=7))
+        email_sent = _email_faculty_setup(user, reset.token)
+
         _audit(
             request.user, request.user.role,
             'faculty_account_created', f'user:{user.id}', ip, 'success',
             {
                 'target_user': str(user.id),
                 'role': user.role,
+                'faculty_id': user.student_id,
                 'department': user.department.code if user.department_id else None,
+                'email_sent': email_sent,
             },
         )
-        return Response(AdminUserListSerializer(user).data, status=status.HTTP_201_CREATED)
+        data = AdminUserListSerializer(user).data
+        data['faculty_id'] = user.student_id
+        data['email_sent'] = email_sent
+        return Response(data, status=status.HTTP_201_CREATED)
+
+
+def _email_faculty_setup(user, token):
+    """Email a newly invited faculty a link to set up their account (create a
+    password). Returns True if sent."""
+    try:
+        setup_url = f'{settings.FRONTEND_URL}/faculty-setup/{token}'
+        send_branded_email(
+            'Set up your NEMSUonePortal faculty account',
+            (
+                f'Hi {user.full_name},\n\n'
+                f'A faculty account has been created for you on NEMSUonePortal '
+                f'(Faculty ID: {user.student_id}).\n\n'
+                f'Click the button below to finish setting up your account — you '
+                f'only need to create a password. You will be signed in right after.\n\n'
+                f'{setup_url}\n\n'
+                f'This link expires in 7 days. If it expires, contact the Registrar’s '
+                f'Office to have it resent.\n\n'
+                f'— NEMSU Cantilan Campus'
+            ),
+            [user.institutional_email],
+        )
+        return True
+    except Exception:
+        logger.warning('Failed to email faculty setup link', exc_info=True)
+        return False
 
 
 def _email_faculty_credentials(user, temp_password):

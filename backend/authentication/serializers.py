@@ -611,6 +611,46 @@ class AdminFacultyAutoCreateSerializer(serializers.Serializer):
         ) from last_error
 
 
+class FacultyInviteSerializer(AdminFacultyAutoCreateSerializer):
+    """Registrar invites a faculty: the faculty ID is auto-generated and NO
+    password is set here. The account is created with an unusable password and a
+    setup link is emailed, so the faculty sets their own password."""
+    contact_number = serializers.CharField(required=False, allow_blank=True, max_length=20)
+    rank = serializers.CharField(required=False, allow_blank=True, max_length=40)
+
+    def create(self, validated_data):
+        from django.db import IntegrityError
+        dept = validated_data.get('department_obj')
+        prog = validated_data.get('program_obj')
+        is_gec = bool(validated_data.get('is_gec_faculty'))
+        last_error = None
+        for _ in range(5):
+            faculty_id = generate_faculty_id()
+            try:
+                user = User.objects.create_user(
+                    institutional_email=validated_data['institutional_email'],
+                    student_id=faculty_id,
+                    full_name=validated_data['full_name'].strip(),
+                    date_of_birth=validated_data.get('date_of_birth'),
+                    password=None,                       # unusable until the faculty sets one
+                    role='faculty',
+                    department=dept,
+                    program=None if is_gec else prog,
+                    is_gec_faculty=is_gec,
+                    contact_number=(validated_data.get('contact_number') or '').strip(),
+                    rank=(validated_data.get('rank') or '').strip(),
+                    is_verified=True,
+                    is_active=True,
+                )
+                return user
+            except IntegrityError as exc:
+                last_error = exc
+                continue
+        raise serializers.ValidationError(
+            {'student_id': 'Could not allocate a unique faculty ID. Please try again.'}
+        ) from last_error
+
+
 class AdminStudentAutoCreateSerializer(serializers.Serializer):
     """Admin/registrar adds one student by email + name + student ID. The password
     is generated server-side and emailed to the student (no password is typed).
