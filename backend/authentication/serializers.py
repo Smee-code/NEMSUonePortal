@@ -67,6 +67,26 @@ class UserRegistrationSerializer(serializers.Serializer):
                     'approval email, or contact the registrar.'
                 )
             })
+
+        # Prove ownership of the on-record email. A Student ID is a public
+        # identifier (printed on IDs/class lists, sequentially assigned), not a
+        # secret — so an approved applicant must register with the exact email
+        # their admission was filed under (where the approval was sent). Without
+        # this, anyone who knows a Student ID could bind the account to their own
+        # address. Placeholders have only a synthetic email on file, so the real
+        # address is confirmed by the verification link instead (see create()).
+        if pending is not None:
+            submitted = (attrs.get('institutional_email') or '').lower().strip()
+            on_record = (pending.email or '').lower().strip()
+            if submitted != on_record:
+                raise serializers.ValidationError({
+                    'institutional_email': (
+                        'This must be the same email address you used on your admission '
+                        'application. Please use that email, or contact the registrar if '
+                        'it has changed.'
+                    )
+                })
+
         attrs['_pending'] = pending
         attrs['_placeholder'] = placeholder
         return attrs
@@ -97,10 +117,11 @@ class UserRegistrationSerializer(serializers.Serializer):
             user = User(student_id=student_id, institutional_email=email, full_name=full_name)
             user.set_password(password)
 
-        # Admission applicants were vetted at admission → ready immediately.
-        # Old students / pre-loaded placeholders confirm ownership of the email
-        # they just typed by verifying it before the account goes live.
-        needs_verification = pending is None
+        # Always confirm the email before the account goes live. Admission vetting
+        # proves eligibility, not control of the email address — so even approved
+        # applicants must click a verification link (sent to the on-record email,
+        # which registration was required to match above) before they can log in.
+        needs_verification = True
 
         user.role                = 'student'
         if pending:
