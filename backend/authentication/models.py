@@ -144,6 +144,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     failed_login_attempts = models.PositiveSmallIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
 
+    # Email two-factor: a one-time code issued after a correct password, required
+    # before tokens are granted.
+    login_otp = models.CharField(max_length=6, blank=True, default='')
+    login_otp_expires = models.DateTimeField(null=True, blank=True)
+    login_otp_attempts = models.PositiveSmallIntegerField(default=0)
+
     USERNAME_FIELD = 'institutional_email'
     REQUIRED_FIELDS = ['student_id', 'full_name']
 

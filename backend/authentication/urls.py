@@ -30,6 +30,8 @@ from .views import (
     MaintenanceModeView,
     CookieTokenRefreshView,
     LoginView,
+    LoginVerifyOTPView,
+    LoginResendOTPView,
     LogoutView,
     PasswordChangeView,
     PasswordResetConfirmView,
@@ -54,6 +56,8 @@ urlpatterns = [
 
     # Login / logout / token refresh
     path('login/', LoginView.as_view(), name='auth-login'),
+    path('login/verify-otp/', LoginVerifyOTPView.as_view(), name='auth-login-verify-otp'),
+    path('login/resend-otp/', LoginResendOTPView.as_view(), name='auth-login-resend-otp'),
     path('logout/', LogoutView.as_view(), name='auth-logout'),
     path('token/refresh/', CookieTokenRefreshView.as_view(), name='auth-token-refresh'),
 

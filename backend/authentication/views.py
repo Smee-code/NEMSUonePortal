@@ -201,14 +201,121 @@ class LoginView(TokenObtainPairView):
         user = serializer.user
         user.reset_failed_login()
 
-        data = serializer.validated_data.copy()
-        refresh_token = data.pop('refresh')
+        # Email two-factor: the password was correct, but we don't hand out tokens
+        # yet — we send a one-time code and require it at /login/verify-otp/.
+        _issue_login_otp(user)
+        _audit(user, user.role, 'login_otp_sent', request.path, ip, 'success')
+        return Response({'otp_required': True, 'email': user.institutional_email})
 
+
+def _issue_login_otp(user):
+    """Generate, store, and email a fresh 6-digit login code. Returns the code."""
+    import secrets
+    from datetime import timedelta as _td
+    otp = f'{secrets.randbelow(1000000):06d}'
+    user.login_otp = otp
+    user.login_otp_expires = timezone.now() + _td(minutes=10)
+    user.login_otp_attempts = 0
+    user.save(update_fields=['login_otp', 'login_otp_expires', 'login_otp_attempts'])
+    try:
+        from nemsuoneportal.emails import send_branded_email
+        send_branded_email(
+            'Your NEMSUonePortal login code',
+            (
+                f'Hi {user.full_name},\n\n'
+                f'Use this one-time code to finish signing in:\n\n'
+                f'  {otp}\n\n'
+                f'The code expires in 10 minutes. If you did not try to sign in, '
+                f'you can ignore this email and your account stays secure.\n\n'
+                f'— NEMSU Cantilan Campus'
+            ),
+            [user.institutional_email],
+        )
+    except Exception:
+        logger.warning('Failed to send login OTP email', exc_info=True)
+    return otp
+
+
+class LoginVerifyOTPView(APIView):
+    """POST /api/auth/login/verify-otp/ — second step of login: verify the emailed
+    code and issue tokens."""
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
+
+    def post(self, request):
+        ip = get_client_ip(request)
+        email = request.data.get('institutional_email', '').lower().strip()
+        otp = str(request.data.get('otp', '')).strip()
+
+        try:
+            user = User.objects.get(institutional_email=email)
+        except User.DoesNotExist:
+            return Response({'detail': 'Invalid or expired code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.login_otp or not user.login_otp_expires:
+            return Response({'detail': 'No login code is pending. Please sign in again.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if timezone.now() > user.login_otp_expires:
+            user.login_otp = ''
+            user.save(update_fields=['login_otp'])
+            return Response({'detail': 'Your code has expired. Please sign in again to get a new one.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if user.login_otp_attempts >= 5:
+            user.login_otp = ''
+            user.save(update_fields=['login_otp'])
+            _audit(user, user.role, 'login_otp_locked', request.path, ip, 'failure')
+            return Response({'detail': 'Too many incorrect codes. Please sign in again to get a new one.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if not otp or otp != user.login_otp:
+            user.login_otp_attempts += 1
+            user.save(update_fields=['login_otp_attempts'])
+            _audit(user, user.role, 'login_otp_failed', request.path, ip, 'failure')
+            return Response({'detail': 'That code is incorrect. Please try again.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Success — burn the code and hand out tokens.
+        user.login_otp = ''
+        user.login_otp_expires = None
+        user.login_otp_attempts = 0
+        user.save(update_fields=['login_otp', 'login_otp_expires', 'login_otp_attempts'])
+
+        from .serializers import CustomTokenObtainPairSerializer as _CTS
+        refresh = _CTS.get_token(user)
         _audit(user, user.role, 'login_success', request.path, ip, 'success')
-
-        response = Response(data)
-        set_refresh_cookie(response, refresh_token)
+        response = Response({
+            'access': str(refresh.access_token),
+            'user': {
+                'id': str(user.id),
+                'full_name': user.full_name,
+                'role': user.role,
+                'institutional_email': user.institutional_email,
+                'is_verified': user.is_verified,
+                'needs_academic_setup': user.needs_academic_setup,
+            },
+        })
+        set_refresh_cookie(response, str(refresh))
         return response
+
+
+class LoginResendOTPView(APIView):
+    """POST /api/auth/login/resend-otp/ — re-send a login code, but only when one
+    is already pending (i.e. the password step just succeeded)."""
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
+
+    def post(self, request):
+        ip = get_client_ip(request)
+        email = request.data.get('institutional_email', '').lower().strip()
+        try:
+            user = User.objects.get(institutional_email=email)
+        except User.DoesNotExist:
+            # Don't reveal whether the account exists.
+            return Response({'message': 'If a code was pending, a new one has been sent.'})
+        if user.login_otp:
+            _issue_login_otp(user)
+            _audit(user, user.role, 'login_otp_resent', request.path, ip, 'success')
+        return Response({'message': 'If a code was pending, a new one has been sent.'})
 
 
 class CookieTokenRefreshView(APIView):

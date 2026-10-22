@@ -46,11 +46,26 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (credentials) => {
     const res = await api.post('/auth/login/', credentials);
-    // Access token stored in memory only — never in localStorage/sessionStorage
+    // With email 2FA the password step returns { otp_required: true } and no
+    // tokens — the caller then collects the code and calls verifyLoginOtp.
+    if (res.data.access) {
+      setAccessToken(res.data.access);  // in memory only — never localStorage
+      setUser(res.data.user);
+    }
+    return res.data;
+  }, []);
+
+  const verifyLoginOtp = useCallback(async (payload) => {
+    const res = await api.post('/auth/login/verify-otp/', payload);
     setAccessToken(res.data.access);
     setUser(res.data.user);
     return res.data;
   }, []);
+
+  const resendLoginOtp = useCallback(
+    (institutional_email) => api.post('/auth/login/resend-otp/', { institutional_email }),
+    [],
+  );
 
   const loginWithToken = useCallback((accessToken) => {
     setAccessToken(accessToken);
@@ -80,7 +95,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithToken, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, verifyLoginOtp, resendLoginOtp, loginWithToken, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
