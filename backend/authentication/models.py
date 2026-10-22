@@ -143,6 +143,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Account lockout — OWASP A07
     failed_login_attempts = models.PositiveSmallIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
+    # How many times this account has been locked in the current run of failures
+    # (drives the escalating lock duration), and when the last failure happened
+    # (so a 24-hour clean streak resets the escalation).
+    lockout_level = models.PositiveSmallIntegerField(default=0)
+    last_failed_login = models.DateTimeField(null=True, blank=True)
 
     # Email two-factor: a one-time code issued after a correct password, required
     # before tokens are granted.
@@ -174,22 +179,47 @@ class User(AbstractBaseUser, PermissionsMixin):
             return f'{self.program.name} Faculty'
         return 'Unclassified'
 
+    # Escalating lockout: every 5 failed attempts locks the account, and each
+    # successive lock lasts longer (minutes). After the last entry the duration
+    # stays capped at 24 hours.
+    LOCKOUT_DURATIONS = [5, 15, 30, 60, 180, 1440]
+    LOCKOUT_THRESHOLD = 5
+    LOCKOUT_RESET_HOURS = 24  # a clean day of no failures resets the escalation
+
     def is_locked(self):
         return bool(self.locked_until and timezone.now() < self.locked_until)
 
     def record_failed_login(self):
+        now = timezone.now()
+        # A full day with no failed attempts wipes the slate — an honest user who
+        # mistypes today isn't treated like they were locked out last week.
+        if self.last_failed_login and (now - self.last_failed_login) > timedelta(hours=self.LOCKOUT_RESET_HOURS):
+            self.failed_login_attempts = 0
+            self.lockout_level = 0
+
         self.failed_login_attempts += 1
-        if self.failed_login_attempts >= 5:
-            # Exponential backoff capped at 24 hours
-            lockout_minutes = min(2 ** self.failed_login_attempts, 1440)
-            self.locked_until = timezone.now() + timedelta(minutes=lockout_minutes)
-        self.save(update_fields=['failed_login_attempts', 'locked_until'])
+        self.last_failed_login = now
+
+        if self.failed_login_attempts >= self.LOCKOUT_THRESHOLD:
+            idx = min(self.lockout_level, len(self.LOCKOUT_DURATIONS) - 1)
+            self.locked_until = now + timedelta(minutes=self.LOCKOUT_DURATIONS[idx])
+            self.lockout_level += 1          # the next lock will be longer
+            self.failed_login_attempts = 0   # a fresh set of 5 tries once it lifts
+
+        self.save(update_fields=[
+            'failed_login_attempts', 'locked_until', 'lockout_level', 'last_failed_login',
+        ])
 
     def reset_failed_login(self):
-        if self.failed_login_attempts > 0 or self.locked_until:
+        if (self.failed_login_attempts or self.locked_until
+                or self.lockout_level or self.last_failed_login):
             self.failed_login_attempts = 0
             self.locked_until = None
-            self.save(update_fields=['failed_login_attempts', 'locked_until'])
+            self.lockout_level = 0
+            self.last_failed_login = None
+            self.save(update_fields=[
+                'failed_login_attempts', 'locked_until', 'lockout_level', 'last_failed_login',
+            ])
 
 
 class AuditLog(models.Model):
