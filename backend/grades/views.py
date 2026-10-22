@@ -1573,7 +1573,7 @@ class FacultyCourseImportView(_CourseRosterBase):
         added = already = elsewhere = matched = placeholders = 0
         seen = set()
         with transaction.atomic():
-            for idno, name in rows:
+            for idno, name, _email in rows:   # faculty rostering reads IDNO + Name only
                 if idno in seen:
                     continue
                 seen.add(idno)

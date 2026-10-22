@@ -27,10 +27,9 @@ class UserRegistrationSerializer(serializers.Serializer):
     )
 
     def validate_institutional_email(self, value):
-        value = value.lower().strip()
-        if User.objects.filter(institutional_email__iexact=value).exists():
-            raise serializers.ValidationError('An account with this email already exists.')
-        return value
+        # Uniqueness is enforced in validate() instead, so it can allow the email
+        # that belongs to the placeholder this registration is claiming.
+        return value.lower().strip()
 
     def validate_student_id(self, value):
         value = value.strip().upper()
@@ -68,6 +67,17 @@ class UserRegistrationSerializer(serializers.Serializer):
                 )
             })
 
+        # Email must be unique — but it MAY already belong to the placeholder this
+        # registration is claiming (that account is this student). Exclude it.
+        submitted_email = (attrs.get('institutional_email') or '').lower().strip()
+        clash = User.objects.filter(institutional_email__iexact=submitted_email)
+        if placeholder is not None:
+            clash = clash.exclude(pk=placeholder.pk)
+        if clash.exists():
+            raise serializers.ValidationError({
+                'institutional_email': 'An account with this email already exists.'
+            })
+
         # Prove ownership of the on-record email. A Student ID is a public
         # identifier (printed on IDs/class lists, sequentially assigned), not a
         # secret — so an approved applicant must register with the exact email
@@ -86,6 +96,23 @@ class UserRegistrationSerializer(serializers.Serializer):
                         'it has changed.'
                     )
                 })
+        elif placeholder is not None:
+            # A pre-loaded student the registrar imported WITH a real email must
+            # register with that exact address (and verify it). Placeholders with
+            # only a synthetic address have no email to bind to, so they fall back
+            # to confirming whatever address the student supplies.
+            from grades.rostering import is_placeholder_email
+            if not is_placeholder_email(placeholder.institutional_email):
+                submitted = (attrs.get('institutional_email') or '').lower().strip()
+                on_record = (placeholder.institutional_email or '').lower().strip()
+                if submitted != on_record:
+                    raise serializers.ValidationError({
+                        'institutional_email': (
+                            'This must be the email address the registrar has on record '
+                            'for your Student ID. Please use that email, or contact the '
+                            'registrar if it has changed.'
+                        )
+                    })
 
         attrs['_pending'] = pending
         attrs['_placeholder'] = placeholder

@@ -38,7 +38,10 @@ export default function StudentBulkImport({ onImported, buttonClassName = 'btn-s
   }
 
   function downloadSample() {
-    const csv = 'IDNO,Name\n2026-00001,Dela Cruz Juan A.\n2026-00002,Santos Maria L.\n';
+    const csv =
+      'IDNO,Name,Email\n' +
+      '2026-00001,Dela Cruz Juan A.,juan.delacruz@gmail.com\n' +
+      '2026-00002,Santos Maria L.,maria.santos@gmail.com\n';
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a = document.createElement('a');
     a.href = url; a.download = 'student-import-template.csv';
@@ -59,7 +62,7 @@ export default function StudentBulkImport({ onImported, buttonClassName = 'btn-s
             <div className="sbi-head">
               <div>
                 <h3>Add students from a file</h3>
-                <p>Upload an Excel (.xlsx) or CSV file. Only the <strong>IDNO</strong> and <strong>Name</strong> columns are read.</p>
+                <p>Upload an Excel (.xlsx) or CSV file. <strong>IDNO</strong> and <strong>Name</strong> are required; an <strong>Email</strong> column is optional but recommended.</p>
               </div>
               <button className="sbi-x" onClick={close} disabled={busy}><i className="ti ti-x" /></button>
             </div>
@@ -69,7 +72,7 @@ export default function StudentBulkImport({ onImported, buttonClassName = 'btn-s
                 <>
                   <div className="sbi-note">
                     <i className="ti ti-info-circle" />
-                    <span>Each student is added as a <strong>pending account</strong>. It activates when the student registers and verifies their email using the matching ID.</span>
+                    <span>Each student is added as a <strong>pending account</strong>. It activates when the student registers and verifies their email. <strong>Include each student’s email</strong> so registration is locked to their real address — without it, anyone who knows the ID could register first.</span>
                   </div>
 
                   {error && <div className="sbi-err">{error}</div>}

@@ -555,18 +555,21 @@ class BulkStudentImportView(APIView):
         samples = []
         seen = set()
         with transaction.atomic():
-            for idno, name in rows:
+            for idno, name, email in rows:
                 if idno in seen:
                     continue
                 seen.add(idno)
                 try:
-                    user, was_created = resolve_student(idno, name)
+                    user, was_created = resolve_student(idno, name, email)
                     if was_created:
                         created += 1
                         if len(samples) < 8:
                             samples.append({'student_id': user.student_id, 'full_name': user.full_name})
                     else:
                         existing += 1
+                except ValueError as exc:
+                    # A per-row data problem (e.g. a malformed or already-used email).
+                    errors.append(f'{idno}: {exc}')
                 except Exception:
                     logger.warning('Bulk import row failed for %s', idno, exc_info=True)
                     errors.append(f'{idno}: could not be added (duplicate email or invalid data).')
