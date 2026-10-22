@@ -1883,6 +1883,7 @@ function EnrollmentModal({ onClose, term, programs }) {
   const [uploadErr, setUpErr] = useState('');
   const [submitErr, setSubErr] = useState('');
   const [emailTouched, setEmailTouched] = useState(false);
+  const [emailTaken, setEmailTaken] = useState(false);
   const [checked, setChecked] = useState({});
   const [selSubj, setSelSubj] = useState(
     () => SUBJECTS.reduce((a, s) => ({ ...a, [s.code]: true }), {})
@@ -1966,6 +1967,20 @@ function EnrollmentModal({ onClose, term, programs }) {
   const emailShow = !!form.email && (emailTouched || form.email.includes('@'));
   const emailError = emailShow && !emailValid;
 
+  // Once the email looks valid, check (debounced) that it isn't already tied to
+  // an account or an in-flight application. Returnees reuse their on-record
+  // email, so skip the check for them.
+  useEffect(() => {
+    if (type === 'returnee' || !emailValid) { setEmailTaken(false); return; }
+    const addr = form.email.trim();
+    const t = setTimeout(() => {
+      api.get(`/enrollment/public/email-available/?email=${encodeURIComponent(addr)}`)
+        .then(r => setEmailTaken(!r.data?.available))
+        .catch(() => setEmailTaken(false));
+    }, 450);
+    return () => clearTimeout(t);
+  }, [form.email, emailValid, type]);
+
   const toggle  = id   => setChecked(p => ({ ...p, [id]: !p[id] }));
   const toggleS = code => setSelSubj(p => ({ ...p, [code]: !p[code] }));
   const totalUnits = SUBJECTS.filter(s => selSubj[s.code]).reduce((a, s) => a + s.units, 0);
@@ -1990,6 +2005,10 @@ function EnrollmentModal({ onClose, term, programs }) {
         setEmailTouched(true);
         const s = suggestEmail(form.email);
         return s ? `Check your email — did you mean ${s}?` : 'Enter a valid email address.';
+      }
+      if (emailTaken) {
+        setEmailTouched(true);
+        return 'This email is already in use. Please use another email address.';
       }
       if (!req(form.contact)) return 'Enter your contact number.';
       if (!dobToISO(form.dob)) return 'Enter a valid date of birth (MM/DD/YYYY).';
@@ -2359,6 +2378,11 @@ function EnrollmentModal({ onClose, term, programs }) {
                                   </button>?
                                 </>
                               : 'Enter a valid email address (e.g. name@example.com).'}
+                          </p>
+                        )}
+                        {!emailError && emailTaken && (
+                          <p style={{ color: '#dc2626', fontSize: 11.5, margin: '4px 0 0' }}>
+                            This email is already in use. Please use another email address.
                           </p>
                         )}
                       </div>

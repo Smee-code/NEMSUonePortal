@@ -100,6 +100,28 @@ class PublicLandingView(APIView):
         })
 
 
+class PublicEmailAvailableView(APIView):
+    """GET /api/enrollment/public/email-available/?email=...
+    Lets the admission form warn, as the applicant types, when an email is
+    already tied to an account or an in-flight application. Public and
+    unthrottled; it only ever reports whether an address is free."""
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def get(self, request):
+        email = (request.query_params.get('email') or '').strip()
+        if not email:
+            return Response({'available': True})
+        from authentication.models import User as _User
+        taken = (
+            _User.objects.filter(institutional_email__iexact=email).exists()
+            or PendingEnrollment.objects.filter(
+                email__iexact=email, status__in=['pending', 'approved'],
+            ).exists()
+        )
+        return Response({'available': not taken})
+
+
 class PublicPreEnrollView(APIView):
     """POST /api/enrollment/public/pre-enroll/ — no authentication required.
     Accepts a pre-enrollment submission from a freshman or transferee."""
@@ -113,6 +135,25 @@ class PublicPreEnrollView(APIView):
         first_name = (d.get('first_name') or '').strip()
         last_name  = (d.get('last_name') or '').strip()
         student_id = (d.get('student_id') or '').strip()
+        email      = (d.get('email') or '').strip()
+
+        # New/transferee applicants give a personal email that becomes their login.
+        # Reject one already tied to an account or an in-flight application so two
+        # people can't claim the same address. (Returnees reuse their on-record
+        # email, so this check doesn't apply to them.)
+        if d['student_type'] != 'returnee' and email:
+            from authentication.models import User as _User
+            email_taken = (
+                _User.objects.filter(institutional_email__iexact=email).exists()
+                or PendingEnrollment.objects.filter(
+                    email__iexact=email, status__in=['pending', 'approved'],
+                ).exists()
+            )
+            if email_taken:
+                return Response(
+                    {'email': ['This email address is already in use. Please use a different email.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         if d['student_type'] == 'returnee':
             # Block a second active application for the same Student ID.
@@ -828,6 +869,29 @@ class RegistrarReviewView(APIView):
         serializer.is_valid(raise_exception=True)
 
         new_status = serializer.validated_data['status']
+
+        # Blocks are assigned from the blocks the registrar has set up for the
+        # program. Refuse to approve when none exist for this program/term/year —
+        # the registrar must create a block first (in Block Management).
+        if new_status == EnrollmentRequest.STATUS_APPROVED and enrollment.program_id:
+            has_block = Block.objects.filter(
+                program=enrollment.program,
+                academic_term=enrollment.academic_term,
+                year_level=enrollment.year_level,
+            ).exists()
+            if not has_block:
+                _audit(
+                    request.user, request.user.role,
+                    'enrollment_approve_no_block', request.path, ip, 'failure',
+                    {'enrollment_id': str(enrollment.id),
+                     'program': enrollment.program.code if enrollment.program else ''},
+                )
+                prog = enrollment.program.code or enrollment.program.name
+                return Response(
+                    {'error': f'{prog} has no block for year level {enrollment.year_level} this '
+                              f'term yet. Create a block for this program first, then approve.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         with transaction.atomic():
             # The registrar may adjust the enrolled courses while reviewing

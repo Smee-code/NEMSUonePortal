@@ -177,7 +177,7 @@ export default function RegistrarEnrollmentRequests() {
       fetchRequests();
     } catch (err) {
       const data = err.response?.data;
-      setReviewError(data?.remarks?.[0] || data?.detail || data?.non_field_errors?.[0] || 'Review failed. Please try again.');
+      setReviewError(data?.error || data?.remarks?.[0] || data?.detail || data?.non_field_errors?.[0] || 'Review failed. Please try again.');
     } finally {
       setReviewing(false);
     }
@@ -188,9 +188,9 @@ export default function RegistrarEnrollmentRequests() {
     try {
       await api.patch(`/enrollment/requests/${req.id}/review/`, { status: 'approved', remarks: '' });
       toast(`${req.student_name}: request approved.`, 'success');
-    } catch {
+    } catch (err) {
       setOptimisticStatus(p => { const n = { ...p }; delete n[req.id]; return n; });
-      toast('Approval failed. Please try again.', 'error');
+      toast(err.response?.data?.error || 'Approval failed. Please try again.', 'error');
     }
   }
 

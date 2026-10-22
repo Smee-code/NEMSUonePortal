@@ -22,6 +22,7 @@ urlpatterns = [
     # Public — no authentication required
     path('public/landing/', views.PublicLandingView.as_view(), name='public-landing'),
     path('public/pre-enroll/', views.PublicPreEnrollView.as_view(), name='public-pre-enroll'),
+    path('public/email-available/', views.PublicEmailAvailableView.as_view(), name='public-email-available'),
     path('psgc/provinces/', views.PSGCProvincesView.as_view(), name='psgc-provinces'),
     path('psgc/province/<str:slug>/', views.PSGCProvinceView.as_view(), name='psgc-province'),
 
