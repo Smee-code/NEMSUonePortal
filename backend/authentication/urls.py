@@ -27,6 +27,7 @@ from .views import (
     ActivateTokenInfoView,
     FacultySetupInfoView,
     FacultySetupCompleteView,
+    MaintenanceModeView,
     CookieTokenRefreshView,
     LoginView,
     LogoutView,
@@ -44,6 +45,7 @@ from .views import (
 urlpatterns = [
     # Public lookups (no auth required)
     path('departments/', PublicDepartmentListView.as_view(), name='auth-public-departments'),
+    path('maintenance/', MaintenanceModeView.as_view(), name='auth-maintenance'),
 
     # Registration & email verification
     path('register/', RegisterView.as_view(), name='auth-register'),

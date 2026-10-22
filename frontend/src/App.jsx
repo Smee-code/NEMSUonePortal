@@ -19,6 +19,7 @@ import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import AdmissionUpload from './pages/AdmissionUpload';
 import FacultySetup from './pages/FacultySetup';
+import MaintenanceGate from './components/MaintenanceGate';
 import Unauthorized from './pages/Unauthorized';
 import ActivateAccount from './pages/auth/ActivateAccount';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -80,6 +81,7 @@ export default function App() {
         <ConfirmProvider>
         <SupportProvider>
         <SiteChrome />
+        <MaintenanceGate>
         <Routes>
           {/* ── Public routes ─────────────────────────────────────── */}
           <Route path="/login" element={<Login />} />
@@ -176,6 +178,7 @@ export default function App() {
           <Route path="/cookies" element={<CookiePolicy />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </MaintenanceGate>
         </SupportProvider>
         </ConfirmProvider>
         </ToastProvider>

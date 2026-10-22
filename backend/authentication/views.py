@@ -827,6 +827,37 @@ class FacultySetupCompleteView(APIView):
         return response
 
 
+class MaintenanceModeView(APIView):
+    """GET  /api/auth/maintenance/ — public: the current maintenance flag.
+    POST /api/auth/maintenance/ — admin only: turn it on/off with an optional
+    message. This is the gate shown to everyone except admins while on."""
+
+    def get_permissions(self):
+        return [AllowAny()] if self.request.method == 'GET' else [IsAuthenticated()]
+
+    def get(self, request):
+        from nemsuoneportal.middleware import get_maintenance
+        return Response(get_maintenance())
+
+    def post(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Only the system administrator can change maintenance mode.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        from enrollment.models import SiteContent
+        from nemsuoneportal.middleware import invalidate_maintenance_cache
+        enabled = bool(request.data.get('enabled'))
+        message = str(request.data.get('message') or '').strip()
+        row, _ = SiteContent.objects.get_or_create(key='maintenance')
+        row.data = {'enabled': enabled, 'message': message}
+        row.updated_by = request.user
+        row.save(update_fields=['data', 'updated_by', 'updated_at'])
+        invalidate_maintenance_cache()
+        _audit(request.user, request.user.role,
+               'maintenance_mode_' + ('enabled' if enabled else 'disabled'),
+               request.path, get_client_ip(request), 'success', {'message': message})
+        return Response({'enabled': enabled, 'message': message})
+
+
 # ── User profile ──────────────────────────────────────────────────────────────
 
 class UserProfileView(generics.RetrieveUpdateAPIView):

@@ -44,6 +44,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'nemsuoneportal.middleware.SecurityHeadersMiddleware',  # Custom OWASP headers
+    'nemsuoneportal.middleware.MaintenanceModeMiddleware',  # Admin-toggled maintenance gate
 ]
 
 ROOT_URLCONF = 'nemsuoneportal.urls'
