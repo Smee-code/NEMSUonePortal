@@ -13,6 +13,7 @@ urlpatterns = [
     path('faculty/submit/', views.GradeSubmitView.as_view(), name='grade-submit'),
     path('faculty/assignments/', views.FacultyTeachingAssignmentCreateView.as_view(), name='faculty-assignments'),
     path('faculty/assignments/<int:pk>/', views.FacultyTeachingAssignmentDeleteView.as_view(), name='faculty-assignment-detail'),
+    path('faculty/courses/<int:pk>/export/', views.FacultyCourseExportView.as_view(), name='faculty-course-export'),
     path('faculty/courses/<int:pk>/import/', views.FacultyCourseImportView.as_view(), name='faculty-course-import'),
     path('faculty/courses/<int:pk>/add-student/', views.FacultyCourseAddStudentView.as_view(), name='faculty-course-add-student'),
     path('faculty/midterm-reopen/', views.FacultyMidtermReopenView.as_view(), name='faculty-midterm-reopen'),

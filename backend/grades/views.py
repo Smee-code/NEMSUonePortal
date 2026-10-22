@@ -237,6 +237,64 @@ class FacultyStudentGradeListView(APIView):
         return Response(result)
 
 
+class FacultyCourseExportView(APIView):
+    """GET /api/grades/faculty/courses/<int:pk>/export/
+    Downloads the class list as an .xlsx containing only the Student ID and
+    Name, for the faculty's own section."""
+    permission_classes = [IsAuthenticated, IsFaculty]
+
+    def get(self, request, pk):
+        try:
+            assignment = TeachingAssignment.objects.select_related(
+                'subject', 'academic_term', 'block'
+            ).get(pk=pk, faculty=request.user)
+        except TeachingAssignment.DoesNotExist:
+            return Response({'error': 'Teaching assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        auto_roster_block_students(assignment)
+        records = (
+            GradeRecord.objects
+            .filter(teaching_assignment=assignment)
+            .select_related('student')
+            .order_by('student__full_name', 'student__student_id')
+        )
+
+        import re as _re
+        import openpyxl
+        from openpyxl.styles import Font, Alignment
+        from django.http import HttpResponse
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Class List'
+        ws.append(['Student ID', 'Name'])
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='left')
+        for rec in records:
+            ws.append([rec.student.student_id or '', rec.student.full_name or ''])
+        ws.column_dimensions['A'].width = 18
+        ws.column_dimensions['B'].width = 36
+        ws.freeze_panes = 'A2'
+
+        label = assignment.section or (assignment.block.name if assignment.block_id else '')
+        base = '_'.join(filter(None, [assignment.subject.code, label, 'classlist']))
+        safe = _re.sub(r'[^A-Za-z0-9._-]+', '_', base).strip('_') or 'classlist'
+
+        _audit(
+            request.user, request.user.role,
+            'class_list_exported', request.path, get_client_ip(request), 'success',
+            {'assignment_id': assignment.id, 'subject': assignment.subject.code, 'student_count': records.count()},
+        )
+
+        resp = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        resp['Content-Disposition'] = f'attachment; filename="{safe}.xlsx"'
+        wb.save(resp)
+        return resp
+
+
 class GradeEncodeView(APIView):
     """POST /api/grades/faculty/encode/ — upsert a grade with race-condition protection (G-01)."""
     permission_classes = [IsAuthenticated, IsFaculty]

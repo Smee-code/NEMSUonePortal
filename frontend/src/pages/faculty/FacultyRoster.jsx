@@ -27,6 +27,7 @@ export default function FacultyRoster() {
   const [loadingStudents, setLoadingStudents] = useState(false);
 
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ student_id: '', name: '' });
   const [addBusy, setAddBusy] = useState(false);
@@ -88,6 +89,26 @@ export default function FacultyRoster() {
       toast(err.response?.data?.error || 'Import failed. Upload a valid .xlsx or .csv class list.', { type: 'error' });
     } finally {
       setImporting(false);
+    }
+  }
+
+  async function handleExport() {
+    if (!selectedId) return;
+    setExporting(true);
+    try {
+      const res = await api.get(`/grades/faculty/courses/${selectedId}/export/`, { responseType: 'blob' });
+      const cd = res.headers['content-disposition'] || '';
+      const m = /filename="?([^"]+)"?/.exec(cd);
+      const name = m ? m[1] : 'class_list.xlsx';
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast('Couldn’t export the class list. Please try again.', { type: 'error' });
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -226,6 +247,9 @@ export default function FacultyRoster() {
                 {filtered.length} of {students.length} student{students.length !== 1 ? 's' : ''}
               </span>
               <input ref={fileRef} type="file" accept=".xlsx,.csv" style={{ display: 'none' }} onChange={handleImportFile} />
+              <button className="btn-sec" disabled={exporting || !selectedId || students.length === 0} onClick={handleExport} title="Download the class list (Student ID and Name) as an Excel file">
+                <i className="ti ti-file-spreadsheet" /> {exporting ? 'Exporting…' : 'Export to Excel'}
+              </button>
               <button className="btn-sec" disabled={importing || !selectedId} onClick={() => fileRef.current?.click()}>
                 <i className="ti ti-file-upload" /> {importing ? 'Importing…' : 'Import class list'}
               </button>
