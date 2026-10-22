@@ -85,6 +85,8 @@ export default function App() {
         <Routes>
           {/* ── Public routes ─────────────────────────────────────── */}
           <Route path="/login" element={<Login />} />
+          {/* Hidden admin login that stays reachable during maintenance mode */}
+          <Route path="/admin-maintenance-mode-login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

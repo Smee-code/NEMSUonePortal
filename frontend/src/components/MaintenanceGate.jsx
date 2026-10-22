@@ -3,9 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
-// Paths that stay reachable during maintenance so an admin can sign in and turn
-// it off, and so account-recovery / setup links keep working.
-const ALLOW_PREFIXES = ['/login', '/reset-password', '/forgot-password', '/verify-email', '/activate', '/faculty-setup'];
+// The only path that stays reachable during maintenance — a hidden admin login
+// URL. Everyone else (including the normal /login) sees the notice, so the admin
+// entry point isn't advertised.
+const ALLOW_PREFIXES = ['/admin-maintenance-mode-login'];
 
 export default function MaintenanceGate({ children }) {
   const { user } = useAuth();
@@ -77,16 +78,9 @@ function MaintenanceNotice({ message }) {
         <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 .7rem', letterSpacing: '-.01em' }}>
           We&rsquo;ll be right back
         </h1>
-        <p style={{ fontSize: 14.5, lineHeight: 1.6, color: '#aab6c8', margin: '0 0 1.6rem' }}>
+        <p style={{ fontSize: 14.5, lineHeight: 1.6, color: '#aab6c8', margin: 0 }}>
           {message || 'The portal is temporarily down for maintenance. Please check back in a little while — thank you for your patience.'}
         </p>
-        <Link to="/login" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600,
-          color: '#d9b96b', textDecoration: 'none', border: '1px solid rgba(217,185,107,.4)',
-          borderRadius: 8, padding: '9px 16px',
-        }}>
-          <i className="ti ti-shield-lock" /> Administrator sign in
-        </Link>
       </div>
     </div>
   );
