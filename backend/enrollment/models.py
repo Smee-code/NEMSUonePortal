@@ -514,14 +514,35 @@ class PendingEnrollment(models.Model):
         return ' '.join(parts)
 
     def save(self, *args, **kwargs):
-        if not self.reference_number:
-            from django.utils import timezone as _tz
-            year = _tz.now().year
-            n = PendingEnrollment.objects.filter(
-                reference_number__startswith=f'NEMSU-CAN-{year}-'
-            ).count() + 1
-            self.reference_number = f'NEMSU-CAN-{year}-{n:05d}'
-        super().save(*args, **kwargs)
+        if self.reference_number:
+            return super().save(*args, **kwargs)
+
+        from django.utils import timezone as _tz
+        from django.db import IntegrityError
+        import re as _re
+        prefix = f'NEMSU-CAN-{_tz.now().year}-'
+        pattern = _re.compile(rf'^{_re.escape(prefix)}(\d+)$')
+
+        # Use the highest existing number + 1 (NOT count + 1, which collides after
+        # any application is deleted) and retry on the unique constraint to survive
+        # a race between two simultaneous submissions.
+        for _ in range(10):
+            highest = 0
+            for ref in PendingEnrollment.objects.filter(
+                reference_number__startswith=prefix
+            ).values_list('reference_number', flat=True):
+                m = pattern.match(ref or '')
+                if m:
+                    highest = max(highest, int(m.group(1)))
+            self.reference_number = f'{prefix}{highest + 1:05d}'
+            try:
+                return super().save(*args, **kwargs)
+            except IntegrityError:
+                self.reference_number = ''
+                continue
+        # Extremely unlikely fall-through: let the final attempt raise normally.
+        self.reference_number = f'{prefix}{highest + 1:05d}'
+        return super().save(*args, **kwargs)
 
 
 class PreEnrollmentDocument(models.Model):
