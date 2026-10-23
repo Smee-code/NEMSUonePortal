@@ -25,6 +25,7 @@ from .serializers import (
 )
 from .throttles import (
     LoginRateThrottle,
+    LoginOtpRateThrottle,
     PasswordResetConfirmRateThrottle,
     PasswordResetRateThrottle,
     RegistrationRateThrottle,
@@ -276,7 +277,7 @@ class LoginVerifyOTPView(APIView):
     """POST /api/auth/login/verify-otp/ — second step of login: verify the emailed
     code and issue tokens."""
     permission_classes = [AllowAny]
-    throttle_classes = [LoginRateThrottle]
+    throttle_classes = [LoginOtpRateThrottle]
 
     def post(self, request):
         ip = get_client_ip(request)
@@ -338,7 +339,7 @@ class LoginResendOTPView(APIView):
     """POST /api/auth/login/resend-otp/ — re-send a login code, but only when one
     is already pending (i.e. the password step just succeeded)."""
     permission_classes = [AllowAny]
-    throttle_classes = [LoginRateThrottle]
+    throttle_classes = [LoginOtpRateThrottle]
 
     def post(self, request):
         ip = get_client_ip(request)

@@ -147,7 +147,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',
         'user': '1000/hour',
-        'login': '10/minute',              # OWASP A06 — brute force protection
+        'login': '60/minute',              # password step; raised because many users share one campus/office IP (per-account lockout is the real brute-force defense)
+        'login_otp': '120/minute',         # OTP verify/resend — separate budget so the 2-step login doesn't eat the password budget
         'registration': '5/hour',
         'password_reset': '5/hour',
         'verify_email': '20/hour',           # F-02
