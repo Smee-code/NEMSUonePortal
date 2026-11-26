@@ -527,7 +527,7 @@ class GradeSubmitView(APIView):
                     (
                         f'Hi {name},\n\n'
                         f'Your {stage_word} grade for {subj_code} - {subj_name} ({term}) has been '
-                        f'submitted by your instructor and is now available in your NEMSUonePortal '
+                        f'submitted by your instructor and is now available in your NEMSUOne '
                         f'account. Log in and open "My Grades" to view it.\n\n'
                         f'— NEMSU Cantilan Campus'
                     ),

@@ -9,7 +9,7 @@ export default function NotFound() {
       <header className="nf-top">
         <Link to="/" className="nf-brand">
           <img src="/logo.png" alt="NEMSU" />
-          <span>NEMSUonePortal</span>
+          <span>NEMSUOne</span>
         </Link>
       </header>
 

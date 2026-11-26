@@ -4,7 +4,7 @@ export default function TermsConditions() {
   return (
     <LegalPage eyebrow="Legal" title={<>Terms &amp; <em>Conditions</em></>} updated="September 19, 2026">
       <p>
-        These Terms govern your use of NEMSUonePortal, the online student portal of North Eastern
+        These Terms govern your use of NEMSUOne, the online student portal of North Eastern
         Mindanao State University, Cantilan Campus. By accessing or using the portal, you agree to
         these Terms. If you do not agree, please do not use the portal.
       </p>

@@ -7,7 +7,7 @@ export default function ProgramsPage() {
   const [programs, setPrograms] = useState(null);
 
   useEffect(() => {
-    document.title = 'Programs · NEMSUonePortal';
+    document.title = 'Programs · NEMSUOne';
     api.get('/enrollment/public/landing/')
       .then(r => setPrograms(r.data?.programs ?? []))
       .catch(() => setPrograms([]));

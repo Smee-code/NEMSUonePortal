@@ -63,7 +63,7 @@ export default function SignUp() {
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img src="/logo.png" alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #e0e7ff' }} />
           <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0a1628', margin: 0 }}>Create your student account</h1>
-          <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>NEMSU Cantilan Campus - NEMSUonePortal</p>
+          <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>NEMSU Cantilan Campus - NEMSUOne</p>
         </div>
 
         {done ? (
@@ -75,7 +75,7 @@ export default function SignUp() {
             <p style={pStyle}>
               {verifyNeeded
                 ? 'We sent a verification link to your email. Open it to finish signing up, then sign in with your Student ID or institutional email and the password you just set.'
-                : 'Your NEMSUonePortal account is ready. You can now sign in with your Student ID or institutional email and the password you just set.'}
+                : 'Your NEMSUOne account is ready. You can now sign in with your Student ID or institutional email and the password you just set.'}
             </p>
             <button type="button" onClick={() => navigate('/login')} className="su-btn" style={primBtn(false)}>
               Go to sign in

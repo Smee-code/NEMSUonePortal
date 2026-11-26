@@ -21,7 +21,7 @@ export default function PublicPageShell({ eyebrow, title, subtitle, children }) 
       <header className="pp-top">
         <Link to="/" className="pp-brand">
           <img src="/logo.png" alt="NEMSU" />
-          <span>NEMSUonePortal</span>
+          <span>NEMSUOne</span>
         </Link>
         <button type="button" className="pp-back" onClick={goHome}>
           <i className="ti ti-arrow-left" /> Back to home

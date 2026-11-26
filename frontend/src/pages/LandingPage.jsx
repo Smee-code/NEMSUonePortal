@@ -815,7 +815,7 @@ const SUBJECTS = [
 ];
 
 const WIZARD_STEPS = ['Student type', 'Personal info', 'Requirements', 'Subjects', 'Review & confirm'];
-const FRESHMAN_STEPS = ['Personal information', 'Address & family', 'Education background', 'Required documents', 'Review & confirm'];
+const FRESHMAN_STEPS = ['Personal information', 'Address & family', 'Educational background', 'Required documents', 'Review & confirm'];
 const CIVIL_STATUS = ['Single', 'Married', 'Widowed', 'Separated', 'Annulled'];
 // Structural check: local@label(.label)+.tld — tld must be letters only.
 const EMAIL_RE = /^[^\s@]+@(?:[^\s@.]+\.)+([A-Za-z]{2,})$/;
@@ -1105,7 +1105,7 @@ function Navbar({ scrolled, onEnroll, onLogin, onSignup, activeNav, onNavClick }
         <a href="#home" className="brand" onClick={() => handleNav('#home')}>
           <img src="/logo.png" alt="NEMSU" className="brand-logo" />
           <div className="brand-text">
-            <div className="brand-name">NEMSUonePortal</div>
+            <div className="brand-name">NEMSUOne</div>
             <div className="brand-sub">Cantilan Campus · North Eastern Mindanao State University</div>
           </div>
         </a>
@@ -1187,11 +1187,11 @@ function Hero({ onEnroll, term, content }) {
           </span>
         </div>
         <h1 className="hero-title">
-          Higher education on Mindanao&rsquo;s eastern seaboard.
+          All your academic services in one place.
         </h1>
         <p className="hero-sub">
-          NEMSU Cantilan Campus &mdash; enroll, check grades and schedules, and
-          request documents from one secure portal on the Pacific coast of Caraga.
+          Enroll, view your grades and class schedule, request documents, and
+          read announcements online at NEMSU Cantilan Campus.
         </p>
         <div className="hero-actions">
           <button className="hero-btn hero-btn-dawn" onClick={onEnroll}>
@@ -1596,13 +1596,13 @@ function Footer({ onEnroll, onLogin, onSignup }) {
             <div className="footer-brand">
               <img src="/logo.png" alt="NEMSU" />
               <div>
-                <div className="footer-brand-name">NEMSUonePortal</div>
+                <div className="footer-brand-name">NEMSUOne</div>
                 <div className="footer-brand-sub">Cantilan Campus · NEMSU</div>
               </div>
             </div>
             <p className="footer-tagline">
-              The official student portal of North Eastern Mindanao State University, Cantilan Campus.
-              Centralized academic services for students, faculty, and staff.
+              All your academic services in one place. Enrollment, grades, schedules, documents,
+              and announcements for the students, faculty, and staff of NEMSU Cantilan Campus.
             </p>
             <div className="footer-contact">
               <span><i className="ti ti-map-pin" />Cantilan, Surigao del Sur, Philippines</span>
@@ -1638,7 +1638,7 @@ function Footer({ onEnroll, onLogin, onSignup }) {
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 NEMSUonePortal · NEMSU Cantilan Campus. All rights reserved.</span>
+          <span>© 2026 NEMSUOne · NEMSU Cantilan Campus. All rights reserved.</span>
           <div>
             <Link to="/privacy">Privacy Policy</Link>
             <Link to="/terms">Terms &amp; Conditions</Link>
@@ -1686,7 +1686,7 @@ function AdmissionIntroModal({ onClose, onStart, onLogin }) {
           <div className="modal-head-brand">
             <img src="/logo.png" alt="NEMSU" />
             <div>
-              <div className="name">NEMSUonePortal</div>
+              <div className="name">NEMSUOne</div>
               <div className="sub">Freshman admission</div>
             </div>
           </div>
@@ -1769,7 +1769,7 @@ function ProgramSearchSelect({ value, options, onChange }) {
         onChange={e => { setQuery(e.target.value); setOpen(true); setHi(0); }}
         onFocus={() => { setQuery(''); setOpen(true); setHi(0); }}
         onKeyDown={onKey}
-        placeholder="Type to search programs…"
+        placeholder="Search and select your program…"
         autoComplete="off"
         role="combobox"
         aria-expanded={open}
@@ -1901,7 +1901,7 @@ function EnrollmentModal({ onClose, term, programs }) {
     // Personal
     first: '', middle: '', last: '', suffix: '', email: '', contact: '', dob: '', sex: 'Male',
     birthplace: '', civil_status: 'Single', citizenship: 'Filipino', religion: '', ethnicity: '',
-    program: PROGRAMS_STATIC[0].name, year: '1',
+    program: '', year: '1',   // program starts empty: the applicant must choose it
     student_id: '',   // returnee / old student
     // Address & family
     addr_brgy: '', addr_town: '', addr_province: '', zip: '',
@@ -1919,10 +1919,11 @@ function EnrollmentModal({ onClose, term, programs }) {
     : PROGRAMS_STATIC.map(p => p.name);
 
   // Keep the selected program a valid, real program name so it maps to a
-  // department on submit.
+  // department on submit. A choice that is no longer offered is cleared, never
+  // replaced with a default: the applicant picks the program themselves.
   useEffect(() => {
-    if (progList.length && !progList.includes(form.program)) {
-      setForm(p => ({ ...p, program: progList[0] }));
+    if (form.program && progList.length && !progList.includes(form.program)) {
+      setForm(p => ({ ...p, program: '' }));
     }
   }, [programs]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2152,7 +2153,7 @@ function EnrollmentModal({ onClose, term, programs }) {
           <div className="modal-head-brand">
             <img src="/logo.png" alt="NEMSU" />
             <div>
-              <div className="name">NEMSUonePortal</div>
+              <div className="name">NEMSUOne</div>
               <div className="sub">{done ? 'Application submitted' : 'Admission application'}</div>
             </div>
           </div>
@@ -2465,10 +2466,10 @@ function EnrollmentModal({ onClose, term, programs }) {
                   </>
                 )}
 
-                {/* Step 3 — Education background */}
+                {/* Step 3 — Educational background */}
                 {step === 3 && (
                   <>
-                    <h4>Education background</h4>
+                    <h4>Educational background</h4>
                     <p className="wiz-sub">Schools attended and year graduated.</p>
                     <div className="flow-form" style={{ gap: '1rem' }}>
                       {[

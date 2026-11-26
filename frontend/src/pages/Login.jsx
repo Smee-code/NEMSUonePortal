@@ -116,7 +116,7 @@ export default function Login() {
         <Link to="/" className="auth-back">
           <span aria-hidden="true">←</span> Back to home
         </Link>
-        <h1>NEMSUonePortal</h1>
+        <h1>NEMSUOne</h1>
         <h2>{step === 'otp' ? 'Enter your code' : 'Sign In'}</h2>
 
         {step === 'credentials' ? (

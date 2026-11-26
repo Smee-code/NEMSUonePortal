@@ -53,7 +53,7 @@ def _send_announcement_email(announcement):
         if not emails:
             return
 
-        subject = f'[NEMSUonePortal] {announcement.title}'
+        subject = f'[NEMSUOne] {announcement.title}'
         body = (
             f'{announcement.body}\n\n'
             f'— Posted by {announcement.posted_by.full_name}\n'

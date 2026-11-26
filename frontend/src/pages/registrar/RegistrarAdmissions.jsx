@@ -352,7 +352,7 @@ export default function RegistrarAdmissions() {
                     <Sec t="Parent / Guardian"><Row k="Father" v={par.father} /><Row k="Mother" v={par.mother} /><Row k="Address" v={par.address} /></Sec>
                   )}
                   {(edu.elementary || edu.junior_high || edu.senior_high) && (
-                    <Sec t="Education">
+                    <Sec t="Educational background">
                       <Row k="Elementary" v={sch(edu.elementary)} />
                       <Row k="Junior High" v={sch(edu.junior_high)} />
                       <Row k="Senior High" v={sch(edu.senior_high)} />

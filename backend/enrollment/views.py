@@ -953,7 +953,7 @@ class RegistrarReviewView(APIView):
                     f'Hi {student.full_name or "Student"},\n\n'
                     f'Your enrollment request for {term} was not approved by the registrar.\n'
                     + (f'\nReason: {remarks}\n' if remarks else '')
-                    + '\nPlease log in to NEMSUonePortal, open "My Enrollment", review your '
+                    + '\nPlease log in to NEMSUOne, open "My Enrollment", review your '
                     'courses and submit your enrollment again.\n\n'
                     '— NEMSU Cantilan Campus'
                 )
@@ -1027,7 +1027,7 @@ class RegistrarReviewView(APIView):
                     f'Hi {student.full_name or "Student"},\n\n'
                     f'Good news — your enrollment for {term} has been approved'
                     + (f' and you have been assigned to {block}.' if block else '.')
-                    + '\n\nLog in to NEMSUonePortal and open "My Enrollment" to view your '
+                    + '\n\nLog in to NEMSUOne and open "My Enrollment" to view your '
                     'Certificate of Registration and class schedule.\n\n'
                     '— NEMSU Cantilan Campus'
                 )
@@ -1421,7 +1421,7 @@ def _email_returnee_password(user, temp_password):
             (
                 f'Hi {user.full_name},\n\n'
                 f'Your application to re-enroll at NEMSU Cantilan Campus has been '
-                f'approved by the registrar. Your NEMSUonePortal account is ready.\n\n'
+                f'approved by the registrar. Your NEMSUOne account is ready.\n\n'
                 f'Student ID: {user.student_id}\n'
                 f'Login email: {user.institutional_email}\n'
                 f'Temporary password: {temp_password}\n\n'
@@ -1465,7 +1465,7 @@ def _send_admission_decision_email(pending, decision):
             f"Your application (Ref: {pending.reference_number}) for {program} has been "
             f"reviewed and approved by {dept}. Welcome to NEMSU Cantilan!\n\n"
             f"Your Student ID is: {pending.assigned_student_id}\n\n"
-            f"Use this Student ID to create your NEMSUonePortal account. Click “Sign up” "
+            f"Use this Student ID to create your NEMSUOne account. Click “Sign up” "
             f"on the portal and enter your Student ID, your institutional email, and a "
             f"password — your name is already on file, so you won’t need to re-enter it.\n\n"
             f"{signup_url}\n\n"

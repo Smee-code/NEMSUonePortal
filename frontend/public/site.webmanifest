@@ -1,6 +1,6 @@
 {
-  "name": "NEMSUonePortal",
-  "short_name": "NEMSUone",
+  "name": "NEMSUOne",
+  "short_name": "NEMSUOne",
   "description": "The online student portal of NEMSU Cantilan Campus.",
   "start_url": "/",
   "display": "standalone",

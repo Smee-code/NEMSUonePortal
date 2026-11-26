@@ -140,7 +140,7 @@ export default function StudentPersonalInfoCard() {
         </div>
         <F label="Parent / Guardian address" k="parent_address" />
 
-        <div className="pi-sec">Education background</div>
+        <div className="pi-sec">Educational background</div>
         <div className="pi-grid">
           <F label="Elementary school" k="elem_school" />
           <F label="Year graduated" k="elem_year" />

@@ -15,7 +15,7 @@ export default function Unauthorized() {
   return (
     <div className="auth-page">
       <div className="auth-card" style={{ textAlign: 'center' }}>
-        <h1>NEMSUonePortal</h1>
+        <h1>NEMSUOne</h1>
         <h2 style={{ color: '#e02424', margin: '1rem 0' }}>Access Denied</h2>
         <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
           You don&apos;t have permission to view that page.

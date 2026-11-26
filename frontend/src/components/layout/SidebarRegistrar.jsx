@@ -19,7 +19,7 @@ export default function SidebarRegistrar({ active }) {
       <div className="sidebar-brand">
         <img src="/logo.png" alt="NEMSU" className="sidebar-logo" />
         <div className="sidebar-brand-text">
-          <span className="sidebar-brand-name">NEMSUonePortal</span>
+          <span className="sidebar-brand-name">NEMSUOne</span>
           <span className="sidebar-brand-campus">Cantilan Campus</span>
         </div>
       </div>

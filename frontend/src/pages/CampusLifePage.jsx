@@ -15,7 +15,7 @@ export default function CampusLifePage() {
   const [box, setBox] = useState(null); // { images, title }
 
   useEffect(() => {
-    document.title = 'Campus Life · NEMSUonePortal';
+    document.title = 'Campus Life · NEMSUOne';
     api.get('/enrollment/public/site-content/')
       .then(r => setItems(r.data?.campus_life?.items ?? []))
       .catch(() => setItems([]));

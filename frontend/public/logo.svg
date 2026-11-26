@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- NEMSUone system mark: N whose right stem is a numeral 1 -->
+  <circle cx="256" cy="256" r="256" fill="#0B1B2E"/>
+  <circle cx="256" cy="256" r="230" fill="none" stroke="#C79A3B" stroke-width="12"/>
+  <g fill="#FFFFFF">
+    <polygon points="132.9,130.6 185.3,130.6 185.3,381.4 132.9,381.4"/>
+    <polygon points="132.9,130.6 194.4,130.6 310.7,381.4 249.2,381.4"/>
+  </g>
+  <g fill="#C79A3B">
+    <polygon points="326.7,130.6 379.1,130.6 379.1,381.4 326.7,381.4"/>
+    <polygon points="326.7,130.6 326.7,183.0 281.1,212.7 281.1,162.5"/>
+  </g>
+</svg>

@@ -25,7 +25,7 @@ export default function NewsPage() {
   };
 
   useEffect(() => {
-    document.title = 'News · NEMSUonePortal';
+    document.title = 'News · NEMSUOne';
     api.get('/enrollment/public/site-content/')
       .then(r => {
         setItems(r.data?.news?.items ?? []);
@@ -48,7 +48,7 @@ export default function NewsPage() {
       <header className="np-top">
         <Link to="/" className="np-brand">
           <img src="/logo.png" alt="NEMSU" />
-          <span>NEMSUonePortal</span>
+          <span>NEMSUOne</span>
         </Link>
         <button type="button" className="np-back" onClick={goHome}>
           <i className="ti ti-arrow-left" /> Back to home

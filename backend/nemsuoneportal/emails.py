@@ -28,7 +28,8 @@ LOGO_CID = 'nemsu-logo'
 
 @lru_cache(maxsize=1)
 def _logo_bytes():
-    """Read the NEMSU seal once. Returns the PNG bytes, or None if unavailable."""
+    """Read the system logo once (the custom NEMSUOne mark, not the University
+    seal). Returns the PNG bytes, or None if unavailable."""
     candidates = [
         getattr(settings, 'FRONTEND_DIST', None) and Path(settings.FRONTEND_DIST) / 'logo.png',
         Path(settings.BASE_DIR).parent / 'frontend' / 'dist' / 'logo.png',
@@ -40,12 +41,12 @@ def _logo_bytes():
                 return Path(p).read_bytes()
         except Exception:
             continue
-    logger.warning('Email logo not found; sending without the inline seal.')
+    logger.warning('Email logo not found; sending without the inline logo.')
     return None
 
 
 def _attach_logo(msg):
-    """Embed the seal as an inline image so cid:nemsu-logo resolves in the HTML."""
+    """Embed the logo as an inline image so cid:nemsu-logo resolves in the HTML."""
     data = _logo_bytes()
     if not data:
         return
@@ -84,7 +85,7 @@ class BrandedEmail(EmailMultiAlternatives):
         return msg
 
 # ── Brand tokens (email-safe: inline styles, web-safe fonts only) ──────────────
-BRAND = 'NEMSUonePortal'
+BRAND = 'NEMSUOne'
 INSTITUTION = 'North Eastern Mindanao State University'
 CAMPUS = 'Cantilan, Surigao del Sur, Philippines'
 INK = '#0B1B2E'        # deep navy
@@ -111,8 +112,8 @@ def _button_label(url):
     if '/signup' in url or '/sign-up' in url:
         return 'Create my account'
     if '/login' in url:
-        return 'Log in to NEMSUonePortal'
-    return 'Open NEMSUonePortal'
+        return 'Log in to NEMSUOne'
+    return 'Open NEMSUOne'
 
 
 def _linkify(escaped_text):
@@ -218,7 +219,7 @@ def render_branded_html(subject, body, preheader=None):
   <tr><td style="background:{INK};padding:22px 32px;border-bottom:3px solid {GOLD};">
     <table role="presentation" cellpadding="0" cellspacing="0"><tr>
       <td style="padding-right:14px;vertical-align:middle;">
-        <img src="cid:{LOGO_CID}" width="48" height="48" alt="NEMSU seal" style="display:block;width:48px;height:48px;border-radius:50%;background:#ffffff;">
+        <img src="cid:{LOGO_CID}" width="48" height="48" alt="NEMSUOne logo" style="display:block;width:48px;height:48px;border-radius:50%;">
       </td>
       <td style="vertical-align:middle;">
         <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:.3px;">NEMSU<span style="color:{GOLD};">one</span>Portal</div>

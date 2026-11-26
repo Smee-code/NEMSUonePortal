@@ -386,7 +386,7 @@ function AdminSidebar({ active, navOpen, closeNav }) {
       <div className="adm-sb-brand">
         <img src="/logo.png" alt="NEMSU" />
         <div>
-          <div className="adm-sb-brand-name">NEMSUonePortal</div>
+          <div className="adm-sb-brand-name">NEMSUOne</div>
           <div className="adm-sb-brand-sub">Admin · Cantilan</div>
         </div>
       </div>

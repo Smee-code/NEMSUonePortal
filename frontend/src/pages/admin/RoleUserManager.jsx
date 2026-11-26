@@ -167,7 +167,7 @@ export default function RoleUserManager({ role, config }) {
   function copyCredentials() {
     if (!created) return;
     const text =
-      `NEMSUonePortal faculty account\n` +
+      `NEMSUOne faculty account\n` +
       `Name: ${created.full_name}\n` +
       `Faculty ID: ${created.faculty_id}\n` +
       `Login email: ${created.institutional_email}\n` +

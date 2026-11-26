@@ -49,9 +49,9 @@ function RegSidebar({ badges, navOpen, closeNav }) {
   return (
     <aside className={`reg-sb${navOpen ? ' is-open' : ''}`} onClick={closeNav}>
       <div className="reg-sb-brand">
-        <img src="/assets/logo.png" alt="NEMSU" onError={e => { e.currentTarget.style.display = 'none'; }} />
+        <img src="/logo.png" alt="NEMSU" onError={e => { e.currentTarget.style.display = 'none'; }} />
         <div>
-          <div className="reg-sb-brand-name">NEMSUonePortal</div>
+          <div className="reg-sb-brand-name">NEMSUOne</div>
           <div className="reg-sb-brand-sub">Registrar · Cantilan</div>
         </div>
       </div>

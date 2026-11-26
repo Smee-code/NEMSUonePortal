@@ -50,7 +50,7 @@ export default function VerifyEmail() {
   return (
     <div className="auth-page">
       <div className="auth-card" style={{ textAlign: 'center' }}>
-        <h1>NEMSUonePortal</h1>
+        <h1>NEMSUOne</h1>
         <h2>Email Verification</h2>
 
         {status === 'verifying' && (

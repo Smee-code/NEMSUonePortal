@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const BASE = 'NEMSUonePortal';
-const HOME = 'NEMSUonePortal · NEMSU Cantilan Student Portal';
+const BASE = 'NEMSUOne';
+const HOME = 'NEMSUOne · NEMSU Cantilan Student Portal';
 
 /* Exact path → page name. Dynamic routes resolve by stripping the last
    segment until a match is found (see resolve() below). */

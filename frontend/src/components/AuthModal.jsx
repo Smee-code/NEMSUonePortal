@@ -154,7 +154,7 @@ function LoginForm({ onClose, toSignup }) {
       <div className="authm-head">
         <img src="/logo.png" alt="" className="authm-logo" />
         <h2>Welcome back</h2>
-        <p>Sign in to your NEMSUonePortal account.</p>
+        <p>Sign in to your NEMSUOne account.</p>
       </div>
 
       <label className="authm-label">Institutional email</label>
@@ -234,7 +234,7 @@ function SignupForm({ onClose, toLogin }) {
         <div className="authm-done-ic"><i className="ti ti-circle-check" /></div>
         <h2>Account created</h2>
         <p>
-          Your NEMSUonePortal account is ready. You can now sign in with your Student ID or
+          Your NEMSUOne account is ready. You can now sign in with your Student ID or
           institutional email and the password you just set.
         </p>
         <button type="button" className="authm-submit" onClick={toLogin}>Go to sign in</button>

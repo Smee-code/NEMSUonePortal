@@ -458,7 +458,7 @@ function FacSidebar({ active, navOpen, closeNav }) {
       <div className="fac-sb-brand">
         <img src="/logo.png" alt="NEMSU" />
         <div>
-          <div className="fac-sb-brand-name">NEMSUonePortal</div>
+          <div className="fac-sb-brand-name">NEMSUOne</div>
           <div className="fac-sb-brand-sub">Faculty · Cantilan</div>
         </div>
       </div>

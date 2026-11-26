@@ -4,13 +4,13 @@ export default function CookiePolicy() {
   return (
     <LegalPage eyebrow="Legal" title={<>Cookie <em>Policy</em></>} updated="September 19, 2026">
       <p>
-        This policy explains how NEMSUonePortal uses cookies. We keep our use of cookies to the
+        This policy explains how NEMSUOne uses cookies. We keep our use of cookies to the
         minimum needed to run the portal securely. We do not use advertising, tracking, or
         third-party analytics cookies.
       </p>
 
       <h2>1. What cookies we use</h2>
-      <p>NEMSUonePortal uses a single <strong>essential</strong> cookie:</p>
+      <p>NEMSUOne uses a single <strong>essential</strong> cookie:</p>
       <ul>
         <li>
           <strong>Authentication (refresh token):</strong> a secure, HttpOnly cookie that keeps you

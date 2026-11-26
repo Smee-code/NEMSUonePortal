@@ -246,21 +246,21 @@ class RegistrationReviewView(APIView):
     @staticmethod
     def _notify(user, action, remarks):
         if action == 'approve':
-            subject = 'NEMSUonePortal — your account has been approved'
+            subject = 'NEMSUOne — your account has been approved'
             body = (
                 f"Hello {user.full_name},\n\n"
-                "Your NEMSUonePortal registration has been approved by the Registrar. "
+                "Your NEMSUOne registration has been approved by the Registrar. "
                 "You can now log in using your institutional email and the password "
                 "you set during registration.\n\n"
                 f"{settings.FRONTEND_URL}/login\n\n"
-                "Welcome to NEMSUonePortal."
+                "Welcome to NEMSUOne."
             )
         else:
             reason = f"\n\nReason: {remarks}" if remarks else ''
-            subject = 'NEMSUonePortal — registration not approved'
+            subject = 'NEMSUOne — registration not approved'
             body = (
                 f"Hello {user.full_name},\n\n"
-                "Your NEMSUonePortal registration was not approved by the Registrar."
+                "Your NEMSUOne registration was not approved by the Registrar."
                 f"{reason}\n\n"
                 "If you believe this is a mistake, please contact the Registrar's Office."
             )
@@ -378,10 +378,10 @@ def _email_faculty_setup(user, token):
     try:
         setup_url = f'{settings.FRONTEND_URL}/faculty-setup/{token}'
         send_branded_email(
-            'Set up your NEMSUonePortal faculty account',
+            'Set up your NEMSUOne faculty account',
             (
                 f'Hi {user.full_name},\n\n'
-                f'A faculty account has been created for you on NEMSUonePortal '
+                f'A faculty account has been created for you on NEMSUOne '
                 f'(Faculty ID: {user.student_id}).\n\n'
                 f'Click the button below to finish setting up your account — you '
                 f'only need to create a password. You will be signed in right after.\n\n'
@@ -402,10 +402,10 @@ def _email_faculty_credentials(user, temp_password):
     """Email a newly created faculty their login details. Returns True if sent."""
     try:
         send_branded_email(
-            'Your NEMSUonePortal faculty account',
+            'Your NEMSUOne faculty account',
             (
                 f'Hi {user.full_name},\n\n'
-                f'A faculty account has been created for you on NEMSUonePortal. '
+                f'A faculty account has been created for you on NEMSUOne. '
                 f'Use these details to log in:\n\n'
                 f'Faculty ID: {user.student_id}\n'
                 f'Login email: {user.institutional_email}\n'
@@ -461,10 +461,10 @@ def _email_student_credentials(user, temp_password):
     """Email a newly created student their login details. Returns True if sent."""
     try:
         send_branded_email(
-            'Your NEMSUonePortal student account',
+            'Your NEMSUOne student account',
             (
                 f'Hi {user.full_name},\n\n'
-                f'A student account has been created for you on NEMSUonePortal. '
+                f'A student account has been created for you on NEMSUOne. '
                 f'Use these details to log in:\n\n'
                 f'Student ID: {user.student_id}\n'
                 f'Login email: {user.institutional_email}\n'

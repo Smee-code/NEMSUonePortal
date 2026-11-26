@@ -399,7 +399,7 @@ function Sidebar({ active, navOpen, closeNav }) {
       <div className="sb-brand">
         <img src="/logo.png" alt="NEMSU" />
         <div className="sb-brand-text">
-          <div className="sb-brand-name">NEMSUone<span style={{ opacity: .65 }}>Portal</span></div>
+          <div className="sb-brand-name">NEMSUOne</div>
           <div className="sb-brand-sub">Cantilan Campus</div>
         </div>
       </div>

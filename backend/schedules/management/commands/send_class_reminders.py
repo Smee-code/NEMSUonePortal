@@ -186,7 +186,7 @@ class Command(BaseCommand):
                         f'Time: {when}\n'
                         f'Room: {where}\n'
                         f'Instructor: {ta.faculty.full_name if ta.faculty_id else "TBA"}\n\n'
-                        f'Open "My Schedule" in NEMSUonePortal for your full timetable.\n\n'
+                        f'Open "My Schedule" in NEMSUOne for your full timetable.\n\n'
                         f'— NEMSU Cantilan Campus'
                     ),
                     settings.DEFAULT_FROM_EMAIL,
@@ -206,7 +206,7 @@ class Command(BaseCommand):
                     + (f'Block: {block_label}\n' if block_label else '')
                     + f'Time: {when}\n'
                     f'Room: {where}\n\n'
-                    f'Open "My Schedule" in NEMSUonePortal for your full timetable.\n\n'
+                    f'Open "My Schedule" in NEMSUOne for your full timetable.\n\n'
                     f'— NEMSU Cantilan Campus'
                 ),
                 settings.DEFAULT_FROM_EMAIL,

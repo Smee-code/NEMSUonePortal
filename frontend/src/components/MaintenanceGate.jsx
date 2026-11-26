@@ -73,7 +73,7 @@ function MaintenanceNotice({ message }) {
           <i className="ti ti-tool" style={{ fontSize: 34 }} />
         </div>
         <div style={{ fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase', color: '#b8860b', fontWeight: 700, marginBottom: 10 }}>
-          NEMSUonePortal
+          NEMSUOne
         </div>
         <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 .7rem', letterSpacing: '-.01em' }}>
           We&rsquo;ll be right back

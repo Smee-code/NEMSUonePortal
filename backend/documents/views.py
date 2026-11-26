@@ -44,7 +44,7 @@ def _send_status_email(doc_req):
     try:
         status_label = doc_req.get_status_display()
         doc_label    = doc_req.get_document_type_display()
-        subject = f'[NEMSUonePortal] Document Request Update — {doc_label}'
+        subject = f'[NEMSUOne] Document Request Update — {doc_label}'
 
         body_lines = [
             f'Hello {doc_req.student.full_name},',

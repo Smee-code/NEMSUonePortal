@@ -30,7 +30,7 @@ export default function ForgotPassword() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <h1>NEMSUonePortal</h1>
+        <h1>NEMSUOne</h1>
         <h2>Forgot Password</h2>
 
         {submitted ? (

@@ -92,10 +92,10 @@ class RegisterView(generics.CreateAPIView):
             token_obj = EmailVerificationToken.objects.create(user=user)
             verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token_obj.token}"
             _send_email(
-                subject='NEMSUonePortal — verify your email to finish signing up',
+                subject='NEMSUOne — verify your email to finish signing up',
                 body=(
                     f"Hello {user.full_name},\n\n"
-                    f"A NEMSUonePortal student account was created for Student ID "
+                    f"A NEMSUOne student account was created for Student ID "
                     f"{user.student_id}. To finish and start using it, verify your email "
                     f"by opening this link:\n\n"
                     f"{verify_url}\n\n"
@@ -118,10 +118,10 @@ class RegisterView(generics.CreateAPIView):
         # The applicant was already vetted at admission, so the account is active
         # immediately — welcome them and point them to login.
         _send_email(
-            subject='NEMSUonePortal — your account is ready',
+            subject='NEMSUOne — your account is ready',
             body=(
                 f"Hello {user.full_name},\n\n"
-                f"Your NEMSUonePortal student account has been created. You can now log in "
+                f"Your NEMSUOne student account has been created. You can now log in "
                 f"with your Student ID ({user.student_id}) or your institutional email and "
                 f"the password you just set.\n\n"
                 f"{settings.FRONTEND_URL}/login\n\n"
@@ -256,7 +256,7 @@ def _issue_login_otp(user):
     try:
         from nemsuoneportal.emails import send_branded_email
         send_branded_email(
-            'Your NEMSUonePortal login code',
+            'Your NEMSUOne login code',
             (
                 f'Hi {user.full_name},\n\n'
                 f'Use this one-time code to finish signing in:\n\n'
@@ -476,7 +476,7 @@ class ResendVerificationView(APIView):
             token_obj = EmailVerificationToken.objects.create(user=user)
             verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token_obj.token}"
             _send_email(
-                subject='Verify your NEMSUonePortal email address',
+                subject='Verify your NEMSUOne email address',
                 body=(
                     f"Hello {user.full_name},\n\n"
                     f"Click the link below to verify your email:\n{verify_url}\n\n"
@@ -513,7 +513,7 @@ class PasswordResetRequestView(APIView):
             token_obj = PasswordResetToken.objects.create(user=user)
             reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token_obj.token}"
             _send_email(
-                subject='Reset your NEMSUonePortal password',
+                subject='Reset your NEMSUOne password',
                 body=(
                     f"Hello {user.full_name},\n\n"
                     f"Click the link below to reset your password:\n{reset_url}\n\n"
@@ -597,10 +597,10 @@ class PasswordResetSelfView(APIView):
         token_obj = PasswordResetToken.objects.create(user=user)
         reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token_obj.token}"
         _send_email(
-            subject='Reset your NEMSUonePortal password',
+            subject='Reset your NEMSUOne password',
             body=(
                 f"Hello {user.full_name},\n\n"
-                f"You requested to change your NEMSUonePortal password. Click the link "
+                f"You requested to change your NEMSUOne password. Click the link "
                 f"below to set a new one:\n{reset_url}\n\n"
                 "This link expires in 2 hours.\n\n"
                 "If you did not request this, you can safely ignore this email."
@@ -761,7 +761,7 @@ class ActivateRequestOTPView(APIView):
         pending.save(update_fields=['otp', 'otp_expires'])
 
         _send_email(
-            subject='Your NEMSUonePortal Account Activation Code',
+            subject='Your NEMSUOne Account Activation Code',
             body=(
                 f"Hello {pending.full_name},\n\n"
                 f"Your one-time verification code is:\n\n"

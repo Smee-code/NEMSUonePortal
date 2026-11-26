@@ -294,7 +294,7 @@ export default function FacultyDashboard() {
 
           <div className="foot-note">
             <span>Dashboard data · {currentTerm ? termLabel : 'No active term'}</span>
-            <span className="live"><span className="dot" /> Connected to NEMSUonePortal API</span>
+            <span className="live"><span className="dot" /> Connected to NEMSUOne API</span>
           </div>
         </>
       )}

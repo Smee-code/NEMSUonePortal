@@ -85,7 +85,7 @@ export default function AdminSettings() {
       </div>
 
       <SettingsSection title="Application">
-        <SettingsRow label="System name"    value="NEMSUonePortal" />
+        <SettingsRow label="System name"    value="NEMSUOne" />
         <SettingsRow label="Institution"    value="NEMSU – Cantilan Campus, Surigao del Sur" />
         <SettingsRow label="Version"        value="Sprint 8: System Administrator Panel" />
         <SettingsRow label="Framework"      value="Django 5 + React (Vite)" />

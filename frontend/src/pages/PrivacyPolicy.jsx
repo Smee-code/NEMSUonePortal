@@ -5,7 +5,7 @@ export default function PrivacyPolicy() {
     <LegalPage eyebrow="Legal" title={<>Privacy <em>Policy</em></>} updated="September 19, 2026">
       <p>
         North Eastern Mindanao State University, Cantilan Campus ("the University", "we", "us")
-        operates NEMSUonePortal. We respect your privacy and handle personal data in accordance with
+        operates NEMSUOne. We respect your privacy and handle personal data in accordance with
         Republic Act No. 10173, the Data Privacy Act of 2012, its implementing rules, and the issuances
         of the National Privacy Commission.
       </p>
@@ -39,7 +39,7 @@ export default function PrivacyPolicy() {
       <p>Under the Data Privacy Act, you have the right to be informed, to access and correct your data, to object to processing, to erasure or blocking where allowed, to data portability, and to lodge a complaint with the National Privacy Commission.</p>
 
       <h2>8. Cookies</h2>
-      <p>NEMSUonePortal uses one essential cookie to keep you signed in securely. See our <a href="/cookies">Cookie Policy</a> for details.</p>
+      <p>NEMSUOne uses one essential cookie to keep you signed in securely. See our <a href="/cookies">Cookie Policy</a> for details.</p>
 
       <h2>9. Contact</h2>
       <p>For privacy concerns or to exercise your rights, contact the University Data Protection Officer at the Cantilan Campus, Cantilan, Surigao del Sur, or through the official campus email published on the University website.</p>

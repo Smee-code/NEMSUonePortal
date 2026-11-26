@@ -42,7 +42,7 @@ export default function StudentAddButton({ onCreated, buttonClassName = 'btn-pri
   function copyDetails() {
     if (!created) return;
     const text =
-      `NEMSUonePortal student account\n` +
+      `NEMSUOne student account\n` +
       `Name: ${created.full_name}\n` +
       `Student ID: ${created.student_id_value || created.student_id}\n` +
       `Login email: ${created.institutional_email}\n` +
