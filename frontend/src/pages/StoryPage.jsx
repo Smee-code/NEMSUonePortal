@@ -7,7 +7,7 @@ export default function StoryPage() {
   const [post, setPost] = useState(null);
 
   useEffect(() => {
-    document.title = 'In Focus · NEMSUOne';
+    document.title = 'In focus · NEMSUOne';
     api.get('/enrollment/public/site-content/')
       .then(r => setPost(r.data?.in_focus ?? {}))
       .catch(() => setPost({}));

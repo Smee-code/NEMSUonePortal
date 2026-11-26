@@ -528,7 +528,7 @@ class GradeSubmitView(APIView):
                         f'Hi {name},\n\n'
                         f'Your {stage_word} grade for {subj_code} - {subj_name} ({term}) has been '
                         f'submitted by your instructor and is now available in your NEMSUOne '
-                        f'account. Log in and open "My Grades" to view it.\n\n'
+                        f'account. Sign in and open "My Grades" to view it.\n\n'
                         f'— NEMSU Cantilan Campus'
                     ),
                     settings.DEFAULT_FROM_EMAIL,
@@ -775,7 +775,7 @@ class RegistrarFacultyDetailView(APIView):
         try:
             f = User.objects.select_related('department').get(id=pk, role='faculty')
         except (User.DoesNotExist, Exception):
-            return Response({'error': 'Faculty not found.'}, status=404)
+            return Response({'error': 'Faculty member not found.'}, status=404)
 
         current_term_ids = set(
             AcademicTerm.objects.filter(is_active=True).values_list('id', flat=True)
@@ -1228,7 +1228,7 @@ class AdminTeachingAssignmentResolveView(APIView):
             return Response({'error': 'Subject, faculty, and term are required.'},
                             status=status.HTTP_400_BAD_REQUEST)
         if not (program_id and year_level and block_name):
-            return Response({'error': 'Program, year level and block are required.'},
+            return Response({'error': 'Program, year level, and block are required.'},
                             status=status.HTTP_400_BAD_REQUEST)
         try:
             subject = Subject.objects.get(pk=subject_id, is_active=True)
@@ -1310,7 +1310,7 @@ class FacultyTeachingAssignmentCreateView(APIView):
         if term is None:
             if not term_semester:
                 return Response(
-                    {'error': 'Please select First Term or Second Term.'},
+                    {'error': 'Please select First Semester or Second Semester.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             # Resolve the year from the current (active) term so a declaration

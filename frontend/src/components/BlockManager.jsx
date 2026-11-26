@@ -323,7 +323,7 @@ export default function BlockManager() {
         <div className="bm-backdrop" style={{ zIndex: 1100 }} onClick={() => setEdit(null)}>
           <form className="bm-modal" onClick={e => e.stopPropagation()} onSubmit={submitEdit}>
             <h3>{edit.name}</h3>
-            <p className="bm-modal-sub">{edit.enrolled_count} enrolled · currently {edit.capacity} capacity</p>
+            <p className="bm-modal-sub">{edit.enrolled_count} enrolled · capacity {edit.capacity}</p>
             <label className="bm-label">Capacity (students)</label>
             <input className="bm-input" type="number" min={Math.max(1, edit.enrolled_count)} max="500" value={editCap}
               onChange={e => setEditCap(e.target.value)} required />

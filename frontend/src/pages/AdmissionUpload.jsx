@@ -24,7 +24,9 @@ export default function AdmissionUpload() {
 
   useEffect(() => { load(); }, [load]);
 
-  const required = app ? (REQUIRED_DOCS[app.student_type] || []) : [];
+  // Standard list for the applicant type, plus anything the server says this
+  // applicant must also provide (a marriage certificate if they declared Married).
+  const required = app ? [...(REQUIRED_DOCS[app.student_type] || []), ...(app.extra_required || [])] : [];
   const uploadedLabels = new Set((app?.uploaded || []).map(d => d.requirement_label));
   const receivedCount = required.filter(l => uploadedLabels.has(l)).length;
   const locked = app && app.status !== 'pending';
@@ -35,7 +37,7 @@ export default function AdmissionUpload() {
       <div className="au-card">
         <div className="au-brand">
           <span className="au-brand-mark">NEMSU</span>
-          <span className="au-brand-sub">Cantilan · Pre-Enrollment</span>
+          <span className="au-brand-sub">Cantilan · Admission</span>
         </div>
 
         {state === 'loading' && <p className="au-muted">Loading your application…</p>}
@@ -58,7 +60,7 @@ export default function AdmissionUpload() {
           <>
             <h1 className="au-title">Upload your documents</h1>
             <p className="au-lead">
-              Hello <strong>{app.full_name}</strong>. Upload the required documents for your
+              Hello, <strong>{app.full_name}</strong>. Upload the required documents for your
               application below. PDF only, up to 2&nbsp;MB each.
             </p>
             <div className="au-meta">

@@ -244,7 +244,7 @@ export default function AdminTerms() {
           <form onSubmit={saveForm} className="at-form-body">
             <div className="at-form-row">
               <div className="at-form-field">
-                <label className="at-form-label">Academic Year</label>
+                <label className="at-form-label">Academic year</label>
                 <div className="at-year-pair">
                   <input
                     className="at-form-input at-year-start"
@@ -282,7 +282,7 @@ export default function AdminTerms() {
                 </select>
               </div>
               <div className="at-form-field">
-                <label className="at-form-label">Start Date</label>
+                <label className="at-form-label">Start date</label>
                 <input
                   className="at-form-input"
                   type="date"
@@ -292,7 +292,7 @@ export default function AdminTerms() {
                 />
               </div>
               <div className="at-form-field">
-                <label className="at-form-label">End Date</label>
+                <label className="at-form-label">End date</label>
                 <input
                   className="at-form-input"
                   type="date"

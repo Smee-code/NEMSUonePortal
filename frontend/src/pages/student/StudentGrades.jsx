@@ -121,7 +121,7 @@ export default function StudentGrades() {
         <div>
           <div className="eyebrow">Academic · {formatUnits(totalUnitsEarned)} units earned</div>
           <h2>My <em>grades</em></h2>
-          <div className="sub">Midterm and final grades for the current term, with your full grade history per academic semester.</div>
+          <div className="sub">Midterm and final grades for the current term, with your full grade history per term.</div>
         </div>
       </div>
 
@@ -132,7 +132,7 @@ export default function StudentGrades() {
       {grades.length === 0 && !error ? (
         <div className="stu-empty">
           <i className="ti ti-school" />
-          <p>No grades available yet. Grades appear here once your faculty submits them.</p>
+          <p>No grades available yet. Grades appear here once your instructors submit them.</p>
         </div>
       ) : (
         <>
@@ -170,7 +170,7 @@ export default function StudentGrades() {
                   <div className="gr-ticks">
                     <span>1.00 · Excellent</span>
                     <span className="gr-tick-mid">3.00 · Passing</span>
-                    <span>5.00 · Failed</span>
+                    <span>5.00 · Failing</span>
                   </div>
                 </div>
               )}
@@ -214,7 +214,7 @@ export default function StudentGrades() {
                       <th className="num" style={{ width: 56 }}>Units</th>
                       <th className="num" style={{ width: 78 }}>Midterm</th>
                       <th className="num" style={{ width: 78 }}>Final</th>
-                      <th className="num" style={{ width: 96 }}>Final Grade</th>
+                      <th className="num" style={{ width: 96 }}>Final grade</th>
                       <th style={{ width: 120 }}>Remarks</th>
                     </tr>
                   </thead>
@@ -262,12 +262,23 @@ export default function StudentGrades() {
   );
 }
 
+// Remark for a grade that has none recorded. INC and DRP are not numbers, so
+// they must not fall through to "Failed".
+function gradeRemark(grade) {
+  const n = parseFloat(grade);
+  if (!Number.isNaN(n)) return n <= 3.0 ? 'Passed' : 'Failed';
+  const s = String(grade || '').trim().toUpperCase();
+  if (s.startsWith('INC')) return 'Incomplete';
+  if (s.startsWith('DR')) return 'Dropped';
+  return s || 'No grade';
+}
+
 function RemarkTag({ r }) {
   if (!r.is_submitted) return <span className="gr-tag gr-tag--pend">Not yet posted</span>;
   const passed = parseFloat(r.grade) <= 3.0;
   return (
     <span className={`gr-tag gr-tag--${passed ? 'pass' : 'fail'}`}>
-      {r.remarks || (passed ? 'Passed' : 'Failed')}
+      {r.remarks || gradeRemark(r.grade)}
     </span>
   );
 }
@@ -437,14 +448,14 @@ function TermHistorySection({ term, gpa, totalUnits, defaultOpen = false }) {
                     <div className="gh-gval" style={{ color: gradeColor(r.final_grade) }}>{r.final_grade ?? '—'}</div>
                   </div>
                   <div className="gh-grade gh-final">
-                    <div className="gh-glabel">Final Grade</div>
+                    <div className="gh-glabel">Final grade</div>
                     <div className="gh-gval" style={{ color: gradeColor(r.grade) }}>{r.grade ?? '—'}</div>
                   </div>
                 </div>
                 <div className="gh-remark">
                   {r.is_submitted ? (
                     <span className={`gr-tag gr-tag--${passed ? 'pass' : 'fail'}`}>
-                      {r.remarks || (passed ? 'Passed' : 'Failed')}
+                      {r.remarks || gradeRemark(r.grade)}
                     </span>
                   ) : (
                     <span className="gr-tag gr-tag--pend">Not yet posted</span>

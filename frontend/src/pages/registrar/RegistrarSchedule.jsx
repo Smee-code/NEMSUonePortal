@@ -1379,7 +1379,7 @@ export default function RegistrarSchedule() {
           {needRoomCount > 0 && (
             <div className="sched-needroom-banner">
               <i className="ti ti-alert-triangle" />
-              <span><strong>{needRoomCount}</strong> faculty meeting{needRoomCount !== 1 ? 's' : ''} {needRoomCount !== 1 ? 'have' : 'has'} no room yet — click <strong>Assign room</strong> on a meeting to set it.</span>
+              <span><strong>{needRoomCount}</strong> class meeting{needRoomCount !== 1 ? 's' : ''} {needRoomCount !== 1 ? 'have' : 'has'} no room yet — click <strong>Assign room</strong> on a meeting to set it.</span>
             </div>
           )}
           <div className="sched-cgroups">
@@ -1403,8 +1403,8 @@ export default function RegistrarSchedule() {
                     </span>
                     <span className="sched-cgroup-r">
                       {g.needRoom > 0 && (
-                        <span className="sched-cgroup-need" title={`${g.needRoom} meeting${g.needRoom !== 1 ? 's' : ''} still need a room`}>
-                          <i className="ti ti-alert-triangle" /> {g.needRoom} need room
+                        <span className="sched-cgroup-need" title={`${g.needRoom} meeting${g.needRoom !== 1 ? 's still need' : ' still needs'} a room`}>
+                          <i className="ti ti-alert-triangle" /> {g.needRoom} without a room
                         </span>
                       )}
                       <i className={`ti ti-chevron-${open ? 'up' : 'down'} sched-dept-chev`} />

@@ -22,8 +22,8 @@ const YEAR_LEVEL_OPTIONS = [
   { value: '4', label: '4th Year' },
 ];
 const TERM_OPTIONS = [
-  { value: 'first', label: 'First Term' },
-  { value: 'second', label: 'Second Term' },
+  { value: 'first', label: 'First Semester' },
+  { value: 'second', label: 'Second Semester' },
 ];
 
 const DECLARE_DAYS = [
@@ -414,7 +414,7 @@ export default function FacultyTeachingLoad() {
       <div className="page-head">
         <div>
           <div className="eyebrow">Faculty · {selectedTermLabel}</div>
-          <h2>Teaching <em>Load</em></h2>
+          <h2>Teaching <em>load</em></h2>
           <div className="sub">The subjects you teach this term and their weekly meeting times. Declare a subject, then add its schedule slots so your students can see them.</div>
         </div>
         <div className="actions">

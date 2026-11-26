@@ -213,7 +213,7 @@ export default function FacultyDashboard() {
                 <h4>This term<span>{termLabel}</span></h4>
               </div>
               <div style={{ padding: '0 1.5rem' }}>
-                <StatRow label="Total units" sub=" · contact hours" value={totalUnits} />
+                <StatRow label="Total units" value={totalUnits} />
                 <StatRow label="Teaching days / week" value={teachingDays} />
                 <StatRow label="Avg class size" value={avgClass || '—'} />
                 <StatRow label="Classes today" value={todaySlots.length} />
@@ -225,7 +225,7 @@ export default function FacultyDashboard() {
           <div className="sec-head">
             <div>
               <h3>Grade <em>encoding</em></h3>
-              <div className="sub">Your sections this term. Open a grade sheet to encode midterm and final scores.</div>
+              <div className="sub">Your sections this term. Open a grade sheet to encode midterm and final grades.</div>
             </div>
             <Link to="/faculty/grades" className="sec-action">
               <i className="ti ti-pencil" style={{ fontSize: 13 }} /> Encode grades
@@ -235,7 +235,7 @@ export default function FacultyDashboard() {
           {sections === 0 ? (
             <div className="card" style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, padding: '2.5rem 1.5rem', marginBottom: '1.75rem' }}>
               <i className="ti ti-books" style={{ fontSize: 26, display: 'block', marginBottom: 8, color: 'var(--faint)' }} />
-              No sections assigned to you this term.
+              No subjects assigned to you this term.
             </div>
           ) : (
             <div style={{ background: '#fff', border: '1px solid var(--line)', marginBottom: '1.75rem' }}>
@@ -277,7 +277,7 @@ export default function FacultyDashboard() {
           </div>
           <div className="quick-actions">
             {[
-              { icon: 'ti-pencil',   label: 'Encode grades',     sub: 'Update midterm and final scores',  to: '/faculty/grades'        },
+              { icon: 'ti-pencil',   label: 'Encode grades',     sub: 'Update midterm and final grades',  to: '/faculty/grades'        },
               { icon: 'ti-calendar', label: 'View schedule',     sub: 'Check your weekly teaching load',  to: '/faculty/schedule'      },
               { icon: 'ti-users',    label: 'Class roster',      sub: 'View enrolled students per class', to: '/faculty/roster'        },
               { icon: 'ti-bell',     label: 'Announcements',     sub: 'Read the latest campus bulletins',  to: '/faculty/announcements' },

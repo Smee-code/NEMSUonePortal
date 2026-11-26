@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { titleCase } from '../utils/text';
 import AuthModal from '../components/AuthModal';
+import ConsentCheckbox from '../components/ConsentCheckbox';
+import { MARRIAGE_CERT, needsMarriageCert } from '../data/admissionDocs';
 
 // Admission-form fields that auto-capitalize each word (names, places, schools).
 const CAP_FIELDS = new Set([
@@ -731,8 +733,8 @@ const LIFE = [
 const PORTALS = [
   { kind:'For students',    name:'Student Portal',    action:'login'  },
   { kind:'For faculty',     name:'Faculty Portal',    action:'login'  },
-  { kind:'For registrar',   name:'Registrar Console', action:'login'  },
-  { kind:'Incoming freshmen', name:'Apply Now',       action:'enroll' },
+  { kind:'For the registrar',   name:'Registrar Console', action:'login'  },
+  { kind:'Incoming freshmen', name:'Apply now',       action:'enroll' },
 ];
 
 const PILLARS = [
@@ -1078,7 +1080,7 @@ function Topbar({ onLogin, onSignup }) {
           <span className="topbar-portal-pill">
             <i className="ti ti-lock" style={{ fontSize: 10 }} /> Portal access
           </span>
-          <a role="button" tabIndex={0} onClick={onLogin} style={{ cursor: 'pointer' }}>Log in</a>
+          <a role="button" tabIndex={0} onClick={onLogin} style={{ cursor: 'pointer' }}>Sign in</a>
           <span className="divider">·</span>
           <a role="button" tabIndex={0} onClick={onSignup} style={{ cursor: 'pointer' }}>Sign up</a>
         </div>
@@ -1147,7 +1149,7 @@ function Navbar({ scrolled, onEnroll, onLogin, onSignup, activeNav, onNavClick }
             </nav>
             <div className="nav-mobile-foot">
               <button type="button" className="nav-mobile-secondary" onClick={() => { close(); onLogin(); }}>
-                <i className="ti ti-login-2" /> Log in
+                <i className="ti ti-login-2" /> Sign in
               </button>
               <button type="button" className="nav-mobile-secondary" onClick={() => { close(); onSignup(); }}>
                 <i className="ti ti-user-plus" /> Sign up
@@ -1272,7 +1274,7 @@ function Spotlight({ content }) {
 function InfoStrip() {
   const cells = [
     { icon: 'ti-calendar-event', label: 'Enrollment period', val: 'Announced each semester' },
-    { icon: 'ti-building',       label: 'Registrar office',  val: 'Mon – Fri · 8:00 AM – 5:00 PM' },
+    { icon: 'ti-building',       label: 'Registrar’s Office',  val: 'Mon – Fri · 8:00 AM – 5:00 PM' },
     { icon: 'ti-map-pin',        label: 'Campus location',   val: 'Cantilan, Surigao del Sur' },
     { icon: 'ti-mail',           label: 'Contact',           val: 'cantilan@nemsu.edu.ph' },
   ];
@@ -1572,14 +1574,14 @@ function CtaBand({ onEnroll, onLogin, term }) {
       <div className="cta-inner">
         <div>
           <h2 className="h-section">Ready to begin your journey?</h2>
-          <p>Submit your enrollment online for A.Y. {year}. Whether you're an incoming freshman, transferee, shiftee, or returning student, you can apply in minutes.</p>
+          <p>Submit your application online for A.Y. {year}. Whether you're an incoming freshman, a transferee, or a returning student, you can apply in minutes.</p>
         </div>
         <div className="cta-actions">
           <button className="btn btn-gold" onClick={onEnroll}>
             Apply for admission
           </button>
           <button className="btn btn-onDark-ghost" onClick={onLogin}>
-            <i className="ti ti-login" /> Student login
+            <i className="ti ti-login" /> Student sign-in
           </button>
         </div>
       </div>
@@ -1613,7 +1615,7 @@ function Footer({ onEnroll, onLogin, onSignup }) {
           <div>
             <h5>Portal</h5>
             <div className="footer-links">
-              <a onClick={onLogin} style={{ cursor: 'pointer' }}>Log in</a>
+              <a onClick={onLogin} style={{ cursor: 'pointer' }}>Sign in</a>
               <a onClick={onSignup} style={{ cursor: 'pointer' }}>Sign up</a>
               <a onClick={onEnroll} style={{ cursor: 'pointer' }}>Apply for admission</a>
               <a href="#news">News &amp; updates</a>
@@ -1676,7 +1678,7 @@ function DetailModal({ item, onClose }) {
 function AdmissionIntroModal({ onClose, onStart, onLogin }) {
   const steps = [
     { icon: 'ti-writing', t: 'Take the entrance examination first', d: 'New & transferee applicants must take the NEMSU Cantilan college entrance examination before applying. Keep your exam result / admission slip — you’ll upload it here.' },
-    { icon: 'ti-folder', t: 'Gather & upload your documents', d: 'Prepare your requirements (Form 138, PSA birth certificate, good moral, your entrance-exam result, etc.) and upload them in the application.' },
+    { icon: 'ti-folder', t: 'Gather & upload your documents', d: 'Prepare your requirements (Form 138, PSA birth certificate, good moral certificate, your entrance-exam result, etc.) and upload them in the application.' },
     { icon: 'ti-checklist', t: 'We validate & notify you', d: 'The campus reviews your submission and emails you the status of your admission.' },
   ];
   return (
@@ -1687,7 +1689,7 @@ function AdmissionIntroModal({ onClose, onStart, onLogin }) {
             <img src="/logo.png" alt="NEMSU" />
             <div>
               <div className="name">NEMSUOne</div>
-              <div className="sub">Freshman admission</div>
+              <div className="sub">Admission</div>
             </div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">
@@ -1721,7 +1723,7 @@ function AdmissionIntroModal({ onClose, onStart, onLogin }) {
           </button>
           <p className="lead" style={{ fontSize: 12, marginTop: '1rem', textAlign: 'center' }}>
             Already a student with an account?{' '}
-            <a onClick={onLogin} style={{ color: 'var(--ink)', fontWeight: 600, cursor: 'pointer' }}>Log in instead</a>
+            <a onClick={onLogin} style={{ color: 'var(--ink)', fontWeight: 600, cursor: 'pointer' }}>Sign in instead</a>
           </p>
         </div>
         <div className="modal-foot">
@@ -1737,7 +1739,7 @@ function AdmissionIntroModal({ onClose, onStart, onLogin }) {
 ══════════════════════════════════════════════════════════════ */
 /* Searchable program picker — reliable filtered suggestions (datalist is
    inconsistent across browsers), keyboard-navigable. */
-function ProgramSearchSelect({ value, options, onChange }) {
+function ProgramSearchSelect({ value, options, onChange, invalid = false }) {
   const [open, setOpen]   = useState(false);
   const [query, setQuery] = useState('');
   const [hi, setHi]       = useState(0);
@@ -1764,7 +1766,8 @@ function ProgramSearchSelect({ value, options, onChange }) {
   return (
     <div ref={boxRef} style={{ position:'relative' }}>
       <input
-        style={fInput}
+        style={{ ...fInput, ...(invalid ? fInvalid : null) }}
+        required aria-invalid={invalid || undefined}
         value={open ? query : value}
         onChange={e => { setQuery(e.target.value); setOpen(true); setHi(0); }}
         onFocus={() => { setQuery(''); setOpen(true); setHi(0); }}
@@ -1795,7 +1798,12 @@ function ProgramSearchSelect({ value, options, onChange }) {
 /* Cascading PH address picker: Province -> Town/City -> Barangay (PSGC data
    served by the backend, loaded per-province). Each level filters the next, with
    an "Other (type manually)" fallback so no applicant is blocked by missing data. */
-function AddressCascade({ province, town, brgy, zip, onField }) {
+function AddressCascade({ province, town, brgy, zip, onField, errors = {} }) {
+  // Required-field feedback: `errors` maps a field key to its message once the
+  // applicant has tried to continue with that field empty.
+  const st  = k => ({ ...fInput, ...(errors[k] ? fInvalid : null) });
+  const bad = k => (errors[k] ? true : undefined);
+  const msg = k => (errors[k] ? <p role="alert" style={fErrMsg}>{errors[k]}</p> : null);
   const [provinces, setProvinces] = useState([]);
   const [cities, setCities]       = useState({});   // { "City Name": ["Barangay", …] }
   const [loadingBrgy, setLoading] = useState(false);
@@ -1835,40 +1843,44 @@ function AddressCascade({ province, town, brgy, zip, onField }) {
       <div className="adm-row">
         <div className="flow-field">
           <label style={fLabel}>Province</label>
-          <select style={fInput} value={province} onChange={e => onProvince(e.target.value)}>
+          <select style={st('addr_province')} required aria-invalid={bad('addr_province')} value={province} onChange={e => onProvince(e.target.value)}>
             <option value="">Select province…</option>
             {provinces.map(p => <option key={p.slug} value={p.name}>{p.name}</option>)}
           </select>
+          {msg('addr_province')}
         </div>
         <div className="flow-field">
           <label style={fLabel}>Town / City</label>
           {manTown ? (
-            <input style={fInput} value={town} onChange={e => onField('addr_town', e.target.value)} placeholder="Type your town / city" />
+            <input style={st('addr_town')} required aria-invalid={bad('addr_town')} value={town} onChange={e => onField('addr_town', e.target.value)} placeholder="Type your town / city" />
           ) : (
-            <select style={fInput} value={town} onChange={e => onTown(e.target.value)} disabled={!province || loadingBrgy}>
+            <select style={st('addr_town')} required aria-invalid={bad('addr_town')} value={town} onChange={e => onTown(e.target.value)} disabled={!province || loadingBrgy}>
               <option value="">{!province ? 'Select province first' : loadingBrgy ? 'Loading…' : 'Select town / city…'}</option>
               {cityNames.map(c => <option key={c} value={c}>{c}</option>)}
               {province && !loadingBrgy && <option value="__other__">Other (type manually)…</option>}
             </select>
           )}
+          {msg('addr_town')}
         </div>
       </div>
       <div className="adm-row">
         <div className="flow-field">
           <label style={fLabel}>Barangay</label>
           {manBrgy ? (
-            <input style={fInput} value={brgy} onChange={e => onField('addr_brgy', e.target.value)} placeholder="Type your barangay" />
+            <input style={st('addr_brgy')} required aria-invalid={bad('addr_brgy')} value={brgy} onChange={e => onField('addr_brgy', e.target.value)} placeholder="Type your barangay" />
           ) : (
-            <select style={fInput} value={brgy} onChange={e => onBrgy(e.target.value)} disabled={!town}>
+            <select style={st('addr_brgy')} required aria-invalid={bad('addr_brgy')} value={brgy} onChange={e => onBrgy(e.target.value)} disabled={!town}>
               <option value="">{!town ? 'Select town first' : 'Select barangay…'}</option>
               {brgyList.map(bn => <option key={bn} value={bn}>{bn}</option>)}
               {town && <option value="__other__">Other (type manually)…</option>}
             </select>
           )}
+          {msg('addr_brgy')}
         </div>
         <div className="flow-field">
           <label style={fLabel}>ZIP code</label>
-          <input style={fInput} value={zip} onChange={e => onField('zip', e.target.value)} placeholder="8317" inputMode="numeric" />
+          <input style={st('zip')} required aria-invalid={bad('zip')} value={zip} onChange={e => onField('zip', e.target.value)} placeholder="8317" inputMode="numeric" />
+          {msg('zip')}
         </div>
       </div>
       {(manTown || manBrgy) && (
@@ -1893,6 +1905,11 @@ function EnrollmentModal({ onClose, term, programs }) {
   const [submitErr, setSubErr] = useState('');
   const [emailTouched, setEmailTouched] = useState(false);
   const [emailTaken, setEmailTaken] = useState(false);
+  // Required-field feedback: { fieldKey: message } for the fields the applicant
+  // left empty or filled in wrongly when they last tried to continue.
+  const [fieldErrs, setFieldErrs] = useState({});
+  // Terms and Conditions + Data Privacy consent (RA 10173); required to submit.
+  const [consent, setConsent] = useState(false);
   const [checked, setChecked] = useState({});
   const [selSubj, setSelSubj] = useState(
     () => SUBJECTS.reduce((a, s) => ({ ...a, [s.code]: true }), {})
@@ -1949,9 +1966,43 @@ function EnrollmentModal({ onClose, term, programs }) {
   const totalSteps = sideSteps.length;
   const stepNow    = Math.min(step, totalSteps);
 
+  // Documents asked for on step 4: the standard list for the applicant type,
+  // plus a marriage certificate when they declared a Married civil status.
+  const married = needsMarriageCert(type, form.civil_status);
+  const reqs = married
+    ? [...(ALL_REQUIREMENTS[type] || []),
+       { group: 'Civil status verification', items: [{ id: 'marriage', label: MARRIAGE_CERT, tag: 'Required' }] }]
+    : (ALL_REQUIREMENTS[type] || []);
+
   // Name / place fields get title-cased as they're typed; email, contact, dates,
   // IDs, year numbers, etc. are left exactly as entered.
-  const update  = (k, v) => setForm(p => ({ ...p, [k]: CAP_FIELDS.has(k) ? titleCase(v) : v }));
+  const update  = (k, v) => {
+    setForm(p => ({ ...p, [k]: CAP_FIELDS.has(k) ? titleCase(v) : v }));
+    // Editing a flagged field clears its warning.
+    setFieldErrs(e => { if (!e[k]) return e; const n = { ...e }; delete n[k]; return n; });
+  };
+
+  // Props + inline message for a required field, keyed by its form field name.
+  const fx   = (k, extra) => ({
+    required: true,
+    'aria-invalid': fieldErrs[k] ? true : undefined,
+    style: { ...fInput, ...extra, ...(fieldErrs[k] ? fInvalid : null) },
+  });
+  const ferr = k => (fieldErrs[k] ? <p role="alert" style={fErrMsg}>{fieldErrs[k]}</p> : null);
+
+  // Show the warnings for a failed step: highlight each field, summarise in the
+  // banner, and move focus to the first one so the applicant lands on the fix.
+  const flagErrors = (errs) => {
+    const keys = Object.keys(errs);
+    setFieldErrs(errs);
+    setSubErr(keys.length === 1
+      ? errs[keys[0]]
+      : `${keys.length} required fields still need your attention. They are highlighted in red.`);
+    requestAnimationFrame(() => {
+      const el = document.querySelector('.wiz-main [aria-invalid="true"]');
+      if (el) { try { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { /* ignore */ } }
+    });
+  };
 
   // Date of birth is a typable MM/DD/YYYY field; auto-insert the slashes as the
   // applicant types, and convert to ISO (YYYY-MM-DD) for the API.
@@ -2002,54 +2053,79 @@ function EnrollmentModal({ onClose, term, programs }) {
   // applicant can change their type; deeper steps go one step back.
   const back = () => {
     setSubErr('');
+    setFieldErrs({});
     if (type !== 'returnee' && step > 1) return go(step - 1);
     return setType(null);
   };
 
   // All fields are required except: middle name, suffix, spouse (unless married),
   // and the transferee-only "last school" fields.
+  // Returns { fieldKey: message } for every problem on the step (empty = valid),
+  // in the order the fields appear, so each one can be highlighted in place.
   const validateStep = (s) => {
     const req = (v) => !!(v && String(v).trim());
+    const errs = {};
+    const need = (k, msg) => { if (!req(form[k])) errs[k] = msg; };
     if (s === 1) {
-      if (!req(form.first) || !req(form.last)) return 'Enter your first and last name.';
-      if (!req(form.email)) return 'Enter your email address.';
-      if (!emailAcceptable(form.email)) {
+      need('first', 'Enter your first name.');
+      need('last', 'Enter your last name.');
+      if (!dobToISO(form.dob)) errs.dob = 'Enter a valid date of birth (MM/DD/YYYY).';
+      need('birthplace', 'Enter your birthplace.');
+      need('citizenship', 'Enter your citizenship.');
+      need('religion', 'Enter your religion.');
+      need('ethnicity', 'Enter your ethnicity.');
+      need('contact', 'Enter your contact number.');
+      if (!req(form.email)) errs.email = 'Enter your email address.';
+      else if (!emailAcceptable(form.email)) {
         setEmailTouched(true);
-        const s = suggestEmail(form.email);
-        return s ? `Check your email — did you mean ${s}?` : 'Enter a valid email address.';
-      }
-      if (emailTaken) {
+        const sug = suggestEmail(form.email);
+        errs.email = sug ? `Check your email — did you mean ${sug}?` : 'Enter a valid email address.';
+      } else if (emailTaken) {
         setEmailTouched(true);
-        return 'This email is already in use. Please use another email address.';
+        errs.email = 'This email is already in use. Please use another email address.';
       }
-      if (!req(form.contact)) return 'Enter your contact number.';
-      if (!dobToISO(form.dob)) return 'Enter a valid date of birth (MM/DD/YYYY).';
-      if (!req(form.birthplace)) return 'Enter your birthplace.';
-      if (!req(form.citizenship)) return 'Enter your citizenship.';
-      if (!req(form.religion)) return 'Enter your religion.';
-      if (!req(form.ethnicity)) return 'Enter your ethnicity.';
-      if (!req(form.program)) return 'Select your program.';
+      need('program', 'Select your program.');
     }
     if (s === 2) {
-      if (!req(form.addr_brgy) || !req(form.addr_town) || !req(form.addr_province)) return 'Complete your current address (Brgy, Town, Province).';
-      if (!req(form.zip)) return 'Enter your ZIP code.';
-      if (form.civil_status === 'Married' && (!req(form.spouse_name) || !req(form.spouse_address))) return 'Enter your spouse’s name and address.';
-      if (!req(form.father_name) || !req(form.mother_name)) return 'Enter your parents’ names.';
-      if (!req(form.parent_address)) return 'Enter your parent/guardian address.';
+      need('addr_province', 'Select your province.');
+      need('addr_town', 'Select your town or city.');
+      need('addr_brgy', 'Select your barangay.');
+      need('zip', 'Enter your ZIP code.');
+      if (form.civil_status === 'Married') {
+        need('spouse_name', 'Enter your spouse’s name.');
+        need('spouse_address', 'Enter your spouse’s address.');
+      }
+      need('father_name', 'Enter your father’s name.');
+      need('mother_name', 'Enter your mother’s name.');
+      need('parent_address', 'Enter your parent or guardian’s address.');
     }
     if (s === 3) {
-      if (!req(form.elem_school) || !req(form.elem_year) || !req(form.elem_address)) return 'Complete your Elementary school details.';
-      if (!req(form.jhs_school) || !req(form.jhs_year) || !req(form.jhs_address)) return 'Complete your Junior High School details.';
-      if (!req(form.shs_school) || !req(form.shs_year) || !req(form.shs_address)) return 'Complete your Senior High School details.';
-      if (type === 'transferee' && (!req(form.last_school) || !req(form.last_year))) return 'Enter the school last attended and year graduated.';
+      for (const [k, label] of [['elem', 'elementary school'], ['jhs', 'junior high school'], ['shs', 'senior high school']]) {
+        need(`${k}_school`, `Enter the name of your ${label}.`);
+        need(`${k}_year`, 'Enter the year you graduated.');
+        need(`${k}_address`, `Enter the address of your ${label}.`);
+      }
+      if (type === 'transferee') {
+        need('last_school', 'Enter the school you last attended.');
+        need('last_year', 'Enter the year you graduated or last attended.');
+      }
     }
-    return null;
+    // Unlike the other documents (which can follow later), a Married applicant
+    // cannot continue without the marriage certificate that verifies it.
+    if (s === 4 && married && !files.marriage) {
+      errs.marriage_cert = 'Upload your marriage certificate to continue. It is required because your civil status is Married.';
+    }
+    if (s === totalSteps && !consent) {
+      errs.consent = 'Please agree to the Terms and Conditions and the Data Privacy Consent to submit your application.';
+    }
+    return errs;
   };
 
   const next = () => {
     if (type === 'returnee') return handleReturneeSubmit();
-    const err = validateStep(step);
-    if (err) { setSubErr(err); return; }
+    const errs = validateStep(step);
+    if (Object.keys(errs).length) { flagErrors(errs); return; }
+    setFieldErrs({});
     setSubErr('');
     return step < totalSteps ? go(step + 1) : handleSubmit();
   };
@@ -2059,18 +2135,22 @@ function EnrollmentModal({ onClose, term, programs }) {
   // approves it, and the system then emails the student their login password.
   const handleReturneeSubmit = async () => {
     setSubErr('');
-    if (!form.student_id.trim())  { setSubErr('Enter your Student ID.'); return; }
-    if (!form.email.trim())       { setSubErr('Enter your institutional email.'); return; }
-    if (!emailAcceptable(form.email)) {
+    const errs = {};
+    if (!form.student_id.trim()) errs.student_id = 'Enter your Student ID.';
+    if (!form.email.trim()) errs.email = 'Enter your institutional email.';
+    else if (!emailAcceptable(form.email)) {
       setEmailTouched(true);
       const s = suggestEmail(form.email);
-      setSubErr(s ? `Check your email — did you mean ${s}?` : 'Enter a valid email address.');
-      return;
+      errs.email = s ? `Check your email — did you mean ${s}?` : 'Enter a valid email address.';
     }
+    if (!consent) errs.consent = 'Please agree to the Terms and Conditions and the Data Privacy Consent to submit your application.';
+    if (Object.keys(errs).length) { flagErrors(errs); return; }
+    setFieldErrs({});
     setSub(true);
     try {
       const res = await api.post('/enrollment/public/pre-enroll/', {
         student_type: 'returnee',
+        privacy_consent: true,
         student_id:   form.student_id.trim(),
         email:        form.email.trim(),
       });
@@ -2114,13 +2194,18 @@ function EnrollmentModal({ onClose, term, programs }) {
         program_id: progObj?.id, program_name: form.program,
         year_level: yearLevel,
         details,
+        privacy_consent: consent,
       });
       const ref = res.data?.reference_number
         || `NEMSU-${new Date().getFullYear()}-${String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5)}`;
       // Attach the uploaded document PDFs to the new application.
       const pid = res.data?.pending_id;
       if (pid) {
-        for (const { file, label } of Object.values(files)) {
+        // Only what the form currently asks for: a marriage certificate picked
+        // before the applicant changed their civil status is left out.
+        const wanted = new Set(reqs.flatMap(g => g.items).map(it => it.id));
+        for (const [itemId, { file, label }] of Object.entries(files)) {
+          if (!wanted.has(itemId)) continue;
           const fd = new FormData();
           fd.append('requirement_label', label);
           fd.append('file', file);
@@ -2134,6 +2219,7 @@ function EnrollmentModal({ onClose, term, programs }) {
     } catch (err) {
       const data = err.response?.data;
       const msg = data?.email?.[0] || data?.program_name?.[0] || data?.student_type?.[0]
+        || data?.privacy_consent?.[0]
         || data?.non_field_errors?.[0] || data?.detail || data?.error
         || 'We couldn’t submit your application. Please check your details and try again.';
       setSubErr(msg);
@@ -2141,7 +2227,13 @@ function EnrollmentModal({ onClose, term, programs }) {
     }
   };
 
-  const reqs = ALL_REQUIREMENTS[type] || [];
+  // Required documents the applicant has not attached. Not a blocker (the
+  // registrar's follow-up email carries an upload link), but they are warned
+  // about it on the review step before submitting.
+  const missingDocs = reqs
+    .flatMap(g => g.items)
+    .filter(it => it.tag === 'Required' && !files[it.id])
+    .map(it => it.label);
 
   return (
     <div className="modal-back" onClick={onClose}>
@@ -2192,7 +2284,7 @@ function EnrollmentModal({ onClose, term, programs }) {
               <div style={{ fontFamily:"'Fraunces',Georgia,serif", fontSize:22, color:'var(--ink)' }}>{refNum}</div>
             </div>
             <p className="lead" style={{ fontSize:12, marginBottom:'1.5rem' }}>
-              You'll receive an email at <strong>{form.email || 'your email address'}</strong> letting you know if you qualified for the next step: the college entrance examination. Keep this reference number for your records.
+              You'll receive an email at <strong>{form.email || 'your email address'}</strong> letting you know the status of your admission. Keep this reference number for your records.
             </p>
             <button className="flow-btn-primary" style={{ maxWidth:220, margin:'0 auto' }} onClick={onClose}>
               Done
@@ -2206,7 +2298,7 @@ function EnrollmentModal({ onClose, term, programs }) {
             <div style={{ display: 'grid', gap: '.6rem', maxWidth: 460, margin: '1.5rem auto 0', textAlign: 'left' }}>
               {['new', 'transferee', 'returnee'].map(t => (
                 <button key={t} type="button" className="adm-type-pick"
-                  onClick={() => { setType(t); setStep(1); setSubErr(''); }}>
+                  onClick={() => { setType(t); setStep(1); setSubErr(''); setFieldErrs({}); }}>
                   <i className={`ti ${TYPE_ICONS[t]}`} style={{ fontSize: 22, color: 'var(--gold)', flexShrink: 0, marginTop: 2 }} />
                   <span style={{ flex: 1 }}>
                     <span style={{ display: 'block', fontWeight: 600, fontSize: 14, color: 'var(--ink)' }}>{TYPE_LABELS[t]}</span>
@@ -2265,17 +2357,20 @@ function EnrollmentModal({ onClose, term, programs }) {
                     <p className="wiz-sub">{type === 'returnee'
                       ? "You're already on record. Enter your Student ID and institutional email to apply. Once the registrar approves, we'll email your login password."
                       : 'Enter your details as they appear on your official documents.'}</p>
+                    {REQ_NOTE}
 
                     {type === 'returnee' ? (
                     <div className="flow-form" style={{ gap: '1rem' }}>
                       <div className="flow-field">
                         <label style={fLabel}>Student ID</label>
-                        <input style={{ ...fInput, textTransform: 'uppercase', letterSpacing: '.03em' }} value={form.student_id} onChange={e => update('student_id', e.target.value)} placeholder="2020-00001" autoComplete="off" />
+                        <input {...fx('student_id', { textTransform: 'uppercase', letterSpacing: '.03em' })} value={form.student_id} onChange={e => update('student_id', e.target.value)} placeholder="2020-00001" autoComplete="off" />
+                        {ferr('student_id')}
                       </div>
                       <div className="flow-field">
                         <label style={fLabel}>Institutional email</label>
                         <input
-                          style={{ ...fInput, ...(emailError ? { borderColor: '#dc2626' } : (emailValid && form.email) ? { borderColor: '#15803d' } : {}) }}
+                          required aria-invalid={(emailError || fieldErrs.email) ? true : undefined}
+                          style={{ ...fInput, ...((emailError || fieldErrs.email) ? fInvalid : (emailValid && form.email) ? { borderColor: '#15803d' } : {}) }}
                           type="email" value={form.email}
                           onChange={e => update('email', e.target.value)}
                           onBlur={() => setEmailTouched(true)}
@@ -2292,17 +2387,23 @@ function EnrollmentModal({ onClose, term, programs }) {
                               : 'Enter a valid email address (e.g. name@example.com).'}
                           </p>
                         )}
+                        {!emailError && ferr('email')}
                       </div>
                       <p className="lead" style={{ fontSize: 12, margin: 0, color: 'var(--muted)' }}>
                         No password needed yet. Once the registrar approves your application, we'll email your login password to this address.
                       </p>
+                      <ConsentCheckbox
+                        id="adm-consent-returnee" purpose="application"
+                        checked={consent} invalid={!!fieldErrs.consent}
+                        onChange={v => { setConsent(v); if (v) setFieldErrs(e => { const n = { ...e }; delete n.consent; return n; }); }} />
                     </div>
                     ) : (
                     <div className="flow-form" style={{ gap: '1rem' }}>
                       <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>First name</label>
-                          <input style={fInput} value={form.first} onChange={e => update('first', e.target.value)} placeholder="Juan" />
+                          <input {...fx('first')} value={form.first} onChange={e => update('first', e.target.value)} placeholder="Juan" />
+                          {ferr('first')}
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Middle name <span style={optLbl}>(optional)</span></label>
@@ -2312,7 +2413,8 @@ function EnrollmentModal({ onClose, term, programs }) {
                       <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Last name</label>
-                          <input style={fInput} value={form.last} onChange={e => update('last', e.target.value)} placeholder="Dela Cruz" />
+                          <input {...fx('last')} value={form.last} onChange={e => update('last', e.target.value)} placeholder="Dela Cruz" />
+                          {ferr('last')}
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Suffix <span style={optLbl}>(optional)</span></label>
@@ -2330,52 +2432,64 @@ function EnrollmentModal({ onClose, term, programs }) {
                       <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Date of birth</label>
-                          <input style={fInput} value={form.dob} onChange={e => onDobChange(e.target.value)} placeholder="MM/DD/YYYY" inputMode="numeric" maxLength={10} autoComplete="bday" />
+                          <input {...fx('dob')} value={form.dob} onChange={e => onDobChange(e.target.value)} placeholder="MM/DD/YYYY" inputMode="numeric" maxLength={10} autoComplete="bday" />
+                          {ferr('dob')}
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Birthplace</label>
-                          <input style={fInput} value={form.birthplace} onChange={e => update('birthplace', e.target.value)} placeholder="City / Municipality" />
+                          <input {...fx('birthplace')} value={form.birthplace} onChange={e => update('birthplace', e.target.value)} placeholder="City / Municipality" />
+                          {ferr('birthplace')}
                         </div>
                       </div>
                       <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Sex</label>
-                          <select style={fInput} value={form.sex} onChange={e => update('sex', e.target.value)}>
+                          <select style={fInput} required value={form.sex} onChange={e => update('sex', e.target.value)}>
                             <option>Male</option>
                             <option>Female</option>
                           </select>
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Civil status</label>
-                          <select style={fInput} value={form.civil_status} onChange={e => update('civil_status', e.target.value)}>
+                          <select style={fInput} required value={form.civil_status} onChange={e => update('civil_status', e.target.value)}>
                             {CIVIL_STATUS.map(c => <option key={c}>{c}</option>)}
                           </select>
+                          {married && (
+                            <p style={{ fontSize: 11.5, color: '#92400e', margin: '4px 0 0' }}>
+                              You will need to upload your marriage certificate (PDF) in the documents step (step 4).
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Citizenship</label>
-                          <input style={fInput} value={form.citizenship} onChange={e => update('citizenship', e.target.value)} placeholder="Filipino" />
+                          <input {...fx('citizenship')} value={form.citizenship} onChange={e => update('citizenship', e.target.value)} placeholder="Filipino" />
+                          {ferr('citizenship')}
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Religion</label>
-                          <input style={fInput} value={form.religion} onChange={e => update('religion', e.target.value)} placeholder="Roman Catholic" />
+                          <input {...fx('religion')} value={form.religion} onChange={e => update('religion', e.target.value)} placeholder="Roman Catholic" />
+                          {ferr('religion')}
                         </div>
                       </div>
                       <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Ethnicity</label>
-                          <input style={fInput} value={form.ethnicity} onChange={e => update('ethnicity', e.target.value)} placeholder="e.g. Surigaonon" />
+                          <input {...fx('ethnicity')} value={form.ethnicity} onChange={e => update('ethnicity', e.target.value)} placeholder="e.g. Surigaonon" />
+                          {ferr('ethnicity')}
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Contact number</label>
-                          <input style={fInput} value={form.contact} onChange={e => update('contact', e.target.value)} placeholder="09171234567" />
+                          <input {...fx('contact')} value={form.contact} onChange={e => update('contact', e.target.value)} placeholder="09171234567" />
+                          {ferr('contact')}
                         </div>
                       </div>
                       <div className="flow-field">
                         <label style={fLabel}>Email address</label>
                         <input
-                          style={{ ...fInput, ...(emailError ? { borderColor: '#dc2626' } : (emailValid && form.email) ? { borderColor: '#15803d' } : {}) }}
+                          required aria-invalid={(emailError || emailTaken || fieldErrs.email) ? true : undefined}
+                          style={{ ...fInput, ...((emailError || emailTaken || fieldErrs.email) ? fInvalid : (emailValid && form.email) ? { borderColor: '#15803d' } : {}) }}
                           type="email" value={form.email}
                           onChange={e => update('email', e.target.value)}
                           onBlur={() => setEmailTouched(true)}
@@ -2397,18 +2511,20 @@ function EnrollmentModal({ onClose, term, programs }) {
                             This email is already in use. Please use another email address.
                           </p>
                         )}
+                        {!emailError && !emailTaken && ferr('email')}
                       </div>
                       <div className="flow-field">
                         <label style={fLabel}>Program</label>
-                        <ProgramSearchSelect value={form.program} options={progList}
+                        <ProgramSearchSelect value={form.program} options={progList} invalid={!!fieldErrs.program}
                           onChange={v => update('program', v)} />
+                        {ferr('program')}
                       </div>
                       <div className="flow-field adm-yl">
                         <label style={fLabel}>Year level{type === 'new' && <span style={optLbl}> (freshman)</span>}</label>
                         {type === 'new' ? (
                           <input style={{ ...fInput, background: '#f3f4f6', color: '#6b7280' }} value="1st Year" readOnly />
                         ) : (
-                          <select style={fInput} value={form.year} onChange={e => update('year', e.target.value)}>
+                          <select style={fInput} required value={form.year} onChange={e => update('year', e.target.value)}>
                             <option value="1">1st Year</option>
                             <option value="2">2nd Year</option>
                             <option value="3">3rd Year</option>
@@ -2426,10 +2542,11 @@ function EnrollmentModal({ onClose, term, programs }) {
                   <>
                     <h4>Address &amp; family</h4>
                     <p className="wiz-sub">Your current home address and family details.</p>
+                    {REQ_NOTE}
                     <div className="flow-form" style={{ gap: '1rem' }}>
                       <AddressCascade
                         province={form.addr_province} town={form.addr_town}
-                        brgy={form.addr_brgy} zip={form.zip} onField={update} />
+                        brgy={form.addr_brgy} zip={form.zip} onField={update} errors={fieldErrs} />
 
                       {form.civil_status === 'Married' && (
                         <>
@@ -2437,11 +2554,13 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <div className="adm-row">
                             <div className="flow-field">
                               <label style={fLabel}>Spouse name</label>
-                              <input style={fInput} value={form.spouse_name} onChange={e => update('spouse_name', e.target.value)} placeholder="Full name" />
+                              <input {...fx('spouse_name')} value={form.spouse_name} onChange={e => update('spouse_name', e.target.value)} placeholder="Full name" />
+                              {ferr('spouse_name')}
                             </div>
                             <div className="flow-field">
                               <label style={fLabel}>Spouse address</label>
-                              <input style={fInput} value={form.spouse_address} onChange={e => update('spouse_address', e.target.value)} placeholder="Address" />
+                              <input {...fx('spouse_address')} value={form.spouse_address} onChange={e => update('spouse_address', e.target.value)} placeholder="Address" />
+                              {ferr('spouse_address')}
                             </div>
                           </div>
                         </>
@@ -2451,16 +2570,19 @@ function EnrollmentModal({ onClose, term, programs }) {
                       <div className="adm-row">
                         <div className="flow-field">
                           <label style={fLabel}>Father’s name</label>
-                          <input style={fInput} value={form.father_name} onChange={e => update('father_name', e.target.value)} placeholder="Full name" />
+                          <input {...fx('father_name')} value={form.father_name} onChange={e => update('father_name', e.target.value)} placeholder="Full name" />
+                          {ferr('father_name')}
                         </div>
                         <div className="flow-field">
                           <label style={fLabel}>Mother’s name</label>
-                          <input style={fInput} value={form.mother_name} onChange={e => update('mother_name', e.target.value)} placeholder="Full maiden name" />
+                          <input {...fx('mother_name')} value={form.mother_name} onChange={e => update('mother_name', e.target.value)} placeholder="Full maiden name" />
+                          {ferr('mother_name')}
                         </div>
                       </div>
                       <div className="flow-field">
                         <label style={fLabel}>Parent / Guardian address</label>
-                        <input style={fInput} value={form.parent_address} onChange={e => update('parent_address', e.target.value)} placeholder="Address" />
+                        <input {...fx('parent_address')} value={form.parent_address} onChange={e => update('parent_address', e.target.value)} placeholder="Address" />
+                        {ferr('parent_address')}
                       </div>
                     </div>
                   </>
@@ -2471,6 +2593,7 @@ function EnrollmentModal({ onClose, term, programs }) {
                   <>
                     <h4>Educational background</h4>
                     <p className="wiz-sub">Schools attended and year graduated.</p>
+                    {REQ_NOTE}
                     <div className="flow-form" style={{ gap: '1rem' }}>
                       {[
                         { key: 'elem', label: 'Elementary School' },
@@ -2482,16 +2605,19 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <div className="adm-row">
                             <div className="flow-field">
                               <label style={fLabel}>School name</label>
-                              <input style={fInput} value={form[`${lvl.key}_school`]} onChange={e => update(`${lvl.key}_school`, e.target.value)} placeholder="School name" />
+                              <input {...fx(`${lvl.key}_school`)} value={form[`${lvl.key}_school`]} onChange={e => update(`${lvl.key}_school`, e.target.value)} placeholder="School name" />
+                              {ferr(`${lvl.key}_school`)}
                             </div>
                             <div className="flow-field">
                               <label style={fLabel}>Year graduated</label>
-                              <input style={fInput} value={form[`${lvl.key}_year`]} onChange={e => update(`${lvl.key}_year`, e.target.value)} placeholder="e.g. 2024" />
+                              <input {...fx(`${lvl.key}_year`)} value={form[`${lvl.key}_year`]} onChange={e => update(`${lvl.key}_year`, e.target.value)} placeholder="e.g. 2024" inputMode="numeric" />
+                              {ferr(`${lvl.key}_year`)}
                             </div>
                           </div>
                           <div className="flow-field">
                             <label style={fLabel}>School address</label>
-                            <input style={fInput} value={form[`${lvl.key}_address`]} onChange={e => update(`${lvl.key}_address`, e.target.value)} placeholder="Address" />
+                            <input {...fx(`${lvl.key}_address`)} value={form[`${lvl.key}_address`]} onChange={e => update(`${lvl.key}_address`, e.target.value)} placeholder="Address" />
+                            {ferr(`${lvl.key}_address`)}
                           </div>
                         </div>
                       ))}
@@ -2502,11 +2628,13 @@ function EnrollmentModal({ onClose, term, programs }) {
                           <div className="adm-row">
                             <div className="flow-field">
                               <label style={fLabel}>School name</label>
-                              <input style={fInput} value={form.last_school} onChange={e => update('last_school', e.target.value)} placeholder="College / University" />
+                              <input {...fx('last_school')} value={form.last_school} onChange={e => update('last_school', e.target.value)} placeholder="College / University" />
+                              {ferr('last_school')}
                             </div>
                             <div className="flow-field">
                               <label style={fLabel}>Year graduated / last attended</label>
-                              <input style={fInput} value={form.last_year} onChange={e => update('last_year', e.target.value)} placeholder="e.g. 2023" />
+                              <input {...fx('last_year')} value={form.last_year} onChange={e => update('last_year', e.target.value)} placeholder="e.g. 2023" />
+                              {ferr('last_year')}
                             </div>
                           </div>
                         </div>
@@ -2530,8 +2658,9 @@ function EnrollmentModal({ onClose, term, programs }) {
                         </div>
                         {group.items.map(item => {
                           const f = files[item.id];
+                          const flagged = item.id === 'marriage' && !!fieldErrs.marriage_cert;
                           return (
-                            <div key={item.id} className="doc-row">
+                            <div key={item.id} className="doc-row" style={flagged ? { borderBottomColor: '#dc2626', background: '#fef2f2', padding: '11px 10px' } : undefined}>
                               <div className="doc-info">
                                 <span className="doc-label">{item.label}</span>
                                 <span style={unitPill}>{item.tag}</span>
@@ -2546,6 +2675,10 @@ function EnrollmentModal({ onClose, term, programs }) {
                                     if (file.size > 2 * 1024 * 1024) { setUpErr(`${item.label}: file must be under 2 MB.`); return; }
                                     setUpErr('');
                                     setFiles(p => ({ ...p, [item.id]: { file, label: item.label } }));
+                                    if (item.id === 'marriage') {
+                                      setSubErr('');
+                                      setFieldErrs(er => { const n = { ...er }; delete n.marriage_cert; return n; });
+                                    }
                                   }}
                                 />
                                 {f
@@ -2591,10 +2724,23 @@ function EnrollmentModal({ onClose, term, programs }) {
                         </div>
                       ))}
                     </div>
+                    {missingDocs.length > 0 && (
+                      <div role="status" style={{ display:'flex', gap:10, background:'#fffbeb', border:'1px solid #fcd34d', color:'#92400e', padding:'10px 12px', marginBottom:12, fontSize:12, lineHeight:1.55 }}>
+                        <i className="ti ti-alert-triangle" style={{ fontSize:16, flexShrink:0, marginTop:1 }} />
+                        <span>
+                          <strong>{missingDocs.length} required document{missingDocs.length !== 1 ? 's' : ''} not uploaded yet:</strong>{' '}
+                          {missingDocs.join(', ')}. You can go back to upload them, or submit now and upload them later through the link the registrar emails you. Missing documents can delay your admission.
+                        </span>
+                      </div>
+                    )}
                     <div style={hintBox}>
                       <i className="ti ti-info-circle" style={{ fontSize:16, flexShrink:0, marginTop:1 }} />
-                      <span style={{ fontSize:12 }}>After submitting, the campus validates your documents and emails you if you qualify for the entrance examination.</span>
+                      <span style={{ fontSize:12 }}>After submitting, the campus validates your documents and emails you the status of your admission.</span>
                     </div>
+                    <ConsentCheckbox
+                      id="adm-consent" purpose="application"
+                      checked={consent} invalid={!!fieldErrs.consent}
+                      onChange={v => { setConsent(v); if (v) setFieldErrs(e => { const n = { ...e }; delete n.consent; return n; }); }} />
                   </>
                 )}
               </div>
@@ -2634,6 +2780,15 @@ const panel      = dir => ({ display:'flex', flexDirection:'column', flex:1, ani
 const fLabel     = { fontSize:11, fontWeight:700, color:'#5a7a9a', display:'block', marginBottom:5, textTransform:'uppercase', letterSpacing:'.05em' };
 const optLbl     = { fontWeight:400, color:'var(--muted)', textTransform:'none', letterSpacing:0 };
 const fInput     = { width:'100%', padding:'9px 12px', border:'1px solid #d0dcea', borderRadius:8, fontSize:13, background:'#fff', color:'#0a1628', outline:'none', boxSizing:'border-box' };
+// A required field left empty or filled in wrongly, after the applicant tries to continue.
+const fInvalid   = { borderColor:'#dc2626', background:'#fef2f2' };
+const fErrMsg    = { color:'#dc2626', fontSize:11.5, margin:'4px 0 0', fontWeight:500 };
+// Legend shown at the top of each step that has required fields.
+const REQ_NOTE   = (
+  <p style={{ fontSize:12, color:'var(--muted)', margin:'-4px 0 12px' }}>
+    Fields marked <span style={{ color:'#dc2626', fontWeight:700 }}>*</span> are required.
+  </p>
+);
 const progDrop   = { position:'absolute', top:'calc(100% + 4px)', left:0, right:0, zIndex:40, margin:0, padding:'4px 0', listStyle:'none', background:'#fff', border:'1px solid #d0dcea', borderRadius:8, boxShadow:'0 8px 24px rgba(10,58,110,.14)', maxHeight:220, overflowY:'auto' };
 const progOpt    = { padding:'8px 12px', fontSize:13, color:'#0a1628', cursor:'pointer', whiteSpace:'normal' };
 const hintBox    = { padding:'12px 14px', border:'1px solid #c8d8f0', borderRadius:8, background:'#f0f6ff', fontSize:12, color:'#2a4a6e', display:'flex', gap:8, alignItems:'flex-start' };

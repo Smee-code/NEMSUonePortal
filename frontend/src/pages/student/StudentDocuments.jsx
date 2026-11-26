@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../components/Toast';
 
@@ -17,7 +17,61 @@ const TRACKER_STEPS = [
   { key: 'released',   label: 'Released',   icon: 'ti-circle-check' },
 ];
 
-const EMPTY_FORM = { document_type: '', purpose: '', copies: 1 };
+const EMPTY_FORM = { document_type: '', purpose: '', copies: 1, preferred_pickup_date: '' };
+
+// A date with no time ("2026-12-03"), parsed from its parts so it never shifts
+// a day through timezone conversion.
+const dayFromISO = iso => { const [y, m, d] = (iso || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : null; };
+const fmtDay = (iso, opts = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) => {
+  const d = dayFromISO(iso);
+  return d ? d.toLocaleDateString('en-PH', opts) : '';
+};
+
+/* Pop-up shown before a request is made: what the student must prepare or
+   bring for this document, plus its fee and processing time. */
+function RequirementsDialog({ doc, inForm, onClose, onRequest }) {
+  const btnRef = useRef(null);
+  useEffect(() => { btnRef.current?.focus(); }, []);
+  return (
+    <div className="dr-reqs-back" onMouseDown={onClose}>
+      <div className="dr-reqs" role="alertdialog" aria-modal="true" aria-labelledby="dr-reqs-title" aria-describedby="dr-reqs-body" onMouseDown={e => e.stopPropagation()}>
+        <div className="dr-reqs-head">
+          <i className="ti ti-clipboard-list" aria-hidden="true" />
+          <div>
+            <div className="dr-reqs-kicker">Before you request</div>
+            <h4 id="dr-reqs-title">{doc.label}</h4>
+          </div>
+        </div>
+        <div id="dr-reqs-body" className="dr-reqs-body">
+          {doc.requirements.length > 0 ? (
+            <>
+              <p>Please prepare the following:</p>
+              <ul>
+                {doc.requirements.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </>
+          ) : (
+            <p>The Registrar’s Office has not listed specific requirements for this document. Bring a valid ID when you claim it.</p>
+          )}
+          <div className="dr-reqs-facts">
+            <span><b>Fee</b> ₱{doc.fee} per copy</span>
+            {doc.days && <span><b>Processing</b> {doc.days} working days</span>}
+          </div>
+        </div>
+        <div className="dr-reqs-foot">
+          {inForm ? (
+            <button ref={btnRef} type="button" className="btn-pri" onClick={onClose}>I understand</button>
+          ) : (
+            <>
+              <button type="button" className="btn-sec" onClick={onClose}>Close</button>
+              <button ref={btnRef} type="button" className="btn-pri" onClick={onRequest}>Request this document</button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function StatusTracker({ status }) {
   if (status === 'rejected') {
@@ -60,6 +114,8 @@ export default function StudentDocuments() {
   const [form, setForm]               = useState(EMPTY_FORM);
   const [submitting, setSubmitting]   = useState(false);
   const [docTypes, setDocTypes]       = useState([]);
+  // Code of the document whose requirements pop-up is open (null = closed).
+  const [reqsFor, setReqsFor]         = useState(null);
 
   function fetchRequests() {
     setLoading(true);
@@ -76,34 +132,63 @@ export default function StudentDocuments() {
       .then(res => setDocTypes((res.data || []).map(d => ({
         value: d.code, label: d.name, fee: parseFloat(d.fee),
         days: d.processing_days, desc: d.description,
+        requirements: d.requirements_list || [],
+        earliest: d.earliest_pickup_date, latest: d.latest_pickup_date,
       }))))
       .catch(() => { /* leave catalog empty on failure */ });
   }, []);
 
+  // Opening the form for a known document shows its requirements first.
   function openForm(docType = '') {
     setForm({ ...EMPTY_FORM, document_type: docType });
     setError('');
     setShowForm(true);
+    setReqsFor(docType || null);
   }
 
   function closeForm() {
     setShowForm(false);
+    setReqsFor(null);
     setError('');
   }
 
-  // While the modal is open: close on Esc and lock background scroll.
+  // Picking a document in the form shows its requirements, and clears a pickup
+  // date chosen for the previous one (each document has its own earliest date).
+  function chooseDocType(value) {
+    setForm(p => ({ ...p, document_type: value, preferred_pickup_date: '' }));
+    setError('');
+    setReqsFor(value || null);
+  }
+
+  // While a modal is open: Esc closes the top one, and background scroll is locked.
   useEffect(() => {
-    if (!showForm) return;
-    const onKey = e => { if (e.key === 'Escape') closeForm(); };
+    if (!showForm && !reqsFor) return;
+    const onKey = e => {
+      if (e.key !== 'Escape') return;
+      if (reqsFor) setReqsFor(null); else closeForm();
+    };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [showForm]);
+  }, [showForm, reqsFor]);
+
+  // Same rules the server applies: a weekday, inside the document's window.
+  function pickupDateProblem(iso, doc) {
+    if (!iso) return '';
+    const day = dayFromISO(iso);
+    if (!day) return 'Enter a valid pickup date.';
+    if (day.getDay() === 0 || day.getDay() === 6) return 'The Registrar’s Office is open Monday to Friday. Please choose a weekday.';
+    if (doc?.earliest && iso < doc.earliest) return `This document needs processing time. The earliest pickup date is ${fmtDay(doc.earliest, { year: 'numeric', month: 'long', day: 'numeric' })}.`;
+    if (doc?.latest && iso > doc.latest) return 'Please choose a date within the next 60 days.';
+    return '';
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.document_type) { setError('Please select a document type.'); return; }
+    const problem = pickupDateProblem(form.preferred_pickup_date, docTypes.find(d => d.value === form.document_type));
+    if (problem) { setError(problem); return; }
     setError('');
     setSubmitting(true);
     try {
@@ -111,6 +196,7 @@ export default function StudentDocuments() {
         document_type: form.document_type,
         purpose:       form.purpose.trim(),
         copies:        Number(form.copies),
+        preferred_pickup_date: form.preferred_pickup_date || null,
       });
       toast('Your request has been submitted. The registrar will process it soon.', { type: 'success' });
       setShowForm(false);
@@ -118,6 +204,9 @@ export default function StudentDocuments() {
       fetchRequests();
     } catch (err) {
       const data = err.response?.data;
+      // A rejected pickup date is the student's to fix: show it in the form.
+      const dateMsg = Array.isArray(data?.preferred_pickup_date) ? data.preferred_pickup_date[0] : data?.preferred_pickup_date;
+      if (dateMsg) { setError(dateMsg); return; }
       let msg;
       if (data?.error) {
         msg = data.error;
@@ -139,6 +228,8 @@ export default function StudentDocuments() {
   const released   = requests.filter(r => r.status === 'released').length;
 
   const feeOf  = v => docTypes.find(d => d.value === v)?.fee;
+  const selectedDoc = docTypes.find(d => d.value === form.document_type) || null;
+  const reqsDoc     = docTypes.find(d => d.value === reqsFor) || null;
 
   return (
     <div className="page">
@@ -158,10 +249,6 @@ export default function StudentDocuments() {
         </div>
       </div>
 
-      {error && (
-        <div style={{ background: 'var(--red-tint)', color: 'var(--red)', padding: '0.75rem 1rem', marginBottom: '1.5rem', fontSize: 13 }}>{error}</div>
-      )}
-
       {/* ── Request form (modal) ───────────────────────────── */}
       {showForm && (
         <div className="dr-modal-back" onMouseDown={closeForm}>
@@ -175,22 +262,40 @@ export default function StudentDocuments() {
           <form onSubmit={handleSubmit}>
             <div className="dr-form-grid">
               <div>
-                <label className="dr-label">Document type</label>
-                <select className="dr-input" value={form.document_type} onChange={e => setForm(p => ({ ...p, document_type: e.target.value }))} required>
+                <label className="dr-label" htmlFor="dr-doc-type">Document type</label>
+                <select id="dr-doc-type" className="dr-input" value={form.document_type} onChange={e => chooseDocType(e.target.value)} required>
                   <option value="">Select a document</option>
                   {docTypes.map(d => (
                     <option key={d.value} value={d.value}>{d.label} (₱{d.fee})</option>
                   ))}
                 </select>
+                {form.document_type && (
+                  <button type="button" className="dr-link" onClick={() => setReqsFor(form.document_type)}>
+                    <i className="ti ti-clipboard-list" aria-hidden="true" /> View requirements
+                  </button>
+                )}
               </div>
               <div>
-                <label className="dr-label">Number of copies</label>
-                <input className="dr-input" type="number" min={1} max={5} value={form.copies} onChange={e => setForm(p => ({ ...p, copies: e.target.value }))} style={{ maxWidth: 130 }} />
+                <label className="dr-label" htmlFor="dr-copies">Number of copies</label>
+                <input id="dr-copies" className="dr-input" type="number" min={1} max={5} required value={form.copies} onChange={e => setForm(p => ({ ...p, copies: e.target.value }))} style={{ maxWidth: 130 }} />
               </div>
             </div>
             <div style={{ marginBottom: '1.1rem' }}>
-              <label className="dr-label">Purpose <small style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</small></label>
-              <textarea className="dr-input" value={form.purpose} onChange={e => setForm(p => ({ ...p, purpose: e.target.value }))} rows={3} maxLength={500} placeholder="e.g. For scholarship application, employment requirements…" style={{ resize: 'vertical' }} />
+              <label className="dr-label" htmlFor="dr-pickup">Preferred pickup date <small style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</small></label>
+              <input id="dr-pickup" className="dr-input" type="date" style={{ maxWidth: 220 }}
+                value={form.preferred_pickup_date} disabled={!selectedDoc}
+                min={selectedDoc?.earliest} max={selectedDoc?.latest}
+                onChange={e => { setForm(p => ({ ...p, preferred_pickup_date: e.target.value })); setError(''); }}
+                aria-describedby="dr-pickup-help" />
+              <p id="dr-pickup-help" className="dr-help">
+                {selectedDoc
+                  ? <>Earliest: <strong>{fmtDay(selectedDoc.earliest)}</strong>. Weekdays only; the office is open Monday to Friday. This is your preference, and the registrar will confirm when the document is ready.</>
+                  : 'Choose a document first to see the earliest pickup date.'}
+              </p>
+            </div>
+            <div style={{ marginBottom: '1.1rem' }}>
+              <label className="dr-label" htmlFor="dr-purpose">Purpose <small style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</small></label>
+              <textarea id="dr-purpose" className="dr-input" value={form.purpose} onChange={e => setForm(p => ({ ...p, purpose: e.target.value }))} rows={3} maxLength={500} placeholder="e.g. For scholarship application, employment requirements…" style={{ resize: 'vertical' }} />
             </div>
             {form.document_type && (
               <div className="dr-fee-note">
@@ -198,6 +303,7 @@ export default function StudentDocuments() {
                 Payable at the cashier on claim: <strong>₱{feeOf(form.document_type)}</strong> per copy · <strong>₱{feeOf(form.document_type) * Number(form.copies || 1)}</strong> total
               </div>
             )}
+            {error && <div className="dr-form-err" role="alert">{error}</div>}
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button type="submit" className="btn-pri" disabled={submitting} style={{ opacity: submitting ? 0.7 : 1 }}>
                 {submitting ? 'Submitting…' : 'Submit request'}
@@ -207,6 +313,15 @@ export default function StudentDocuments() {
           </form>
           </div>
         </div>
+      )}
+
+      {/* ── Requirements pop-up (above the form when both are open) ── */}
+      {reqsDoc && (
+        <RequirementsDialog
+          doc={reqsDoc} inForm={showForm}
+          onClose={() => setReqsFor(null)}
+          onRequest={() => { setForm({ ...EMPTY_FORM, document_type: reqsDoc.value }); setError(''); setShowForm(true); setReqsFor(null); }}
+        />
       )}
 
       {/* ── Ready-for-pickup banner (the actionable thing) ──── */}
@@ -253,6 +368,11 @@ export default function StudentDocuments() {
                         {' '}Filed {new Date(req.submitted_at || req.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
                         {feeOf(req.document_type) ? ` · ₱${feeOf(req.document_type) * (req.copies || 1)}` : ''}
                       </div>
+                      {req.preferred_pickup_date && (
+                        <div className="dr-req-pickup">
+                          <i className="ti ti-calendar-event" aria-hidden="true" /> Preferred pickup: {fmtDay(req.preferred_pickup_date)}
+                        </div>
+                      )}
                       {req.purpose && <div className="dr-req-purpose">“{req.purpose}”</div>}
                     </div>
                     <span className={`tag ${meta.cls}`}>{meta.label}</span>
@@ -288,6 +408,9 @@ export default function StudentDocuments() {
             <div className="dr-cat-eyebrow">{d.days} working days</div>
             <div className="dr-cat-name">{d.label}</div>
             <div className="dr-cat-desc">{d.desc}</div>
+            <button type="button" className="dr-link" onClick={() => setReqsFor(d.value)}>
+              <i className="ti ti-clipboard-list" aria-hidden="true" /> View requirements
+            </button>
             <div className="dr-cat-foot">
               <div className="dr-cat-fee">₱{d.fee}<small>/copy</small></div>
               <button className="btn-sec" onClick={() => openForm(d.value)}>
@@ -322,6 +445,32 @@ const CSS = `
     padding:.7rem .9rem;margin-bottom:1.1rem;font-size:13px;color:var(--muted);}
   .dr-fee-note i{color:var(--gold);font-size:16px;}
   .dr-fee-note strong{color:var(--ink);font-weight:600;}
+
+  .dr-help{font-size:12px;color:var(--muted);line-height:1.5;margin-top:5px;}
+  .dr-help strong{color:var(--ink);font-weight:600;}
+  .dr-form-err{background:var(--red-tint);color:var(--red);border:1px solid #f3c6bd;padding:.6rem .85rem;font-size:13px;margin-bottom:1rem;}
+  .dr-link{display:inline-flex;align-items:center;gap:5px;background:none;border:none;padding:6px 0;margin-top:2px;
+    color:var(--ink);font:600 12.5px 'Inter',sans-serif;text-decoration:underline;cursor:pointer;}
+  .dr-link:hover{color:var(--gold);}
+  .dr-req-pickup{font-size:12px;color:var(--ink);margin-top:5px;display:flex;align-items:center;gap:5px;}
+  .dr-req-pickup i{color:var(--gold);font-size:14px;}
+
+  /* requirements pop-up */
+  .dr-reqs-back{position:fixed;inset:0;background:rgba(10,22,40,.6);z-index:1300;display:flex;align-items:center;
+    justify-content:center;padding:1rem;overflow-y:auto;animation:drFade .15s ease;}
+  .dr-reqs{background:#fff;border-top:3px solid var(--gold);width:100%;max-width:480px;margin:auto;
+    box-shadow:0 24px 64px -20px rgba(10,22,40,.55);animation:drPop .2s cubic-bezier(.4,0,.2,1);}
+  .dr-reqs-head{display:flex;align-items:flex-start;gap:12px;padding:1.3rem 1.4rem .9rem;}
+  .dr-reqs-head > i{font-size:26px;color:var(--gold);flex-shrink:0;margin-top:2px;}
+  .dr-reqs-kicker{font-size:12px;color:var(--muted);font-weight:600;}
+  .dr-reqs-head h4{font-size:18px;font-weight:600;color:var(--ink);line-height:1.3;margin-top:2px;}
+  .dr-reqs-body{padding:0 1.4rem 1.1rem;font-size:13.5px;color:var(--ink);line-height:1.55;}
+  .dr-reqs-body ul{margin:.5rem 0 0;padding-left:1.15rem;display:flex;flex-direction:column;gap:.45rem;}
+  .dr-reqs-facts{display:flex;gap:1.25rem;flex-wrap:wrap;margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--line-soft);
+    font-size:12.5px;color:var(--muted);}
+  .dr-reqs-facts b{color:var(--ink);font-weight:600;margin-right:4px;}
+  .dr-reqs-foot{display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap;padding:.9rem 1.4rem 1.3rem;}
+  @media (prefers-reduced-motion: reduce){ .dr-reqs-back,.dr-reqs{animation:none;} }
 
   /* ready banner */
   .dr-pickup{display:flex;align-items:center;gap:14px;background:var(--green-tint);border:1px solid #a7f3d0;

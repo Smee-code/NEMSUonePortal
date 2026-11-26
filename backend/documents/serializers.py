@@ -1,14 +1,31 @@
 from rest_framework import serializers
 
 from .models import DocumentRequest, DocumentType
+from .pickup import earliest_pickup_date, latest_pickup_date, pickup_date_error
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
     """The catalog entry — read by students, managed by the admin."""
+    # `requirements` is the editable text (one item per line); the list form is
+    # what the student's pop-up renders.
+    requirements_list = serializers.ListField(child=serializers.CharField(), read_only=True)
+    # The pickup-date window the request form offers; the submit serializer
+    # enforces the same window.
+    earliest_pickup_date = serializers.SerializerMethodField()
+    latest_pickup_date = serializers.SerializerMethodField()
+
+    def get_earliest_pickup_date(self, obj):
+        return earliest_pickup_date(obj.processing_days).isoformat()
+
+    def get_latest_pickup_date(self, obj):
+        return latest_pickup_date().isoformat()
+
     class Meta:
         model = DocumentType
         fields = ['id', 'code', 'name', 'description', 'fee',
-                  'processing_days', 'is_active', 'sort_order']
+                  'processing_days', 'requirements', 'requirements_list',
+                  'earliest_pickup_date', 'latest_pickup_date',
+                  'is_active', 'sort_order']
         read_only_fields = ['id', 'code']
 
 
@@ -31,7 +48,7 @@ class DocumentRequestStudentSerializer(serializers.ModelSerializer):
         model = DocumentRequest
         fields = [
             'id', 'document_type', 'document_type_display',
-            'purpose', 'copies',
+            'purpose', 'copies', 'preferred_pickup_date',
             'status', 'status_display', 'remarks',
             'submitted_at', 'updated_at',
         ]
@@ -45,6 +62,7 @@ class DocumentRequestSubmitSerializer(serializers.Serializer):
         required=False, allow_blank=True, max_length=500
     )
     copies = serializers.IntegerField(default=1, min_value=1, max_value=5)
+    preferred_pickup_date = serializers.DateField(required=False, allow_null=True, default=None)
 
     def validate_document_type(self, value):
         if not DocumentType.objects.filter(code=value, is_active=True).exists():
@@ -53,6 +71,15 @@ class DocumentRequestSubmitSerializer(serializers.Serializer):
 
     def validate_purpose(self, value):
         return value.strip()
+
+    def validate(self, attrs):
+        date = attrs.get('preferred_pickup_date')
+        if date is not None:
+            doc_type = DocumentType.objects.filter(code=attrs['document_type']).first()
+            problem = pickup_date_error(date, doc_type.processing_days if doc_type else '')
+            if problem:
+                raise serializers.ValidationError({'preferred_pickup_date': problem})
+        return attrs
 
 
 class RegistrarDocumentSerializer(serializers.ModelSerializer):
@@ -74,7 +101,7 @@ class RegistrarDocumentSerializer(serializers.ModelSerializer):
             'id',
             'student_name', 'student_id_no', 'student_email',
             'document_type', 'document_type_display',
-            'purpose', 'copies',
+            'purpose', 'copies', 'preferred_pickup_date',
             'status', 'status_display', 'next_statuses',
             'remarks',
             'submitted_at', 'updated_at',

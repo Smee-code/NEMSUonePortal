@@ -495,6 +495,11 @@ class PendingEnrollment(models.Model):
     # Kept as JSON so the long paper form maps here without ~25 extra columns.
     details = models.JSONField(default=dict, blank=True)
 
+    # When the applicant agreed to the Terms and Conditions and gave Data Privacy
+    # consent (RA 10173). Set by the server on submission, never by the client;
+    # null only for applications filed before consent was collected.
+    privacy_consent_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -561,3 +566,21 @@ class PreEnrollmentDocument(models.Model):
 
     def __str__(self):
         return f"{self.requirement_label} — {self.pending.reference_number}"
+
+
+# Civil-status verification: an applicant who declares themselves Married must
+# upload this document. The label is the one the upload forms file it under.
+MARRIAGE_CERTIFICATE_LABEL = 'Marriage Certificate'
+
+
+def needs_marriage_certificate(pending):
+    """True when this application declares a Married civil status. Returnees are
+    excluded: their short form does not ask for civil status."""
+    return (
+        pending.student_type != 'returnee'
+        and (pending.details or {}).get('civil_status') == 'Married'
+    )
+
+
+def has_marriage_certificate(pending):
+    return pending.documents.filter(requirement_label__iexact=MARRIAGE_CERTIFICATE_LABEL).exists()

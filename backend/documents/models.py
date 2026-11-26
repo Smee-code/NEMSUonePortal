@@ -13,6 +13,9 @@ class DocumentType(models.Model):
     description     = models.CharField(max_length=300, blank=True)
     fee             = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     processing_days = models.CharField(max_length=30, blank=True)  # e.g. "1–2", "7–10"
+    # What the student must prepare or bring for this document, one item per
+    # line. Shown to the student in a pop-up before they submit a request.
+    requirements    = models.TextField(blank=True, max_length=2000)
     is_active       = models.BooleanField(default=True)
     sort_order      = models.PositiveSmallIntegerField(default=0)
     created_at      = models.DateTimeField(auto_now_add=True)
@@ -22,6 +25,10 @@ class DocumentType(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def requirements_list(self):
+        return [line.strip() for line in (self.requirements or '').splitlines() if line.strip()]
 
 
 class DocumentRequest(models.Model):
@@ -66,6 +73,9 @@ class DocumentRequest(models.Model):
     document_type = models.CharField(max_length=40, choices=DOCUMENT_TYPE_CHOICES)
     purpose       = models.TextField(blank=True, max_length=500)
     copies        = models.PositiveSmallIntegerField(default=1)
+    # The day the student would like to collect the document (optional). A
+    # preference for the registrar to plan around, not a guaranteed release date.
+    preferred_pickup_date = models.DateField(null=True, blank=True)
     status        = models.CharField(max_length=15, choices=STATUS_CHOICES, default=STATUS_SUBMITTED)
     remarks       = models.TextField(blank=True)
     submitted_at  = models.DateTimeField(auto_now_add=True)

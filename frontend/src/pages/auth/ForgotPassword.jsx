@@ -31,7 +31,7 @@ export default function ForgotPassword() {
     <div className="auth-page">
       <div className="auth-card">
         <h1>NEMSUOne</h1>
-        <h2>Forgot Password</h2>
+        <h2>Forgot password</h2>
 
         {submitted ? (
           <p className="success-message">
@@ -64,13 +64,13 @@ export default function ForgotPassword() {
             )}
 
             <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? 'Sending…' : 'Send Reset Link'}
+              {loading ? 'Sending…' : 'Send reset link'}
             </button>
           </form>
         )}
 
         <p className="auth-links">
-          <Link to="/login">Back to Sign In</Link>
+          <Link to="/login">Back to Sign in</Link>
         </p>
       </div>
     </div>

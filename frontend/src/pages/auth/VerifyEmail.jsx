@@ -51,7 +51,7 @@ export default function VerifyEmail() {
     <div className="auth-page">
       <div className="auth-card" style={{ textAlign: 'center' }}>
         <h1>NEMSUOne</h1>
-        <h2>Email Verification</h2>
+        <h2>Verify your email</h2>
 
         {status === 'verifying' && (
           <p style={{ color: '#6b7280', margin: '1.5rem 0' }}>Verifying your email…</p>
@@ -66,7 +66,7 @@ export default function VerifyEmail() {
               className="btn-primary"
               style={{ display: 'block', textDecoration: 'none', marginTop: '1rem' }}
             >
-              Sign In
+              Sign in
             </Link>
           </>
         )}
@@ -113,14 +113,14 @@ export default function VerifyEmail() {
                     disabled={resendStatus === 'sending'}
                     className="btn-primary"
                   >
-                    {resendStatus === 'sending' ? 'Sending…' : 'Resend Verification Email'}
+                    {resendStatus === 'sending' ? 'Sending…' : 'Resend verification email'}
                   </button>
                 </form>
               )}
             </div>
 
             <p className="auth-links" style={{ marginTop: '1rem' }}>
-              <Link to="/login">Back to Sign In</Link>
+              <Link to="/login">Back to Sign in</Link>
             </p>
           </>
         )}

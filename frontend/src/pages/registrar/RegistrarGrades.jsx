@@ -128,7 +128,7 @@ export default function RegistrarGrades() {
             <thead>
               <tr>
                 <th>Student</th>
-                <th>ID number</th>
+                <th>Student ID</th>
                 <th>Program / Year</th>
                 <th>Status</th>
                 <th></th>

@@ -185,7 +185,7 @@ class CurriculumSubjectView(APIView):
                 return Response(
                     {'error': f"Course {code} already exists at "
                               f"{existing.get_year_level_display()} / {existing.get_semester_display()}. "
-                              f"A course at a different year or semester is a different course - use a different code."},
+                              f"A course in a different year or semester is a different course — use a different code."},
                     status=status.HTTP_409_CONFLICT,
                 )
             subject = existing

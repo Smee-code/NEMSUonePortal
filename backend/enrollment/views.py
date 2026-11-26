@@ -31,6 +31,7 @@ from announcements.models import Announcement, Notification
 
 from .academics import eligible_offered
 from .models import AcademicTerm, Block, BlockExpansionRequest, Curriculum, CurriculumDocument, Department, EnrollmentRequest, EnrollmentSchedule, EnrollmentSubject, PendingEnrollment, PreEnrollmentDocument, Program, Subject
+from .models import MARRIAGE_CERTIFICATE_LABEL, has_marriage_certificate, needs_marriage_certificate
 from .serializers import (
     AcademicTermSerializer,
     AdminSubjectSerializer,
@@ -205,12 +206,16 @@ class PublicPreEnrollView(APIView):
             academic_term  = d.get('term_id'),
             assigned_student_id = student_id if d['student_type'] == 'returnee' else '',
             details        = d.get('details') or {},
+            # The serializer rejects the submission unless consent was given, so
+            # reaching this point means the applicant agreed just now.
+            privacy_consent_at = timezone.now(),
         )
 
         _audit(
             None, '', 'pre_enrollment_submitted',
             request.path, get_client_ip(request), 'success',
-            {'reference_number': pending.reference_number, 'email': pending.email},
+            {'reference_number': pending.reference_number, 'email': pending.email,
+             'privacy_consent': True},
         )
 
         return Response(
@@ -953,7 +958,7 @@ class RegistrarReviewView(APIView):
                     f'Hi {student.full_name or "Student"},\n\n'
                     f'Your enrollment request for {term} was not approved by the registrar.\n'
                     + (f'\nReason: {remarks}\n' if remarks else '')
-                    + '\nPlease log in to NEMSUOne, open "My Enrollment", review your '
+                    + '\nPlease sign in to NEMSUOne, open "My Enrollment", review your '
                     'courses and submit your enrollment again.\n\n'
                     '— NEMSU Cantilan Campus'
                 )
@@ -1157,6 +1162,19 @@ class RegistrarPendingEnrollmentReviewView(APIView):
 
         is_returnee = pending.student_type == 'returnee'
 
+        # Civil-status verification: an applicant who declared Married cannot be
+        # approved until their marriage certificate is on file. The application
+        # form asks for it, but uploads arrive in separate requests after the
+        # application is created, so this is where the rule is actually enforced.
+        if new_status == 'approved' and needs_marriage_certificate(pending) and not has_marriage_certificate(pending):
+            return Response(
+                {'error': 'This applicant declared a Married civil status but has not uploaded a '
+                          'marriage certificate. Send them a follow-up email with the upload link, '
+                          'then approve once the certificate is on file.',
+                 'code': 'marriage_certificate_required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Freshmen/transferees get a freshly generated Student ID; returnees keep
         # the ID they already have on record (stored at submission time).
         if new_status == 'approved' and not is_returnee and not pending.assigned_student_id:
@@ -1210,7 +1228,7 @@ class PublicPreEnrollUploadView(APIView):
         try:
             pending = PendingEnrollment.objects.get(pk=pk, status='pending')
         except PendingEnrollment.DoesNotExist:
-            return Response({'error': 'Pre-enrollment not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Application not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         label = request.data.get('requirement_label', '').strip()
         file  = request.FILES.get('file')
@@ -1258,6 +1276,9 @@ class PublicPreEnrollDetailView(APIView):
             'reference_number': pending.reference_number,
             'student_type': pending.student_type,
             'status': pending.status,
+            # Documents required for this applicant on top of the standard list
+            # for their type (a marriage certificate when they declared Married).
+            'extra_required': [MARRIAGE_CERTIFICATE_LABEL] if needs_marriage_certificate(pending) else [],
             'uploaded': [
                 {'requirement_label': d.requirement_label, 'file_name': d.file_name}
                 for d in docs
@@ -1311,7 +1332,7 @@ class RegistrarPreEnrollFollowupView(APIView):
         try:
             pending = PendingEnrollment.objects.get(pk=pk)
         except PendingEnrollment.DoesNotExist:
-            return Response({'error': 'Pre-enrollment not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Application not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         message = request.data.get('message', '').strip()
         if not message:
@@ -1320,7 +1341,7 @@ class RegistrarPreEnrollFollowupView(APIView):
         from nemsuoneportal.emails import send_branded_email
         from django.conf import settings as _settings
         upload_url = f"{_settings.FRONTEND_URL}/admission/upload/{pending.id}"
-        subject = f"Follow-up on Your NEMSU Cantilan Pre-Enrollment Application (Ref: {pending.reference_number})"
+        subject = f"NEMSUOne — follow-up on your admission application (Ref: {pending.reference_number})"
         body = (
             f"Dear {pending.full_name},\n\n"
             f"{message}\n\n"
@@ -1388,6 +1409,10 @@ def _activate_returnee_account(pending):
             user.registration_status  = User.REG_APPROVED
             # First login must complete the academic profile before the dashboard.
             user.needs_academic_setup = True
+            # Carry the consent given on the application over to the account,
+            # without overwriting an earlier one already on record.
+            if not user.privacy_consent_at:
+                user.privacy_consent_at = pending.privacy_consent_at
             user.set_password(password)
             user.save()
         else:
@@ -1403,6 +1428,7 @@ def _activate_returnee_account(pending):
                 is_verified=True,
                 is_active=True,
                 needs_academic_setup=True,
+                privacy_consent_at=pending.privacy_consent_at,
             )
 
     # Credentials always go to the account's on-record email (unchanged above for
@@ -1417,16 +1443,16 @@ def _email_returnee_password(user, temp_password):
     from django.conf import settings as _settings
     try:
         send_branded_email(
-            'NEMSU Cantilan — Application Approved · Your Login Details',
+            'NEMSUOne — application approved: your sign-in details',
             (
                 f'Hi {user.full_name},\n\n'
                 f'Your application to re-enroll at NEMSU Cantilan Campus has been '
                 f'approved by the registrar. Your NEMSUOne account is ready.\n\n'
                 f'Student ID: {user.student_id}\n'
-                f'Login email: {user.institutional_email}\n'
+                f'Sign-in email: {user.institutional_email}\n'
                 f'Temporary password: {temp_password}\n\n'
-                f'Log in at {_settings.FRONTEND_URL}/login and change your password '
-                f'from your profile after your first login.\n\n'
+                f'Sign in at {_settings.FRONTEND_URL}/login and change your password '
+                f'from your profile after you first sign in.\n\n'
                 f'— NEMSU Cantilan Registrar\'s Office'
             ),
             [user.institutional_email],
@@ -1452,7 +1478,7 @@ def _send_admission_decision_email(pending, decision):
 
     if decision == 'approved':
         from urllib.parse import urlencode
-        subject = "NEMSU Cantilan — Admission Approved · Create Your Account"
+        subject = "NEMSUOne — admission approved: create your account"
         # Pre-fill the sign-up form with the assigned Student ID and the email the
         # applicant used during admission (where this notice is sent).
         qs = urlencode({
@@ -1466,15 +1492,15 @@ def _send_admission_decision_email(pending, decision):
             f"reviewed and approved by {dept}. Welcome to NEMSU Cantilan!\n\n"
             f"Your Student ID is: {pending.assigned_student_id}\n\n"
             f"Use this Student ID to create your NEMSUOne account. Click “Sign up” "
-            f"on the portal and enter your Student ID, your institutional email, and a "
+            f"on the portal and enter your Student ID, the email address you used on your application, and a "
             f"password — your name is already on file, so you won’t need to re-enter it.\n\n"
             f"{signup_url}\n\n"
-            f"Keep your Student ID safe; you’ll use it to log in and throughout your studies.\n\n"
+            f"Keep your Student ID safe; you’ll need it to create your account and throughout your studies.\n\n"
             f"— NEMSU Cantilan Admissions"
         )
     else:
         reason = f"\n\nReason: {pending.remarks}" if pending.remarks else ''
-        subject = "NEMSU Cantilan — Update on Your Admission Application"
+        subject = "NEMSUOne — update on your admission application"
         body = (
             f"Dear {pending.full_name},\n\n"
             f"Thank you for your interest in {program}. After review by {dept}, we regret "
@@ -1765,7 +1791,7 @@ def _parse_csv_import(file_bytes: bytes, program) -> dict:
             units = units.quantize(Decimal('0.01'))
         except (InvalidOperation, ValueError, TypeError):
             errors.append(
-                f'Row {i} ({code}): "units" must be a number between 0.5 and 12 '
+                f'Row {i} ({code}): "units" must be a number greater than 0 and at most 12, '
                 'with at most 2 decimal places (e.g. 1, 1.25, 3).'
             )
             continue
@@ -1833,7 +1859,7 @@ def _save_curriculum_document_upload(request, program, uploaded):
     if ext not in CurriculumDocument.ALLOWED_EXTENSIONS:
         allowed = ', '.join(sorted(CurriculumDocument.ALLOWED_EXTENSIONS))
         return (
-            {'error': f'File type not allowed. Accepted: {allowed}'},
+            {'error': f'File type not allowed. Accepted types: {allowed}.'},
             status.HTTP_400_BAD_REQUEST,
         )
 
@@ -2030,7 +2056,7 @@ class BlockGenerateView(APIView):
             return Response({'error': 'year_level, count, and capacity must be numbers.'},
                             status=status.HTTP_400_BAD_REQUEST)
         if year_level not in (1, 2, 3, 4):
-            return Response({'error': 'Year level must be 1–4.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Year level must be 1, 2, 3, or 4.'}, status=status.HTTP_400_BAD_REQUEST)
         if not (1 <= count <= 50):
             return Response({'error': 'Number of blocks must be between 1 and 50.'}, status=status.HTTP_400_BAD_REQUEST)
         if not (1 <= capacity <= 500):

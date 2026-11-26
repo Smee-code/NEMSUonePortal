@@ -76,7 +76,7 @@ def _check_conflicts(room, day_of_week, start_time, end_time, teaching_assignmen
             errors.append(f'Room {room} is taken by {_course(clash)} on {day}.')
     clash = qs.filter(teaching_assignment__faculty=teaching_assignment.faculty).first()
     if clash:
-        errors.append(f'You already teach {_course(clash)} on {day}.')
+        errors.append(f'The instructor already teaches {_course(clash)} on {day}.')
     # Block (student cohort) clash: a block can't be in two classes at once,
     # regardless of room or instructor. Name the clashing course + faculty.
     if teaching_assignment.block_id:
@@ -500,7 +500,7 @@ class FacultyScheduleSlotCreateView(APIView):
                 )
             if len(raw_slots) > 3:
                 return Response(
-                    {'error': 'A subject can be scheduled up to 3 meetings per week at a time.'},
+                    {'error': 'A subject can have at most 3 meetings per week.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             payloads = [

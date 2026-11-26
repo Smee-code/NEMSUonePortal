@@ -579,7 +579,7 @@ export default function AdminDashboard() {
               {loading
                 ? 'Loading your overview…'
                 : needsCount > 0
-                  ? `${needsCount} item${needsCount !== 1 ? 's' : ''} need your attention today.`
+                  ? `${needsCount} item${needsCount !== 1 ? 's need' : ' needs'} your attention today.`
                   : 'Everything looks clear — nothing needs your action right now.'}
             </p>
           </div>
@@ -632,7 +632,7 @@ export default function AdminDashboard() {
             <div className="db-sec">
               <div>
                 <h3>System <em>analytics</em></h3>
-                <div className="sub">Real-time insights across users and documents.</div>
+                <div className="sub">Current figures across users and documents.</div>
               </div>
             </div>
 
@@ -664,7 +664,7 @@ export default function AdminDashboard() {
               <span>Data as of {stats?.generated_at ? new Date(stats.generated_at).toLocaleString('en-PH', { hour12: true }) : '-'}</span>
               <span className="db-foot-live">
                 <span className="db-foot-live-dot" />
-                Connected to <strong style={{ color: 'var(--adm-muted)' }}>nemsuoneportal.api</strong> · refreshed every 60s
+                Connected to the <strong style={{ color: 'var(--adm-muted)' }}>NEMSUOne API</strong>
               </span>
             </div>
           </>

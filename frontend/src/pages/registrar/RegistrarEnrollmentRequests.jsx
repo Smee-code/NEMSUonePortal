@@ -373,7 +373,7 @@ export default function RegistrarEnrollmentRequests() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {sortedYears.map(yr => {
             const group         = grouped[yr];
-            const label         = yr === 0 ? 'Unknown Year Level' : YEAR_LABELS[yr] || `Year ${yr}`;
+            const label         = yr === 0 ? 'Unknown year level' : YEAR_LABELS[yr] || `Year ${yr}`;
             const pendingInGrp  = group.filter(r => r.status === 'pending');
             const reviewedCount = group.filter(r => r.status !== 'pending').length;
             const progress      = group.length > 0 ? (reviewedCount / group.length) * 100 : 0;

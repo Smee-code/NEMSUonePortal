@@ -44,7 +44,7 @@ export default function CookieConsent() {
       <div className="cc-body">
         <i className="ti ti-cookie cc-ic" />
         <p className="cc-text">
-          We use a single <strong>essential cookie</strong> to keep you securely signed in. We do not
+          We use only <strong>essential cookies</strong> to keep you securely signed in. We do not
           use tracking or advertising cookies. Read our <Link to="/cookies">Cookie Policy</Link> and{' '}
           <Link to="/privacy">Privacy Policy</Link>.
         </p>

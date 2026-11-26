@@ -112,7 +112,7 @@ export default function StudentEnrollment() {
         </div>
       </div>
       {pastEnrollments.length === 0 ? (
-        <div className="stu-empty"><i className="ti ti-clipboard-list" /><p>No completed terms yet. This is your first term on record.</p></div>
+        <div className="stu-empty"><i className="ti ti-clipboard-list" /><p>No past terms on record yet.</p></div>
       ) : (
         <div className="se-tl">
           {pastEnrollments.map((req, i) => (
@@ -190,7 +190,7 @@ function HistoryModal({ enr, onClose }) {
           {enr.remarks && (
             <div className="se-remarks" style={{ marginTop: '1rem' }}>
               <i className="ti ti-message-2" />
-              <span><strong>Registrar remarks:</strong> {enr.remarks}</span>
+              <span><strong>Registrar’s remarks:</strong> {enr.remarks}</span>
             </div>
           )}
         </div>
@@ -206,9 +206,9 @@ function CurrentEnrollment({ enr, user }) {
   const subjects = enr.subjects ?? [];
 
   const facts = [
-    ['Student No.', enr.student_id ?? user?.student_id ?? '—', true],
+    ['Student ID', enr.student_id ?? user?.student_id ?? '—', true],
     ['Program',     enr.program_code ?? '—', false],
-    ['Year Level',  enr.year_level_display ?? '—', false],
+    ['Year level',  enr.year_level_display ?? '—', false],
     ['Block',       enr.block_name ?? enr.block_code ?? '—', false],
   ];
 
@@ -280,7 +280,7 @@ function CurrentEnrollment({ enr, user }) {
       {enr.remarks && (
         <div className="se-remarks">
           <i className="ti ti-message-2" />
-          <span><strong>Registrar remarks:</strong> {enr.remarks}</span>
+          <span><strong>Registrar’s remarks:</strong> {enr.remarks}</span>
         </div>
       )}
     </div>
@@ -315,7 +315,7 @@ function EnrollPanel({ offered, term, termLabel, eligible, blocked, eligibleUnit
           <h3 className="se-cor-term">{offered.program.code} · <em>{yearLabel}</em></h3>
           <div className="se-cor-sub">{isResubmit
             ? 'Your previous request was rejected (see the registrar’s remarks above). Review the courses and resubmit — the registrar will review it again.'
-            : 'These courses are offered for your year level this semester. The registrar reviews your enrollment before it’s final.'}</div>
+            : 'These subjects are offered for your year level this term. The registrar reviews your enrollment before it’s final.'}</div>
         </div>
       </div>
 

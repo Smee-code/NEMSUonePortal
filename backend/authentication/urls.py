@@ -21,6 +21,8 @@ from .admin_views import (
 from .views import (
     AcademicProfileView,
     StudentSelfInfoView,
+    StudentMarriageCertificateUploadView,
+    StudentMarriageCertificateFileView,
     ActivateByRefView,
     ActivateCompleteView,
     ActivateRequestOTPView,
@@ -71,6 +73,8 @@ urlpatterns = [
     path('profile/', UserProfileView.as_view(), name='auth-profile'),
     path('academic-profile/', AcademicProfileView.as_view(), name='auth-academic-profile'),
     path('my/details/', StudentSelfInfoView.as_view(), name='auth-my-details'),
+    path('my/documents/marriage-certificate/', StudentMarriageCertificateUploadView.as_view(), name='auth-my-marriage-certificate'),
+    path('students/<uuid:pk>/documents/marriage-certificate/', StudentMarriageCertificateFileView.as_view(), name='student-marriage-certificate-file'),
 
     # Registrar — student list + faculty creation
     path('registrar/students/', RegistrarStudentListView.as_view(), name='registrar-student-list'),

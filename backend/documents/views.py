@@ -42,9 +42,11 @@ def _audit(user, role, action, resource, ip, result='success', extra=None):
 def _send_status_email(doc_req):
     """Notify the student when their document request status changes."""
     try:
+        from .serializers import _doc_type_display
         status_label = doc_req.get_status_display()
-        doc_label    = doc_req.get_document_type_display()
-        subject = f'[NEMSUOne] Document Request Update — {doc_label}'
+        # From the catalog, so documents the admin added show their real name.
+        doc_label    = _doc_type_display(doc_req)
+        subject = f'NEMSUOne — update on your {doc_label} request'
 
         body_lines = [
             f'Hello {doc_req.student.full_name},',
@@ -61,6 +63,9 @@ def _send_status_email(doc_req):
                 'Your document is ready for release.',
                 'Please visit the Registrar\'s Office to claim it.',
             ]
+            if doc_req.preferred_pickup_date:
+                d = doc_req.preferred_pickup_date
+                body_lines.append(f'Your preferred pickup date: {d:%B} {d.day}, {d.year}.')
         elif doc_req.status == DocumentRequest.STATUS_REJECTED:
             body_lines += [
                 '',
@@ -127,6 +132,7 @@ class StudentDocumentSubmitView(APIView):
             document_type=data['document_type'],
             purpose=data.get('purpose', ''),
             copies=data.get('copies', 1),
+            preferred_pickup_date=data.get('preferred_pickup_date'),
         )
         _audit(
             request.user, request.user.role,

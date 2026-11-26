@@ -18,6 +18,22 @@ export const REQUIRED_DOCS = {
   ],
 };
 
+// Civil-status verification: anyone who declares themselves Married must upload
+// this. Must match MARRIAGE_CERTIFICATE_LABEL in backend/enrollment/models.py,
+// which is the label the server checks before an applicant can be approved.
+export const MARRIAGE_CERT = 'Marriage Certificate';
+
+// Returnees use a short form that does not ask for civil status.
+export const needsMarriageCert = (studentType, civilStatus) =>
+  studentType !== 'returnee' && civilStatus === 'Married';
+
+// The full required list for one applicant: the standard documents for their
+// type, plus the marriage certificate when they declared Married.
+export function requiredDocsFor(studentType, civilStatus) {
+  const base = REQUIRED_DOCS[studentType] || [];
+  return needsMarriageCert(studentType, civilStatus) ? [...base, MARRIAGE_CERT] : base;
+}
+
 export const STUDENT_TYPE_LABEL = {
   new: 'New Student',
   transferee: 'Transferee',

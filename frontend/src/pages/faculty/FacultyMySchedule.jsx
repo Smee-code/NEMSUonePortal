@@ -189,7 +189,7 @@ export default function FacultyMySchedule() {
                               title={`${s.subject_code} — ${s.subject_name}\n${formatTime(s.start_time)} – ${formatTime(s.end_time)}\n${s.room || 'Room to be assigned'}${[s.program_code, s.year_level_display, s.block_name].filter(Boolean).length ? `\n${[s.program_code, s.year_level_display, s.block_name].filter(Boolean).join(' · ')}` : ''}`}
                             >
                               <div className="sch-block-code">{s.subject_code}</div>
-                              <div className="sch-block-room">{s.room || 'Room TBA'}</div>
+                              <div className="sch-block-room">{s.room || 'Room to be assigned'}</div>
                               {height >= 56 && (
                                 <div className="sch-block-time">{formatTime(s.start_time)} – {formatTime(s.end_time)}</div>
                               )}

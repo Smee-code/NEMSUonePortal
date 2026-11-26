@@ -133,9 +133,9 @@ export default function AnnouncementsPage() {
 
         <div className="page-head">
           <div className="page-head-l">
-            <div className="eyebrow">Content · {announcements.length} announcements</div>
+            <div className="eyebrow">Content · {announcements.length} announcement{announcements.length !== 1 ? 's' : ''}</div>
             <h2><em>Announcements</em></h2>
-            <div className="sub">Broadcast messages to students, faculty, or all users. Pinned items appear first.</div>
+            <div className="sub">{canPost ? 'Broadcast messages to students, faculty, or all users. Pinned items appear first.' : 'Campus announcements. Pinned items appear first.'}</div>
           </div>
           <div className="actions">
             {canPost && (

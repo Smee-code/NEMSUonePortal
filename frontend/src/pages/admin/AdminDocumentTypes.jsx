@@ -3,7 +3,7 @@ import api from '../../api/axios';
 import { useAdminShell } from '../../context/AdminShellContext';
 import { useConfirm } from '../../components/ConfirmDialog';
 
-const EMPTY = { name: '', description: '', fee: '', processing_days: '', sort_order: 0, is_active: true };
+const EMPTY = { name: '', description: '', fee: '', processing_days: '', requirements: '', sort_order: 0, is_active: true };
 
 export default function AdminDocumentTypes() {
   const { toast } = useAdminShell();
@@ -30,7 +30,8 @@ export default function AdminDocumentTypes() {
   function openEdit(t) {
     setEditId(t.id);
     setForm({ name: t.name, description: t.description || '', fee: String(t.fee ?? ''),
-      processing_days: t.processing_days || '', sort_order: t.sort_order ?? 0, is_active: t.is_active });
+      processing_days: t.processing_days || '', requirements: t.requirements || '',
+      sort_order: t.sort_order ?? 0, is_active: t.is_active });
     setError(''); setShowForm(true);
   }
 
@@ -44,6 +45,8 @@ export default function AdminDocumentTypes() {
       description: form.description.trim(),
       fee: Number(form.fee).toFixed(2),
       processing_days: form.processing_days.trim(),
+      // One requirement per line; blank lines are dropped.
+      requirements: form.requirements.split('\n').map(s => s.trim()).filter(Boolean).join('\n'),
       sort_order: Number(form.sort_order) || 0,
       is_active: !!form.is_active,
     };
@@ -118,6 +121,13 @@ export default function AdminDocumentTypes() {
               <label>Processing time <span className="dt-opt">(working days)</span></label>
               <input className="dt-input" value={form.processing_days} onChange={e => setForm(f => ({ ...f, processing_days: e.target.value }))} placeholder="e.g. 1–2" maxLength={30} />
             </div>
+            <div className="dt-field" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="dt-requirements">Requirements <span className="dt-opt">(one per line; shown to students in a pop-up before they request)</span></label>
+              <textarea id="dt-requirements" className="dt-input" rows={4} maxLength={2000} value={form.requirements}
+                onChange={e => setForm(f => ({ ...f, requirements: e.target.value }))}
+                placeholder={'e.g. Bring your school ID when you claim the document.\nPay the fee at the Cashier’s Office and bring the official receipt.'}
+                style={{ resize: 'vertical' }} />
+            </div>
             <div className="dt-field">
               <label>Sort order</label>
               <input className="dt-input" type="number" value={form.sort_order} onChange={e => setForm(f => ({ ...f, sort_order: e.target.value }))} min={0} />
@@ -155,6 +165,10 @@ export default function AdminDocumentTypes() {
                   <span><strong>₱{Number(t.fee).toFixed(2)}</strong> / copy</span>
                   {t.processing_days && <span className="dt-sep">·</span>}
                   {t.processing_days && <span>{t.processing_days} working days</span>}
+                  <span className="dt-sep">·</span>
+                  <span>{(t.requirements_list || []).length
+                    ? `${t.requirements_list.length} requirement${t.requirements_list.length !== 1 ? 's' : ''} listed`
+                    : 'No requirements listed'}</span>
                 </div>
               </div>
               <div className="dt-card-actions">

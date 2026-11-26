@@ -53,11 +53,11 @@ def _send_announcement_email(announcement):
         if not emails:
             return
 
-        subject = f'[NEMSUOne] {announcement.title}'
+        subject = f'NEMSUOne — {announcement.title}'
         body = (
             f'{announcement.body}\n\n'
             f'— Posted by {announcement.posted_by.full_name}\n'
-            f'Log in at {settings.FRONTEND_URL} to view all announcements.'
+            f'Sign in at {settings.FRONTEND_URL} to view all announcements.'
         )
         datatuple = tuple(
             (subject, body, settings.DEFAULT_FROM_EMAIL, [email])

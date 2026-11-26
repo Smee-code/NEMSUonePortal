@@ -30,8 +30,8 @@ export default function NotFound() {
           <span>Popular destinations:</span>
           <Link to="/programs">Programs</Link>
           <Link to="/news">News</Link>
-          <Link to="/campus-life">Campus Life</Link>
-          <Link to="/login">Log in</Link>
+          <Link to="/campus-life">Campus life</Link>
+          <Link to="/login">Sign in</Link>
         </div>
       </main>
     </div>

@@ -422,22 +422,22 @@ const SB_GROUPS = [
 
 const SB_ITEMS = [
   { key: 'dashboard',     icon: 'ti-layout-dashboard', label: 'Dashboard',      section: 'overview', to: '/faculty/dashboard'     },
-  { key: 'grades',        icon: 'ti-pencil',           label: 'Grade Encoding', section: 'teaching', to: '/faculty/grades'        },
-  { key: 'schedule',      icon: 'ti-calendar',         label: 'Teaching Load',  section: 'teaching', to: '/faculty/schedule'      },
-  { key: 'timetable',     icon: 'ti-calendar-week',    label: 'My Schedule',    section: 'teaching', to: '/faculty/timetable'     },
-  { key: 'roster',        icon: 'ti-users',            label: 'Class Roster',   section: 'teaching', to: '/faculty/roster'        },
+  { key: 'grades',        icon: 'ti-pencil',           label: 'Grade encoding', section: 'teaching', to: '/faculty/grades'        },
+  { key: 'schedule',      icon: 'ti-calendar',         label: 'Teaching load',  section: 'teaching', to: '/faculty/schedule'      },
+  { key: 'timetable',     icon: 'ti-calendar-week',    label: 'My schedule',    section: 'teaching', to: '/faculty/timetable'     },
+  { key: 'roster',        icon: 'ti-users',            label: 'Class roster',   section: 'teaching', to: '/faculty/roster'        },
   { key: 'announcements', icon: 'ti-bell',             label: 'Announcements',  section: 'campus',   to: '/faculty/announcements' },
-  { key: 'profile',       icon: 'ti-user',             label: 'My Profile',     section: 'campus',   to: '/faculty/profile'       },
+  { key: 'profile',       icon: 'ti-user',             label: 'My profile',     section: 'campus',   to: '/faculty/profile'       },
 ];
 
 const PAGE_LABELS = {
   dashboard:     'Dashboard',
-  grades:        'Grade Encoding',
-  schedule:      'Teaching Load',
-  timetable:     'My Schedule',
-  roster:        'Class Roster',
+  grades:        'Grade encoding',
+  schedule:      'Teaching load',
+  timetable:     'My schedule',
+  roster:        'Class roster',
   announcements: 'Announcements',
-  profile:       'My Profile',
+  profile:       'My profile',
 };
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */

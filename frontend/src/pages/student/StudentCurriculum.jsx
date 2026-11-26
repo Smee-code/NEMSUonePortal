@@ -75,7 +75,7 @@ export default function StudentCurriculum() {
         <div>
           <div className="eyebrow">Academic{data?.program_code ? ` · ${data.program_code}` : ''}</div>
           <h2>My <em>curriculum</em></h2>
-          <div className="sub">Your official course map — every subject in the program, and how far you’ve come.</div>
+          <div className="sub">Your official curriculum map — every subject in the program, and how far you’ve come.</div>
         </div>
       </div>
 
@@ -109,7 +109,7 @@ export default function StudentCurriculum() {
             <div className="sc-bar"><span className="sc-bar-fill" style={{ width: `${pct}%` }} /></div>
 
             <div className="sc-hero-stats">
-              <span><b>{passed.length}</b> of {subjects.length} courses passed</span>
+              <span><b>{passed.length}</b> of {subjects.length} subjects passed</span>
               <span><b>{fmtUnits(earnedUnits)}</b> of {fmtUnits(totalUnits)} units earned</span>
               <span><b>{fmtUnits(totalUnits - earnedUnits)}</b> units remaining</span>
             </div>

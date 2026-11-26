@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import ConsentCheckbox from '../components/ConsentCheckbox';
 
 /*
   Public page an invited faculty reaches from the "Set up my account" button in
@@ -21,6 +22,9 @@ export default function FacultySetup() {
   const [show, setShow]     = useState(false);
   const [error, setError]   = useState('');
   const [saving, setSaving] = useState(false);
+  // Terms and Conditions + Data Privacy consent (RA 10173); required to finish setup.
+  const [consent, setConsent] = useState(false);
+  const [consentErr, setConsentErr] = useState(false);
 
   const load = useCallback(() => {
     api.get(`/auth/faculty-setup/${token}/`)
@@ -34,10 +38,15 @@ export default function FacultySetup() {
     e.preventDefault();
     setError('');
     if (pw.length < 12) { setError('Password must be at least 12 characters.'); return; }
-    if (pw !== confirm) { setError('The two passwords do not match.'); return; }
+    if (pw !== confirm) { setError('Passwords do not match.'); return; }
+    if (!consent) {
+      setConsentErr(true);
+      setError('Please agree to the Terms and Conditions and the Data Privacy Consent to set up your account.');
+      return;
+    }
     setSaving(true);
     try {
-      const res = await api.post(`/auth/faculty-setup/${token}/complete/`, { password: pw, confirm });
+      const res = await api.post(`/auth/faculty-setup/${token}/complete/`, { password: pw, confirm, privacy_consent: true });
       loginWithToken(res.data.access);
       navigate('/faculty/dashboard', { replace: true });
     } catch (err) {
@@ -81,7 +90,7 @@ export default function FacultySetup() {
               <div className="fs-pw">
                 <input id="fs-pw" className="fs-input" type={show ? 'text' : 'password'} value={pw}
                   onChange={e => setPw(e.target.value)} placeholder="At least 12 characters"
-                  autoComplete="new-password" autoFocus />
+                  autoComplete="new-password" autoFocus required />
                 <button type="button" className="fs-eye" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'}>
                   <i className={`ti ${show ? 'ti-eye-off' : 'ti-eye'}`} />
                 </button>
@@ -90,7 +99,12 @@ export default function FacultySetup() {
               <label className="fs-label" htmlFor="fs-cf">Confirm password</label>
               <input id="fs-cf" className="fs-input" type={show ? 'text' : 'password'} value={confirm}
                 onChange={e => setConfirm(e.target.value)} placeholder="Re-enter password"
-                autoComplete="new-password" />
+                autoComplete="new-password" required />
+
+              <ConsentCheckbox
+                id="fs-consent" purpose="account"
+                checked={consent} invalid={consentErr && !consent}
+                onChange={v => { setConsent(v); if (v) setConsentErr(false); }} />
 
               {error && <p className="fs-formerr">{error}</p>}
 

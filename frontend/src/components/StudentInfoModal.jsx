@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
+import { openPdf } from '../utils/openPdf';
 
 /*
   Read-only full profile for one student, for the registrar / admin. Shows
@@ -54,6 +55,14 @@ export default function StudentInfoModal({ studentId, onClose }) {
                 <Row k="Birthplace" v={d.birthplace} />
                 <Row k="Sex" v={d.sex} />
                 <Row k="Civil status" v={d.civil_status} />
+                {(d.civil_status === 'Married' || s.marriage_certificate) && (
+                  <Row k="Marriage certificate" v={s.marriage_certificate ? (
+                    <button type="button" className="sim-link"
+                      onClick={() => openPdf(`/auth/students/${s.id}/documents/marriage-certificate/`).catch(() => setError('Couldn’t open the marriage certificate.'))}>
+                      <i className="ti ti-file-text" aria-hidden="true" /> View PDF
+                    </button>
+                  ) : 'Not on file'} />
+                )}
                 <Row k="Citizenship" v={d.citizenship} />
                 <Row k="Religion" v={d.religion} />
                 <Row k="Ethnicity" v={d.ethnicity} />
@@ -130,5 +139,6 @@ const CSS = `
   .sim-foot{display:flex;justify-content:flex-end;padding:.9rem 1.4rem;border-top:1px solid #e9edf3;}
   .sim-btn{padding:9px 18px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font:600 13px 'Inter',sans-serif;cursor:pointer;}
   .sim-btn:hover{border-color:#0a3a6e;color:#0a1628;}
+  .sim-link{background:none;border:none;padding:0;color:#1d4ed8;font:600 12.5px 'Inter',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:4px;text-decoration:underline;}
   @media(max-width:768px){ .sim-overlay{padding:1.25rem .75rem;} }
 `;

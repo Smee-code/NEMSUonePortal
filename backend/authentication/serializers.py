@@ -1,6 +1,7 @@
 import re
 
 from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -17,7 +18,7 @@ class UserRegistrationSerializer(serializers.Serializer):
     The applicant enters the Student ID the registrar assigned at admission (sent in
     their approval email), their institutional email, and a password. Their name is
     pulled from the approved admission record — not re-typed — and the account is
-    created ready to log in (the registrar already vetted them at admission).
+    created ready to sign in (the registrar already vetted them at admission).
     """
     student_id = serializers.CharField(max_length=20)
     institutional_email = serializers.EmailField()
@@ -25,6 +26,16 @@ class UserRegistrationSerializer(serializers.Serializer):
         write_only=True, required=True, validators=[validate_password],
         style={'input_type': 'password'},
     )
+    # Terms and Conditions + Data Privacy consent (RA 10173). Must be true.
+    privacy_consent = serializers.BooleanField(required=False, default=False)
+
+    def validate_privacy_consent(self, value):
+        if value is not True:
+            raise serializers.ValidationError(
+                'You must agree to the Terms and Conditions and give your Data Privacy '
+                'consent to create an account.'
+            )
+        return value
 
     def validate_institutional_email(self, value):
         # Uniqueness is enforced in validate() instead, so it can allow the email
@@ -35,7 +46,7 @@ class UserRegistrationSerializer(serializers.Serializer):
         value = value.strip().upper()
         existing = User.objects.filter(student_id__iexact=value).first()
         if existing and not getattr(existing, 'is_placeholder', False):
-            raise serializers.ValidationError('An account with this Student ID already exists — try logging in instead.')
+            raise serializers.ValidationError('An account with this Student ID already exists. Please sign in instead.')
         return value
 
     def validate(self, attrs):
@@ -147,7 +158,7 @@ class UserRegistrationSerializer(serializers.Serializer):
         # Always confirm the email before the account goes live. Admission vetting
         # proves eligibility, not control of the email address — so even approved
         # applicants must click a verification link (sent to the on-record email,
-        # which registration was required to match above) before they can log in.
+        # which registration was required to match above) before they can sign in.
         needs_verification = True
 
         user.role                = 'student'
@@ -159,6 +170,9 @@ class UserRegistrationSerializer(serializers.Serializer):
         user.is_verified         = not needs_verification
         user.is_active           = True
         user.registration_status = User.REG_APPROVED
+        # validate_privacy_consent() only lets the request through when consent
+        # was given, so record the moment it was.
+        user.privacy_consent_at  = timezone.now()
         user.save()
 
         if pending:
@@ -196,11 +210,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             if user.is_locked():
                 raise serializers.ValidationError(
                     'Account is temporarily locked due to multiple failed login '
-                    'attempts. Please try again later or contact support.'
+                    'attempts. Please try again later or contact the Registrar\'s Office.'
                 )
             if user.registration_status == User.REG_PENDING:
                 raise serializers.ValidationError(
-                    'Your registration is still pending Registrar approval. '
+                    'Your registration is still pending the registrar’s approval. '
                     "You'll receive an email once your account has been reviewed."
                 )
             if user.registration_status == User.REG_REJECTED:
@@ -216,7 +230,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Block unverified accounts from receiving tokens (OWASP A07 — F-08)
         if not self.user.is_verified:
             raise serializers.ValidationError(
-                'Please verify your email address before logging in. '
+                'Please verify your email address before signing in. '
                 'Check your inbox or request a new verification link.'
             )
 
@@ -745,7 +759,7 @@ class AdminStudentAutoCreateSerializer(serializers.Serializer):
                 full_name=name,
                 password=password,
                 role='student',
-                is_verified=True,   # created by staff — ready to log in
+                is_verified=True,   # created by staff — ready to sign in
                 is_active=True,
             )
         user._temp_password = password   # handed to the view for the email

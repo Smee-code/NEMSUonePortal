@@ -53,7 +53,7 @@ export default function ResetPassword() {
     <div className="auth-page">
       <div className="auth-card">
         <h1>NEMSUOne</h1>
-        <h2>Reset Password</h2>
+        <h2>Reset password</h2>
 
         {success ? (
           <>
@@ -63,14 +63,14 @@ export default function ResetPassword() {
               className="btn-primary"
               style={{ display: 'block', textDecoration: 'none', textAlign: 'center', marginTop: '.5rem' }}
             >
-              Sign In
+              Sign in
             </Link>
           </>
         ) : (
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-group">
               <label htmlFor="new_password">
-                New Password <small style={{ color: '#6b7280' }}>(min. 12 characters)</small>
+                New password <small style={{ color: '#6b7280' }}>(min. 12 characters)</small>
               </label>
               <PasswordInput
                 id="new_password"
@@ -83,7 +83,7 @@ export default function ResetPassword() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="confirm">Confirm New Password</label>
+              <label htmlFor="confirm">Confirm new password</label>
               <PasswordInput
                 id="confirm"
                 name="confirm"
@@ -101,13 +101,13 @@ export default function ResetPassword() {
             )}
 
             <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? 'Resetting…' : 'Reset Password'}
+              {loading ? 'Resetting…' : 'Reset password'}
             </button>
           </form>
         )}
 
         <p className="auth-links">
-          <Link to="/login">Back to Sign In</Link>
+          <Link to="/login">Back to Sign in</Link>
         </p>
       </div>
     </div>

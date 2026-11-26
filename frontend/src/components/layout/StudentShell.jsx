@@ -18,13 +18,13 @@ function initials(name) {
 
 const NAV = [
   { key: 'dashboard',    path: '/student/dashboard',    icon: 'ti-layout-dashboard', label: 'Dashboard',         section: 'overview' },
-  { key: 'enrollment',   path: '/student/enrollment',   icon: 'ti-clipboard-check',  label: 'My Enrollment',     section: 'academic' },
-  { key: 'grades',       path: '/student/grades',       icon: 'ti-school',           label: 'My Grades',         section: 'academic' },
-  { key: 'schedule',     path: '/student/schedule',     icon: 'ti-calendar-event',   label: 'My Schedule',       section: 'academic' },
+  { key: 'enrollment',   path: '/student/enrollment',   icon: 'ti-clipboard-check',  label: 'My enrollment',     section: 'academic' },
+  { key: 'grades',       path: '/student/grades',       icon: 'ti-school',           label: 'My grades',         section: 'academic' },
+  { key: 'schedule',     path: '/student/schedule',     icon: 'ti-calendar-event',   label: 'My schedule',       section: 'academic' },
   { key: 'curriculum',   path: '/student/curriculum',   icon: 'ti-route',            label: 'Curriculum',        section: 'academic' },
-  { key: 'documents',    path: '/student/documents',    icon: 'ti-file-text',        label: 'Document Requests', section: 'services' },
+  { key: 'documents',    path: '/student/documents',    icon: 'ti-file-text',        label: 'Document requests', section: 'services' },
   { key: 'announcements',path: '/student/announcements',icon: 'ti-bell',             label: 'Announcements',     section: 'campus' },
-  { key: 'profile',      path: '/student/profile',      icon: 'ti-user',             label: 'My Profile',        section: 'campus' },
+  { key: 'profile',      path: '/student/profile',      icon: 'ti-user',             label: 'My profile',        section: 'campus' },
 ];
 
 const GROUPS = [
@@ -35,9 +35,9 @@ const GROUPS = [
 ];
 
 const CRUMB = {
-  dashboard: 'Dashboard', enrollment: 'My Enrollment', grades: 'My Grades',
-  schedule: 'My Schedule', curriculum: 'Curriculum', documents: 'Document Requests',
-  announcements: 'Announcements', profile: 'My Profile',
+  dashboard: 'Dashboard', enrollment: 'My enrollment', grades: 'My grades',
+  schedule: 'My schedule', curriculum: 'Curriculum', documents: 'Document requests',
+  announcements: 'Announcements', profile: 'My profile',
 };
 
 const CSS = `

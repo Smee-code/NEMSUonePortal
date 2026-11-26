@@ -218,7 +218,7 @@ export default function AdminUserManagement() {
   async function handleDelete(u) {
     const ok = window.confirm(
       `Delete ${ROLE_LABEL[u.role] || u.role} "${u.full_name}"?\n\n` +
-      'If this account has linked records (grades, schedules, enrolments, documents, or ' +
+      'If this account has linked records (grades, schedules, enrollments, documents, or ' +
       'announcements), it will be deactivated instead of deleted so history is kept. ' +
       'Otherwise it is permanently removed.'
     );
@@ -307,7 +307,7 @@ export default function AdminUserManagement() {
           <option value="false">Inactive</option>
         </select>
         <select value={filterVerified} onChange={e => setFilterVerified(e.target.value)}>
-          <option value="">All verified</option>
+          <option value="">Any verification status</option>
           <option value="true">Verified</option>
           <option value="false">Unverified</option>
         </select>
@@ -337,7 +337,7 @@ export default function AdminUserManagement() {
                 <th>User</th>
                 <th>Role</th>
                 <th>Status</th>
-                <th>Student ID</th>
+                <th>ID</th>
                 <th>Date joined</th>
                 <th></th>
               </tr>
@@ -383,7 +383,7 @@ export default function AdminUserManagement() {
                             : <span className="tag status-inactive">Inactive</span>
                       }
                     </td>
-                    <td className="muted" data-label="Student ID">{u.student_id || '-'}</td>
+                    <td className="muted" data-label="ID">{u.student_id || '-'}</td>
                     <td className="muted" data-label="Joined">
                       {new Date(u.date_joined).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>

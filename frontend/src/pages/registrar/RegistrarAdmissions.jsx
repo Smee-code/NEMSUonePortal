@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useRegistrarShell } from '../../context/RegistrarShellContext';
+import { requiredDocsFor } from '../../data/admissionDocs';
 
 function initials(name) {
   if (!name) return '?';
@@ -8,29 +9,13 @@ function initials(name) {
   return p.length === 1 ? (p[0][0] || '?').toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 
-// Required document labels per applicant type (must match the labels the
-// applicant uploads under, from the landing admission form).
-const REQUIRED_DOCS = {
-  new: [
-    'SHS Form 138 / Report Card', 'PSA Birth Certificate', 'Good Moral Certificate',
-    'SHS Diploma / Certificate of Completion', '2x2 ID photos (4 copies)',
-    'Medical Certificate', 'Entrance Exam Result / Admission Slip',
-  ],
-  transferee: [
-    'Transcript of Records (TOR)', 'Honorable Dismissal', 'Good Moral Certificate',
-    'PSA Birth Certificate', '2x2 ID photos (4 copies)', 'Medical Certificate',
-    'Application / Admission Form',
-  ],
-  returnee: [
-    'Previous Certificate of Registration (COR)', 'Readmission / Re-enrollment Form',
-    'Clearance from last enrollment', 'Updated Medical Certificate',
-  ],
-};
+// The required documents for one application: the standard list for the
+// applicant type plus a marriage certificate when they declared Married.
+const requiredFor = app => requiredDocsFor(app.student_type, app.details?.civil_status);
 
-function missingDocs(studentType, uploadedDocs) {
-  const required = REQUIRED_DOCS[studentType] || [];
+function missingDocs(app, uploadedDocs) {
   const uploaded = new Set((uploadedDocs || []).map(d => d.requirement_label));
-  return required.filter(label => !uploaded.has(label));
+  return requiredFor(app).filter(label => !uploaded.has(label));
 }
 
 const FILTERS = [
@@ -174,7 +159,7 @@ export default function RegistrarAdmissions() {
     } catch (err) {
       const data = err.response?.data;
       setReviewError(
-        data?.remarks?.[0] || data?.detail || data?.non_field_errors?.[0] || 'Review failed. Please try again.'
+        data?.remarks?.[0] || data?.error || data?.detail || data?.non_field_errors?.[0] || 'Review failed. Please try again.'
       );
     } finally {
       setReviewing(false);
@@ -341,6 +326,9 @@ export default function RegistrarAdmissions() {
                     <Row k="Ethnicity" v={d.ethnicity} />
                     <Row k="Major" v={d.major} />
                     <Row k="Year level" v={YL[selected.year_level]} />
+                    <Row k="Privacy consent" v={selected.privacy_consent_at
+                      ? `Given ${new Date(selected.privacy_consent_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}`
+                      : 'Not on record (filed before consent was collected)'} />
                   </Sec>
                   {(addr.brgy || addr.town || addr.province) && (
                     <Sec t="Address"><Row k="Current address" v={[addr.brgy, addr.town, addr.province, addr.zip].filter(Boolean).join(', ')} /></Sec>
@@ -365,7 +353,7 @@ export default function RegistrarAdmissions() {
 
             {/* Document checklist */}
             {(() => {
-              const required = REQUIRED_DOCS[selected.student_type] || [];
+              const required = requiredFor(selected);
               const byLabel = {};
               (docs || []).forEach(d => { byLabel[d.requirement_label] = d; });
               const submittedCount = required.filter(l => byLabel[l]).length;
@@ -444,14 +432,14 @@ export default function RegistrarAdmissions() {
                 <button
                   onClick={() => {
                     setFollowupOpen(true);
-                    const missing = missingDocs(selected.student_type, docs);
+                    const missing = missingDocs(selected, docs);
                     const list = missing.length
                       ? missing.map(m => `• ${m}`).join('\n')
                       : '• (all required documents appear to be submitted — add any notes here)';
                     const noun = missing.length === 1 ? 'document is' : 'documents are';
                     const it = missing.length === 1 ? 'it' : 'them';
                     setFollowupMsg(
-                      `We have reviewed your pre-enrollment application and found that the following required ${noun} still missing or incomplete:\n\n${list}\n\nPlease submit ${it} at your earliest convenience so we can continue processing your application.`
+                      `We have reviewed your admission application and found that the following required ${noun} still missing or incomplete:\n\n${list}\n\nPlease submit ${it} at your earliest convenience so we can continue processing your application.`
                     );
                   }}
                   style={{ fontSize: '.82rem', color: '#8a6a12', background: 'var(--reg-gold-tint)', border: '1px solid var(--reg-gold)', padding: '6px 14px', cursor: 'pointer', fontWeight: 600 }}

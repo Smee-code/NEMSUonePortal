@@ -25,7 +25,7 @@ export default function NewsPage() {
   };
 
   useEffect(() => {
-    document.title = 'News · NEMSUOne';
+    document.title = 'News & updates · NEMSUOne';
     api.get('/enrollment/public/site-content/')
       .then(r => {
         setItems(r.data?.news?.items ?? []);

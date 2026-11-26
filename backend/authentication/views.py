@@ -12,6 +12,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from . import trusted_devices
 from .models import AuditLog, EmailVerificationToken, PasswordResetToken, User
 from .permissions import get_client_ip
 from .serializers import (
@@ -99,8 +100,8 @@ class RegisterView(generics.CreateAPIView):
                     f"{user.student_id}. To finish and start using it, verify your email "
                     f"by opening this link:\n\n"
                     f"{verify_url}\n\n"
-                    f"After verifying, log in at {settings.FRONTEND_URL}/login with your "
-                    f"Student ID or institutional email and the password you set.\n\n"
+                    f"After verifying, sign in at {settings.FRONTEND_URL}/login with your "
+                    f"email address and the password you set.\n\n"
                     "If you did not sign up, please ignore this email or contact the "
                     "Registrar's Office."
                 ),
@@ -110,7 +111,7 @@ class RegisterView(generics.CreateAPIView):
                    get_client_ip(request), 'success')
             return Response(
                 {'message': 'Account created. We sent a verification link to your email — '
-                            'open it to finish signing up, then log in.',
+                            'open it to finish signing up, then sign in.',
                  'verification_required': True},
                 status=status.HTTP_201_CREATED,
             )
@@ -121,9 +122,8 @@ class RegisterView(generics.CreateAPIView):
             subject='NEMSUOne — your account is ready',
             body=(
                 f"Hello {user.full_name},\n\n"
-                f"Your NEMSUOne student account has been created. You can now log in "
-                f"with your Student ID ({user.student_id}) or your institutional email and "
-                f"the password you just set.\n\n"
+                f"Your NEMSUOne student account (Student ID {user.student_id}) has been created. "
+                f"You can now sign in with your email address and the password you just set.\n\n"
                 f"{settings.FRONTEND_URL}/login\n\n"
                 "Welcome to NEMSU Cantilan!\n\n"
                 "If you did not create this account, please contact the Registrar's Office."
@@ -135,8 +135,7 @@ class RegisterView(generics.CreateAPIView):
                get_client_ip(request), 'success')
 
         return Response(
-            {'message': 'Account created. You can now log in with your Student ID or '
-                        'institutional email.',
+            {'message': 'Account created. You can now sign in with your email address.',
              'verification_required': False},
             status=status.HTTP_201_CREATED,
         )
@@ -227,11 +226,41 @@ class LoginView(TokenObtainPairView):
         user = serializer.user
         user.reset_failed_login()
 
+        # A browser that passed the emailed code within the last 30 days (and
+        # asked to be remembered) signs in on the password alone. Checked only
+        # now, after the password was verified, so the cookie is never a way in
+        # by itself and never reveals anything about an account.
+        if trusted_devices.is_trusted(user, request):
+            _audit(user, user.role, 'login_success', request.path, ip, 'success',
+                   {'second_factor': 'remembered_device'})
+            return _login_success_response(user)
+
         # Email two-factor: the password was correct, but we don't hand out tokens
         # yet — we send a one-time code and require it at /login/verify-otp/.
         _issue_login_otp(user)
         _audit(user, user.role, 'login_otp_sent', request.path, ip, 'success')
         return Response({'otp_required': True, 'email': user.institutional_email})
+
+
+def _login_success_response(user):
+    """The response that completes a login: access token in the body, refresh
+    token in the HttpOnly cookie. Shared by the code-verified and the
+    remembered-device paths so the two can never drift apart."""
+    from .serializers import CustomTokenObtainPairSerializer as _CTS
+    refresh = _CTS.get_token(user)
+    response = Response({
+        'access': str(refresh.access_token),
+        'user': {
+            'id': str(user.id),
+            'full_name': user.full_name,
+            'role': user.role,
+            'institutional_email': user.institutional_email,
+            'is_verified': user.is_verified,
+            'needs_academic_setup': user.needs_academic_setup,
+        },
+    })
+    set_refresh_cookie(response, str(refresh))
+    return response
 
 
 def _issue_login_otp(user):
@@ -316,21 +345,16 @@ class LoginVerifyOTPView(APIView):
         user.login_otp_attempts = 0
         user.save(update_fields=['login_otp', 'login_otp_expires', 'login_otp_attempts'])
 
-        from .serializers import CustomTokenObtainPairSerializer as _CTS
-        refresh = _CTS.get_token(user)
-        _audit(user, user.role, 'login_success', request.path, ip, 'success')
-        response = Response({
-            'access': str(refresh.access_token),
-            'user': {
-                'id': str(user.id),
-                'full_name': user.full_name,
-                'role': user.role,
-                'institutional_email': user.institutional_email,
-                'is_verified': user.is_verified,
-                'needs_academic_setup': user.needs_academic_setup,
-            },
-        })
-        set_refresh_cookie(response, str(refresh))
+        remember = request.data.get('remember_device') is True
+        _audit(user, user.role, 'login_success', request.path, ip, 'success',
+               {'second_factor': 'email_code', 'device_remembered': remember})
+        response = _login_success_response(user)
+        # Remember this browser for 30 days only when the user asked for it;
+        # otherwise make sure it is not (or no longer) remembered.
+        if remember:
+            trusted_devices.remember(user, request, response)
+        else:
+            trusted_devices.forget(request, response)
         return response
 
 
@@ -367,7 +391,7 @@ class CookieTokenRefreshView(APIView):
         refresh_token = request.COOKIES.get('refresh_token')
         if not refresh_token:
             return Response(
-                {'error': 'Refresh token not found. Please log in again.'},
+                {'error': 'Refresh token not found. Please sign in again.'},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -376,7 +400,7 @@ class CookieTokenRefreshView(APIView):
             serializer.is_valid(raise_exception=True)
         except Exception:
             return Response(
-                {'error': 'Session expired. Please log in again.'},
+                {'error': 'Session expired. Please sign in again.'},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -459,7 +483,7 @@ class VerifyEmailView(APIView):
         _audit(user, user.role, 'email_verified', request.path,
                get_client_ip(request), 'success')
 
-        return Response({'message': 'Email verified successfully. You may now log in.'})
+        return Response({'message': 'Email verified successfully. You may now sign in.'})
 
 
 class ResendVerificationView(APIView):
@@ -574,7 +598,7 @@ class PasswordResetConfirmView(APIView):
 
         _audit(user, user.role, 'password_reset_completed', request.path, ip, 'success')
 
-        return Response({'message': 'Password reset successfully. You can now log in.'})
+        return Response({'message': 'Password reset successfully. You can now sign in.'})
 
 
 class PasswordResetSelfView(APIView):
@@ -632,7 +656,7 @@ class PasswordChangeView(APIView):
         _audit(request.user, request.user.role, 'password_changed', request.path,
                get_client_ip(request), 'success')
 
-        response = Response({'message': 'Password changed successfully. Please log in again.'})
+        response = Response({'message': 'Password changed successfully. Please sign in again.'})
         response.delete_cookie('refresh_token', path='/api/auth/token/refresh/')
         return response
 
@@ -674,7 +698,7 @@ class ActivateByRefView(APIView):
 
         if pending.status == 'activated':
             return Response(
-                {'error': 'An account has already been created using this reference number. Please log in instead.'},
+                {'error': 'An account has already been created using this reference number. Please sign in instead.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if pending.status == 'pending':
@@ -684,7 +708,7 @@ class ActivateByRefView(APIView):
             )
         if pending.status == 'rejected':
             return Response(
-                {'error': 'Your pre-enrollment application was not approved. Please contact the registrar\'s office for assistance.'},
+                {'error': 'Your pre-enrollment application was not approved. Please contact the Registrar\'s Office for assistance.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -761,7 +785,7 @@ class ActivateRequestOTPView(APIView):
         pending.save(update_fields=['otp', 'otp_expires'])
 
         _send_email(
-            subject='Your NEMSUOne Account Activation Code',
+            subject='Your NEMSUOne account activation code',
             body=(
                 f"Hello {pending.full_name},\n\n"
                 f"Your one-time verification code is:\n\n"
@@ -804,13 +828,13 @@ class ActivateCompleteView(APIView):
         if otp != pending.otp:
             return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not password or len(password) < 8:
-            return Response({'error': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not password or len(password) < 12:
+            return Response({'error': 'Password must be at least 12 characters.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check no account already exists for this email
         if User.objects.filter(institutional_email=pending.email).exists():
             return Response(
-                {'error': 'An account already exists for this email address. Please log in instead.'},
+                {'error': 'An account already exists for this email address. Please sign in instead.'},
                 status=status.HTTP_409_CONFLICT,
             )
 
@@ -905,7 +929,7 @@ class FacultySetupInfoView(APIView):
         if u.role != 'faculty':
             return Response({'error': 'This setup link is invalid.'}, status=status.HTTP_400_BAD_REQUEST)
         if u.has_usable_password():
-            return Response({'error': 'This account is already set up. Please log in instead.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'This account is already set up. Please sign in instead.'}, status=status.HTTP_400_BAD_REQUEST)
         return Response({
             'full_name': u.full_name,
             'email': u.institutional_email,
@@ -935,16 +959,25 @@ class FacultySetupCompleteView(APIView):
         password = request.data.get('password', '')
         confirm = request.data.get('confirm', None)
         if confirm is not None and password != confirm:
-            return Response({'error': 'The two passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             _vp(password, user=u)
         except _DVE as e:
             return Response({'error': ' '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        # Terms and Conditions + Data Privacy consent (RA 10173) is required to
+        # finish setting up the account.
+        if request.data.get('privacy_consent') is not True:
+            return Response(
+                {'error': 'You must agree to the Terms and Conditions and give your Data '
+                          'Privacy consent to set up your account.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         u.set_password(password)
         u.is_verified = True
         u.is_active = True
-        u.save(update_fields=['password', 'is_verified', 'is_active'])
+        u.privacy_consent_at = timezone.now()
+        u.save(update_fields=['password', 'is_verified', 'is_active', 'privacy_consent_at'])
         # Burn this and any other outstanding setup tokens for the account.
         PasswordResetToken.objects.filter(user=u, used=False).update(used=True)
 
@@ -1048,11 +1081,93 @@ class StudentSelfInfoView(APIView):
         from .admin_views import student_profile_payload
         if request.user.role != 'student':
             return Response({'error': 'Only students can edit this profile.'}, status=status.HTTP_403_FORBIDDEN)
+        from .admin_views import marriage_certificate_record
         incoming = request.data.get('details')
         if not isinstance(incoming, dict):
             return Response({'error': 'details must be an object.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Civil-status verification: Married is only accepted with a marriage
+        # certificate on file (from admission or uploaded from the profile).
+        if incoming.get('civil_status') == 'Married' and marriage_certificate_record(request.user) is None:
+            return Response(
+                {'error': 'Upload your marriage certificate to set your civil status to Married.',
+                 'code': 'marriage_certificate_required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         request.user.details = incoming
         request.user.save(update_fields=['details'])
         _audit(request.user, request.user.role, 'student_details_updated', request.path,
                get_client_ip(request), 'success')
         return Response(student_profile_payload(request.user))
+
+
+class StudentMarriageCertificateUploadView(APIView):
+    """POST /auth/my/documents/marriage-certificate/ — the logged-in student
+    uploads (or replaces) their marriage certificate, a PDF of at most 2 MB. It is
+    what lets them record a Married civil status; the registrar and admin can
+    open it from the student's information to verify it."""
+    permission_classes = [IsAuthenticated]
+    MAX_BYTES = 2 * 1024 * 1024
+
+    def post(self, request):
+        from .models import StudentDocument
+        if request.user.role != 'student':
+            return Response({'error': 'Only students can upload this document.'}, status=status.HTTP_403_FORBIDDEN)
+        upload = request.FILES.get('file')
+        if not upload:
+            return Response({'error': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not upload.name.lower().endswith('.pdf'):
+            return Response({'error': 'Only PDF files are accepted.'}, status=status.HTTP_400_BAD_REQUEST)
+        if upload.size > self.MAX_BYTES:
+            return Response({'error': 'File size must not exceed 2 MB.'}, status=status.HTTP_400_BAD_REQUEST)
+        # The name can lie; a real PDF starts with this signature.
+        head = upload.read(5)
+        upload.seek(0)
+        if head != b'%PDF-':
+            return Response({'error': 'That file is not a valid PDF.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        doc, _created = StudentDocument.objects.get_or_create(
+            user=request.user, kind=StudentDocument.KIND_MARRIAGE,
+            defaults={'file_name': upload.name[:255], 'file_size': upload.size},
+        )
+        if doc.file:
+            doc.file.delete(save=False)   # replace, don't accumulate old copies
+        doc.file_name = upload.name[:255]
+        doc.file_size = upload.size
+        doc.file.save('marriage_certificate.pdf', upload, save=True)
+        _audit(request.user, request.user.role, 'student_document_uploaded', request.path,
+               get_client_ip(request), 'success', {'kind': StudentDocument.KIND_MARRIAGE})
+        return Response(
+            {'file_name': doc.file_name, 'uploaded_at': doc.uploaded_at.isoformat()},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class StudentMarriageCertificateFileView(APIView):
+    """GET /auth/students/<uuid:pk>/documents/marriage-certificate/ — streams the
+    student's marriage certificate. Allowed for the registrar and admin (to verify
+    the civil status) and for the student themself; nobody else."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        from django.http import FileResponse
+        from .admin_views import marriage_certificate_record
+        is_staff_reader = request.user.role in ('registrar', 'admin')
+        if not is_staff_reader and str(request.user.id) != str(pk):
+            return Response({'error': 'You do not have access to this document.'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            student = User.objects.get(pk=pk, role='student')
+        except User.DoesNotExist:
+            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+        doc = marriage_certificate_record(student)
+        if doc is None:
+            return Response({'error': 'No marriage certificate on file.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            fh = doc.file.open('rb')
+        except (FileNotFoundError, ValueError):
+            return Response({'error': 'The file is no longer available.'}, status=status.HTTP_404_NOT_FOUND)
+        if is_staff_reader:
+            _audit(request.user, request.user.role, 'student_document_viewed', request.path,
+                   get_client_ip(request), 'success', {'student': str(student.id), 'kind': 'marriage_certificate'})
+        resp = FileResponse(fh, content_type='application/pdf')
+        resp['Content-Disposition'] = 'inline; filename="marriage_certificate.pdf"'
+        return resp

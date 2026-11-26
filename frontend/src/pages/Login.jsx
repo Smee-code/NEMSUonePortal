@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PasswordInput from '../components/PasswordInput';
+import RememberDevice from '../components/RememberDevice';
 import { useLockCountdown, formatLockWait } from '../hooks/useLockCountdown';
 
 const ROLE_HOME = {
@@ -22,6 +23,9 @@ export default function Login() {
   const [otpEmail, setOtpEmail] = useState('');
   const [resendIn, setResendIn] = useState(0);
   const [resent, setResent] = useState(false);
+  // Skip the emailed code on this browser for the next 30 days. On by default;
+  // people on a shared or public computer untick it.
+  const [rememberDevice, setRememberDevice] = useState(true);
   const otpRef = useRef(null);
 
   const [lockUntil, setLockUntil] = useState(null);
@@ -76,7 +80,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const data = await verifyLoginOtp({ institutional_email: form.institutional_email, otp: otp.trim() });
+      const data = await verifyLoginOtp({ institutional_email: form.institutional_email, otp: otp.trim(), remember_device: rememberDevice });
       goToDashboard(data);
     } catch (err) {
       setError(err.response?.data?.detail || 'That code is incorrect. Please try again.');
@@ -117,12 +121,12 @@ export default function Login() {
           <span aria-hidden="true">←</span> Back to home
         </Link>
         <h1>NEMSUOne</h1>
-        <h2>{step === 'otp' ? 'Enter your code' : 'Sign In'}</h2>
+        <h2>{step === 'otp' ? 'Enter your code' : 'Sign in'}</h2>
 
         {step === 'credentials' ? (
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-group">
-              <label htmlFor="institutional_email">Institutional Email</label>
+              <label htmlFor="institutional_email">Institutional email</label>
               <input
                 id="institutional_email"
                 name="institutional_email"
@@ -155,7 +159,7 @@ export default function Login() {
             ) : error && <p className="error-message" role="alert">{error}</p>}
 
             <button type="submit" disabled={loading || locked} className="btn-primary">
-              {loading ? 'Signing in…' : locked ? `Try again in ${formatLockWait(lockRemaining)}` : 'Sign In'}
+              {loading ? 'Signing in…' : locked ? `Try again in ${formatLockWait(lockRemaining)}` : 'Sign in'}
             </button>
           </form>
         ) : (
@@ -180,6 +184,8 @@ export default function Login() {
               />
             </div>
 
+            <RememberDevice checked={rememberDevice} onChange={setRememberDevice} id="remember-device" />
+
             {resent && <p style={{ fontSize: 12.5, color: '#15803d', margin: '0 0 .6rem' }}>A new code has been sent.</p>}
             {error && <p className="error-message" role="alert">{error}</p>}
 
@@ -202,7 +208,7 @@ export default function Login() {
               <Link to="/forgot-password">Forgot password?</Link>
             </p>
             <p className="auth-links">
-              Don&apos;t have an account? <Link to="/signup">Sign Up</Link>
+              Don&apos;t have an account? <Link to="/signup">Sign up</Link>
             </p>
           </>
         )}

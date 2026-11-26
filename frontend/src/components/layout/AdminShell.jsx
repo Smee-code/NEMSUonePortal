@@ -327,45 +327,45 @@ const SB_GROUPS = [
 const SB_ITEMS = [
   { key: 'dashboard',     icon: 'ti-layout-dashboard', label: 'Dashboard',             section: 'overview',   to: '/admin/dashboard'    },
 
-  { key: 'users',         icon: 'ti-users',            label: 'User Management',       section: 'accounts',   to: '/admin/users'        },
+  { key: 'users',         icon: 'ti-users',            label: 'User management',       section: 'accounts',   to: '/admin/users'        },
   { key: 'students',      icon: 'ti-school',           label: 'Students',              section: 'accounts',   to: '/admin/students'     },
   { key: 'faculty',       icon: 'ti-chalkboard',       label: 'Faculty',               section: 'accounts',   to: '/admin/faculty'      },
 
-  { key: 'programs',      icon: 'ti-book-2',           label: 'Programs & Curriculum', section: 'academics',  to: '/admin/programs'     },
-  { key: 'blocks',        icon: 'ti-layout-grid',      label: 'Block Management',      section: 'academics',  to: '/admin/blocks'       },
-  { key: 'terms',         icon: 'ti-calendar',         label: 'Academic Terms',        section: 'academics',  to: '/admin/terms'        },
+  { key: 'programs',      icon: 'ti-book-2',           label: 'Programs & curriculum', section: 'academics',  to: '/admin/programs'     },
+  { key: 'blocks',        icon: 'ti-layout-grid',      label: 'Block management',      section: 'academics',  to: '/admin/blocks'       },
+  { key: 'terms',         icon: 'ti-calendar',         label: 'Academic terms',        section: 'academics',  to: '/admin/terms'        },
 
-  { key: 'schedule',      icon: 'ti-calendar-time',    label: 'Room Management',       section: 'scheduling', to: '/admin/schedule'     },
-  { key: 'facilities',    icon: 'ti-building-community',label: 'Rooms & Buildings',     section: 'scheduling', to: '/admin/facilities'   },
+  { key: 'schedule',      icon: 'ti-calendar-time',    label: 'Room management',       section: 'scheduling', to: '/admin/schedule'     },
+  { key: 'facilities',    icon: 'ti-building-community',label: 'Rooms & buildings',     section: 'scheduling', to: '/admin/facilities'   },
 
-  { key: 'document-types',icon: 'ti-files',            label: 'Document Catalog',      section: 'services',   to: '/admin/document-types'},
-  { key: 'midterm-reopen',icon: 'ti-lock-open',        label: 'Reopen Requests',       section: 'services',   to: '/admin/midterm-reopen'},
+  { key: 'document-types',icon: 'ti-files',            label: 'Document catalog',      section: 'services',   to: '/admin/document-types'},
+  { key: 'midterm-reopen',icon: 'ti-lock-open',        label: 'Reopen requests',       section: 'services',   to: '/admin/midterm-reopen'},
 
   { key: 'announcements', icon: 'ti-bell',             label: 'Announcements',         section: 'content',    to: '/admin/announcements'},
-  { key: 'landing',       icon: 'ti-layout-board',     label: 'Landing Content',       section: 'content',    to: '/admin/landing'      },
+  { key: 'landing',       icon: 'ti-layout-board',     label: 'Landing content',       section: 'content',    to: '/admin/landing'      },
 
-  { key: 'reports',       icon: 'ti-chart-bar',        label: 'Reports & Export',      section: 'system',     to: '/admin/reports'      },
-  { key: 'audit-log',     icon: 'ti-clock-hour-4',     label: 'Audit Log',             section: 'system',     to: '/admin/audit-log'    },
-  { key: 'settings',      icon: 'ti-settings',         label: 'System Settings',       section: 'system',     to: '/admin/settings'     },
+  { key: 'reports',       icon: 'ti-chart-bar',        label: 'Reports & export',      section: 'system',     to: '/admin/reports'      },
+  { key: 'audit-log',     icon: 'ti-clock-hour-4',     label: 'Audit log',             section: 'system',     to: '/admin/audit-log'    },
+  { key: 'settings',      icon: 'ti-settings',         label: 'System settings',       section: 'system',     to: '/admin/settings'     },
 ];
 
 const PAGE_LABELS = {
   dashboard:     'Dashboard',
-  users:         'User Management',
+  users:         'User management',
   students:      'Students',
   faculty:       'Faculty',
-  programs:      'Programs & Curriculum',
-  blocks:        'Block Management',
-  terms:         'Academic Terms',
-  schedule:      'Room Management',
-  facilities:    'Rooms & Buildings',
-  'document-types': 'Document Catalog',
-  'midterm-reopen': 'Reopen Requests',
-  reports:       'Reports & Export',
-  'audit-log':   'Audit Log',
+  programs:      'Programs & curriculum',
+  blocks:        'Block management',
+  terms:         'Academic terms',
+  schedule:      'Room management',
+  facilities:    'Rooms & buildings',
+  'document-types': 'Document catalog',
+  'midterm-reopen': 'Reopen requests',
+  reports:       'Reports & export',
+  'audit-log':   'Audit log',
   announcements: 'Announcements',
-  landing:       'Landing Content',
-  settings:      'System Settings',
+  landing:       'Landing content',
+  settings:      'System settings',
 };
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */

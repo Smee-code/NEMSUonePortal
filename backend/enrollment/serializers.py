@@ -344,6 +344,16 @@ class PendingEnrollmentCreateSerializer(serializers.Serializer):
     term_id        = serializers.IntegerField(required=False, allow_null=True, default=None)
     # Extended enrollment-form fields (address, civil status, education, parents…).
     details        = serializers.DictField(required=False, default=dict)
+    # Terms and Conditions + Data Privacy consent (RA 10173). Must be true.
+    privacy_consent = serializers.BooleanField(required=False, default=False)
+
+    def validate_privacy_consent(self, value):
+        if value is not True:
+            raise serializers.ValidationError(
+                'You must agree to the Terms and Conditions and give your Data Privacy '
+                'consent before submitting your application.'
+            )
+        return value
 
     def validate_email(self, value):
         if PendingEnrollment.objects.filter(email=value, status__in=['pending', 'approved']).exists():
@@ -418,6 +428,7 @@ class PendingEnrollmentListSerializer(serializers.ModelSerializer):
             'program_name', 'program_code', 'department_name', 'department_code', 'year_level',
             'status', 'status_display', 'remarks', 'assigned_student_id', 'details',
             'term_display', 'created_at', 'reviewed_at', 'reviewed_by_name', 'documents',
+            'privacy_consent_at',
         ]
 
     def get_term_display(self, obj):

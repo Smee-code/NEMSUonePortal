@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../components/Toast';
 import { titleCase } from '../../utils/text';
+import { openPdf } from '../../utils/openPdf';
+
+const MAX_CERT_BYTES = 2 * 1024 * 1024;
 
 // Name / place fields that auto-capitalize each word.
 const CAP_FIELDS = new Set([
@@ -57,27 +60,74 @@ export default function StudentPersonalInfoCard() {
   const [form, setForm]     = useState(EMPTY);
   const [loading, setLoad]  = useState(true);
   const [saving, setSaving] = useState(false);
+  // Civil-status verification: a Married status needs a marriage certificate on
+  // file. `cert` is the one already on record (from admission or an earlier
+  // upload); `certFile` is a new PDF picked here, uploaded when the form is saved.
+  const [studentId, setStudentId] = useState(null);
+  const [cert, setCert]         = useState(null);
+  const [certFile, setCertFile] = useState(null);
+  const [certErr, setCertErr]   = useState('');
+
+  const applyPayload = (data) => {
+    const d = data?.student?.details || {};
+    setRaw(d); setForm(toForm(d));
+    setStudentId(data?.student?.id || null);
+    setCert(data?.student?.marriage_certificate || null);
+  };
 
   useEffect(() => {
     api.get('/auth/my/details/')
-      .then(r => { const d = r.data?.student?.details || {}; setRaw(d); setForm(toForm(d)); })
+      .then(r => applyPayload(r.data))
       .catch(() => {})
       .finally(() => setLoad(false));
   }, []);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: CAP_FIELDS.has(k) ? titleCase(v) : v }));
 
+  const pickCert = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) { setCertErr('Only PDF files are accepted.'); return; }
+    if (file.size > MAX_CERT_BYTES) { setCertErr('The file must be under 2 MB.'); return; }
+    setCertErr('');
+    setCertFile(file);
+  };
+
   const save = async (e) => {
     e.preventDefault();
+    const married = form.civil_status === 'Married';
+    if (married && !cert && !certFile) {
+      setCertErr('Upload your marriage certificate to set your civil status to Married.');
+      toast('Upload your marriage certificate before saving.', { type: 'error' });
+      return;
+    }
     setSaving(true);
     try {
+      // Send the certificate first: the server only accepts a Married status
+      // once the certificate is on file.
+      if (married && certFile) {
+        const fd = new FormData();
+        fd.append('file', certFile);
+        const up = await api.post('/auth/my/documents/marriage-certificate/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        setCert(up.data);
+        setCertFile(null);
+      }
       const res = await api.patch('/auth/my/details/', { details: toDetails(form, raw) });
-      const d = res.data?.student?.details || {};
-      setRaw(d); setForm(toForm(d));
+      applyPayload(res.data);
+      setCertErr('');
       toast('Personal information saved.', { type: 'success' });
-    } catch {
-      toast('Couldn’t save your information. Please try again.', { type: 'error' });
+    } catch (err) {
+      const msg = err.response?.data?.error;
+      if (err.response?.data?.code === 'marriage_certificate_required') setCertErr(msg);
+      toast(msg || 'Couldn’t save your information. Please try again.', { type: 'error' });
     } finally { setSaving(false); }
+  };
+
+  const viewCert = () => {
+    if (!studentId) return;
+    openPdf(`/auth/students/${studentId}/documents/marriage-certificate/`)
+      .catch(() => toast('Couldn’t open the certificate. Please try again.', { type: 'error' }));
   };
 
   if (loading) return null;
@@ -130,6 +180,32 @@ export default function StudentPersonalInfoCard() {
               <F label="Spouse name" k="spouse_name" />
               <F label="Spouse address" k="spouse_address" />
             </div>
+
+            <div className={`pi-cert${certErr ? ' is-invalid' : ''}`}>
+              <div className="pi-cert-head">
+                Marriage certificate <span className="pi-cert-star" aria-hidden="true">*</span>
+              </div>
+              <p className="pi-cert-note">
+                Required to verify a Married civil status. PDF only, up to 2 MB. The registrar can view it.
+              </p>
+              <div className="pi-cert-row">
+                {certFile ? (
+                  <span className="pi-cert-file"><i className="ti ti-file-check" /> {certFile.name} <em>(uploads when you save)</em></span>
+                ) : cert ? (
+                  <span className="pi-cert-file"><i className="ti ti-file-check" /> {cert.file_name} <em>on file</em></span>
+                ) : (
+                  <span className="pi-cert-file none"><i className="ti ti-file-alert" /> No certificate on file</span>
+                )}
+                {cert && !certFile && (
+                  <button type="button" className="pi-cert-btn" onClick={viewCert}>View</button>
+                )}
+                <label className="pi-cert-btn">
+                  <input type="file" accept="application/pdf" onChange={pickCert} style={{ display: 'none' }} aria-label="Choose marriage certificate PDF" />
+                  {cert || certFile ? 'Replace' : 'Choose PDF'}
+                </label>
+              </div>
+              {certErr && <p className="pi-cert-err" role="alert">{certErr}</p>}
+            </div>
           </>
         )}
 
@@ -144,9 +220,9 @@ export default function StudentPersonalInfoCard() {
         <div className="pi-grid">
           <F label="Elementary school" k="elem_school" />
           <F label="Year graduated" k="elem_year" />
-          <F label="Junior High school" k="jhs_school" />
+          <F label="Junior high school" k="jhs_school" />
           <F label="Year graduated" k="jhs_year" />
-          <F label="Senior High school" k="shs_school" />
+          <F label="Senior high school" k="shs_school" />
           <F label="Year graduated" k="shs_year" />
         </div>
 
@@ -166,5 +242,18 @@ const CSS = `
   .pi-input{width:100%;padding:.5rem .7rem;border:1px solid var(--line);background:#fff;color:var(--ink);font:14px/1.4 'Inter',sans-serif;outline:none;box-sizing:border-box;}
   .pi-input:focus{border-color:var(--ink);}
   .pi-sec{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin:1.1rem 0 .5rem;}
+  .pi-cert{border:1px solid var(--line);background:#f8fafc;padding:.75rem .9rem;margin-top:.6rem;}
+  .pi-cert.is-invalid{border-color:#dc2626;background:#fef2f2;}
+  .pi-cert-head{font-weight:600;font-size:12.5px;color:var(--ink);}
+  .pi-cert-star{color:#dc2626;font-weight:700;}
+  .pi-cert-note{font-size:12px;color:var(--muted);margin:2px 0 .6rem;line-height:1.5;}
+  .pi-cert-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;}
+  .pi-cert-file{flex:1;min-width:180px;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:6px;overflow-wrap:anywhere;}
+  .pi-cert-file em{font-style:normal;color:var(--muted);font-size:12px;}
+  .pi-cert-file.none{color:var(--muted);}
+  .pi-cert-btn{display:inline-flex;align-items:center;padding:.45rem .8rem;border:1px solid var(--line);background:#fff;color:var(--ink);font:600 12.5px 'Inter',sans-serif;cursor:pointer;min-height:36px;}
+  .pi-cert-btn:hover{border-color:var(--ink);}
+  .pi-cert-btn:focus-within,.pi-cert-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+  .pi-cert-err{color:#dc2626;font-size:12px;font-weight:500;margin:.5rem 0 0;}
   @media(max-width:600px){ .pi-grid{grid-template-columns:1fr;} .pi-input{font-size:16px;} }
 `;

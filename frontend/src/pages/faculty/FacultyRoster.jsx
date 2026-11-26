@@ -159,7 +159,7 @@ export default function FacultyRoster() {
       <div className="page-head">
         <div>
           <div className="eyebrow">Faculty · {termLabel}</div>
-          <h2>Class <em>Roster</em></h2>
+          <h2>Class <em>roster</em></h2>
         </div>
       </div>
 
@@ -265,7 +265,7 @@ export default function FacultyRoster() {
               <div className="empty-state" style={{ minHeight: 160 }}>
                 <i className="ti ti-users" style={{ fontSize: 28, color: 'var(--faint)', marginBottom: '.5rem' }} />
                 <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-                  {search ? 'No students match your search.' : 'No students enrolled in this section.'}
+                  {search ? 'No students match your search.' : 'No students enrolled in this class.'}
                 </div>
               </div>
             ) : (

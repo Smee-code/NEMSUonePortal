@@ -313,7 +313,7 @@ export default function RegistrarFaculty() {
   async function handleDelete(f) {
     const ok = window.confirm(
       `Delete faculty "${f.full_name}"?\n\n` +
-      'If this faculty has teaching load, encoded grades, or posted announcements, ' +
+      'If this faculty member has a teaching load, encoded grades, or posted announcements, ' +
       'the account will be deactivated (disabled) instead of deleted so records are kept. ' +
       'Otherwise it is permanently removed.'
     );
@@ -644,7 +644,7 @@ export default function RegistrarFaculty() {
               <div>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--reg-ink)' }}>Add faculty</h3>
                 <div style={{ fontSize: 12, color: 'var(--reg-muted)', marginTop: 4 }}>
-                  Create a new faculty account. A setup link is emailed to the faculty to finish signing up.
+                  Create a new faculty account. A setup link is emailed to the faculty member to finish signing up.
                 </div>
               </div>
               <button type="button" className="reg-icon-btn" onClick={() => setShowCreate(false)} disabled={creating}>
@@ -846,7 +846,7 @@ export default function RegistrarFaculty() {
               {importResult.created > 0 && (
                 <p style={{ fontSize: 12.5, color: 'var(--reg-muted)', margin: '.9rem 0 0' }}>
                   <i className="ti ti-mail-forward" style={{ color: 'var(--reg-gold)', marginRight: 5 }} />
-                  Each new faculty was emailed a setup link to create their password.
+                  Each new faculty member was emailed a setup link to create their password.
                 </p>
               )}
 

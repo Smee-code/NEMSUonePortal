@@ -80,7 +80,7 @@ class AdminSiteImageUploadView(APIView):
             return Response({'error': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
         ext = os.path.splitext(f.name)[1].lower()
         if ext not in ALLOWED_IMAGE_EXT:
-            return Response({'error': 'Only JPG, PNG, WEBP or GIF images are allowed.'},
+            return Response({'error': 'Only JPG, PNG, WEBP, or GIF images are allowed.'},
                             status=status.HTTP_400_BAD_REQUEST)
         if f.size > MAX_IMAGE_BYTES:
             return Response({'error': 'Image is too large (max 5 MB).'}, status=status.HTTP_400_BAD_REQUEST)

@@ -163,7 +163,7 @@ function TermStatus({ termLabel, enrolled, gwa, units, subjectCount, openCount, 
         <div style={{ padding: '1rem 1.5rem 1.5rem' }}>
           <button className="btn-pri" style={{ width: '100%', justifyContent: 'center' }}
             onClick={() => navigate('/student/enrollment')}>
-            <i className="ti ti-clipboard-check" /> Enroll for {termLabel}
+            <i className="ti ti-clipboard-check" /> {termLabel === 'No active term' ? 'Go to enrollment' : <>Enroll for {termLabel}</>}
           </button>
         </div>
       )}
@@ -286,7 +286,8 @@ function RecentActivity({ docs, grades }) {
     const tag  = d.status === 'ready' ? 'approved' : d.status === 'rejected' ? 'rejected' : 'updated';
     events.push({
       icon, tag,
-      what: `Document ${d.status}`,
+      what: ({ submitted: 'Request submitted', processing: 'Request being processed', ready: 'Document ready for pickup',
+              released: 'Document released', rejected: 'Request rejected' })[d.status] || 'Request updated',
       resource: d.document_type_display || d.document_type,
       who: 'Registrar',
       time: new Date(d.updated_at || d.created_at).toLocaleDateString('en-PH', { month:'short', day:'numeric' }),
@@ -332,9 +333,9 @@ function RecentActivity({ docs, grades }) {
 
 function QuickActions({ navigate }) {
   const actions = [
-    { icon: 'ti-school',          title: 'View my grades',    desc: 'Current term grades and history per semester',     path: '/student/grades'      },
+    { icon: 'ti-school',          title: 'View my grades',    desc: 'Current-term grades and history per term',     path: '/student/grades'      },
     { icon: 'ti-calendar-event',  title: 'My schedule',       desc: 'Weekly timetable with room and instructor info',   path: '/student/schedule'    },
-    { icon: 'ti-file-text',       title: 'Request document',  desc: 'TOR, certificates, and other registrar documents', path: '/student/documents'   },
+    { icon: 'ti-file-text',       title: 'Request a document',  desc: 'TOR, certificates, and other registrar documents', path: '/student/documents'   },
     { icon: 'ti-clipboard-check', title: 'My enrollment',     desc: 'Submit and track your enrollment for the term',     path: '/student/enrollment'  },
   ];
   return (
@@ -458,7 +459,7 @@ export default function StudentDashboard() {
 
   // A plain-language summary line that adapts to what actually matters today.
   const summaryBits = [];
-  if (!enrolled) summaryBits.push(<>you're <strong style={{ color: 'var(--amber)' }}>not enrolled yet</strong> for {termLabel}</>);
+  if (!enrolled) summaryBits.push(<>you're <strong style={{ color: 'var(--amber)' }}>not enrolled yet</strong>{termLabel === 'No active term' ? '' : <> for {termLabel}</>}</>);
   else summaryBits.push(<>you have <strong style={{ color: 'var(--ink)' }}>{todaySlots.length} class{todaySlots.length !== 1 ? 'es' : ''}</strong> today</>);
   if (pendingDocs.length > 0) summaryBits.push(<><strong style={{ color: 'var(--ink)' }}>{pendingDocs.length} document request{pendingDocs.length !== 1 ? 's' : ''}</strong> in progress</>);
 
@@ -550,7 +551,7 @@ export default function StudentDashboard() {
         </span>
         <span className="live">
           <span className="dot" /> Connected to{' '}
-          <strong style={{ color: 'var(--muted)' }}>nemsuoneportal.api</strong>
+          <strong style={{ color: 'var(--muted)' }}>NEMSUOne API</strong>
         </span>
       </div>
     </div>

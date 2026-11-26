@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import api from '../api/axios';
 import PasswordInput from '../components/PasswordInput';
+import ConsentCheckbox from '../components/ConsentCheckbox';
 
 const EMPTY = {
   student_id: '', institutional_email: '',
@@ -23,6 +24,9 @@ export default function SignUp() {
   const [error,   setError]   = useState('');
   const [done,    setDone]    = useState(false);
   const [verifyNeeded, setVerifyNeeded] = useState(false);
+  // Terms and Conditions + Data Privacy consent (RA 10173); required to sign up.
+  const [consent, setConsent] = useState(false);
+  const [consentErr, setConsentErr] = useState(false);
 
   function set(field, value) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -32,7 +36,12 @@ export default function SignUp() {
     e.preventDefault();
     setError('');
     if (form.password !== form.confirm) { setError('Passwords do not match.'); return; }
-    if (form.password.length < 8)       { setError('Password must be at least 8 characters.'); return; }
+    if (form.password.length < 12)      { setError('Password must be at least 12 characters.'); return; }
+    if (!consent) {
+      setConsentErr(true);
+      setError('Please agree to the Terms and Conditions and the Data Privacy Consent to create your account.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -40,6 +49,7 @@ export default function SignUp() {
         student_id:          form.student_id.trim(),
         institutional_email: form.institutional_email.trim(),
         password:            form.password,
+        privacy_consent:     true,
       });
       setVerifyNeeded(!!res.data?.verification_required);
       setDone(true);
@@ -63,7 +73,7 @@ export default function SignUp() {
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img src="/logo.png" alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #e0e7ff' }} />
           <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0a1628', margin: 0 }}>Create your student account</h1>
-          <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>NEMSU Cantilan Campus - NEMSUOne</p>
+          <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>NEMSU Cantilan Campus · NEMSUOne</p>
         </div>
 
         {done ? (
@@ -74,8 +84,8 @@ export default function SignUp() {
             <h2 style={hStyle}>{verifyNeeded ? 'Verify your email' : 'Account created'}</h2>
             <p style={pStyle}>
               {verifyNeeded
-                ? 'We sent a verification link to your email. Open it to finish signing up, then sign in with your Student ID or institutional email and the password you just set.'
-                : 'Your NEMSUOne account is ready. You can now sign in with your Student ID or institutional email and the password you just set.'}
+                ? 'We sent a verification link to your email. Open it to finish signing up, then sign in with your email address and the password you just set.'
+                : 'Your NEMSUOne account is ready. You can now sign in with your email address and the password you just set.'}
             </p>
             <button type="button" onClick={() => navigate('/login')} className="su-btn" style={primBtn(false)}>
               Go to sign in
@@ -104,12 +114,21 @@ export default function SignUp() {
 
             <div className="su-pw-grid">
               <Field label="Password" htmlFor="su-password">
-                <PasswordInput id="su-password" name="new-password" autoComplete="new-password" className="su-input" style={inp} value={form.password} onChange={e => set('password', e.target.value)} required placeholder="Min. 8 characters" />
+                <PasswordInput id="su-password" name="new-password" autoComplete="new-password" className="su-input" style={inp} value={form.password} onChange={e => set('password', e.target.value)} required minLength={12} placeholder="Min. 12 characters" />
               </Field>
               <Field label="Confirm password" htmlFor="su-confirm">
                 <PasswordInput id="su-confirm" name="confirm-password" autoComplete="new-password" className="su-input" style={inp} value={form.confirm} onChange={e => set('confirm', e.target.value)} required placeholder="Re-enter password" />
               </Field>
             </div>
+
+            <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 .25rem' }}>
+              Fields marked <span style={{ color: '#dc2626', fontWeight: 700 }}>*</span> are required.
+            </p>
+
+            <ConsentCheckbox
+              id="su-consent" purpose="account"
+              checked={consent} invalid={consentErr && !consent}
+              onChange={v => { setConsent(v); if (v) setConsentErr(false); }} />
 
             {error && <ErrMsg>{error}</ErrMsg>}
 

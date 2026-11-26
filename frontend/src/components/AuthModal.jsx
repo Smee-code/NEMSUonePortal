@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import PasswordInput from './PasswordInput';
+import ConsentCheckbox from './ConsentCheckbox';
+import RememberDevice from './RememberDevice';
 import { useLockCountdown, formatLockWait } from '../hooks/useLockCountdown';
 
 const ROLE_HOME = {
@@ -34,7 +36,7 @@ export default function AuthModal({ mode = 'login', onClose }) {
   return createPortal(
     <div className="authm-back" onClick={onClose}>
       <style>{CSS}</style>
-      <div className="authm" role="dialog" aria-modal="true" aria-label={tab === 'login' ? 'Log in' : 'Sign up'} onClick={e => e.stopPropagation()}>
+      <div className="authm" role="dialog" aria-modal="true" aria-label={tab === 'login' ? 'Sign in' : 'Sign up'} onClick={e => e.stopPropagation()}>
         <button className="authm-x" onClick={onClose} aria-label="Close"><i className="ti ti-x" /></button>
         {tab === 'login'
           ? <LoginForm onClose={onClose} toSignup={() => setTab('signup')} />
@@ -57,6 +59,8 @@ function LoginForm({ onClose, toSignup }) {
   const [otpEmail, setOtpEmail] = useState('');
   const [resendIn, setResendIn] = useState(0);
   const [resent, setResent] = useState(false);
+  // Skip the emailed code on this browser for the next 30 days (on by default).
+  const [rememberDevice, setRememberDevice] = useState(true);
   const [lockUntil, setLockUntil] = useState(null);
   const lockRemaining = useLockCountdown(lockUntil);
   const locked = lockRemaining > 0;
@@ -94,7 +98,7 @@ function LoginForm({ onClose, toSignup }) {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const data = await verifyLoginOtp({ institutional_email: form.institutional_email, otp: otp.trim() });
+      const data = await verifyLoginOtp({ institutional_email: form.institutional_email, otp: otp.trim(), remember_device: rememberDevice });
       finish(data);
     } catch (err) {
       setError(err.response?.data?.detail || 'That code is incorrect. Please try again.');
@@ -131,6 +135,8 @@ function LoginForm({ onClose, toSignup }) {
           placeholder="------" maxLength={6}
           style={{ letterSpacing: '.5em', textAlign: 'center', fontSize: 20, fontWeight: 600 }}
         />
+
+        <RememberDevice checked={rememberDevice} onChange={setRememberDevice} id="authm-remember-device" />
 
         {resent && <div style={{ color: '#15803d', fontSize: 12.5, margin: '.4rem 0 0' }}>A new code has been sent.</div>}
         {error && <div className="authm-err">{error}</div>}
@@ -202,20 +208,31 @@ function SignupForm({ onClose, toLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [verifyNeeded, setVerifyNeeded] = useState(false);
+  // Terms and Conditions + Data Privacy consent (RA 10173); required to sign up.
+  const [consent, setConsent] = useState(false);
+  const [consentErr, setConsentErr] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = async e => {
     e.preventDefault();
     setError('');
     if (form.password !== form.confirm) { setError('Passwords do not match.'); return; }
-    if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (form.password.length < 12) { setError('Password must be at least 12 characters.'); return; }
+    if (!consent) {
+      setConsentErr(true);
+      setError('Please agree to the Terms and Conditions and the Data Privacy Consent to create your account.');
+      return;
+    }
     setLoading(true);
     try {
-      await api.post('/auth/register/', {
+      const res = await api.post('/auth/register/', {
         student_id: form.student_id.trim(),
         institutional_email: form.institutional_email.trim(),
         password: form.password,
+        privacy_consent: true,
       });
+      setVerifyNeeded(!!res.data?.verification_required);
       setDone(true);
     } catch (err) {
       const data = err.response?.data;
@@ -232,10 +249,11 @@ function SignupForm({ onClose, toLogin }) {
     return (
       <div className="authm-body authm-done">
         <div className="authm-done-ic"><i className="ti ti-circle-check" /></div>
-        <h2>Account created</h2>
+        <h2>{verifyNeeded ? 'Verify your email' : 'Account created'}</h2>
         <p>
-          Your NEMSUOne account is ready. You can now sign in with your Student ID or
-          institutional email and the password you just set.
+          {verifyNeeded
+            ? 'We sent a verification link to your email. Open it to finish signing up, then sign in with your email address and the password you just set.'
+            : 'Your NEMSUOne account is ready. You can now sign in with your email address and the password you just set.'}
         </p>
         <button type="button" className="authm-submit" onClick={toLogin}>Go to sign in</button>
       </div>
@@ -259,13 +277,22 @@ function SignupForm({ onClose, toLogin }) {
       <div className="authm-grid">
         <div>
           <label className="authm-label">Password</label>
-          <PasswordInput className="authm-input" required value={form.password} onChange={e => set('password', e.target.value)} placeholder="Min. 8 characters" />
+          <PasswordInput className="authm-input" required minLength={12} value={form.password} onChange={e => set('password', e.target.value)} placeholder="Min. 12 characters" />
         </div>
         <div>
-          <label className="authm-label">Confirm</label>
-          <PasswordInput className="authm-input" required value={form.confirm} onChange={e => set('confirm', e.target.value)} placeholder="Re-enter" />
+          <label className="authm-label">Confirm password</label>
+          <PasswordInput className="authm-input" required value={form.confirm} onChange={e => set('confirm', e.target.value)} placeholder="Re-enter password" />
         </div>
       </div>
+
+      <p style={{ fontSize: 12, color: '#5a6478', margin: '.75rem 0 0' }}>
+        Fields marked <span style={{ color: '#dc2626', fontWeight: 700 }}>*</span> are required.
+      </p>
+
+      <ConsentCheckbox
+        id="authm-consent" purpose="account"
+        checked={consent} invalid={consentErr && !consent}
+        onChange={v => { setConsent(v); if (v) setConsentErr(false); }} />
 
       {error && <div className="authm-err">{error}</div>}
 
@@ -275,7 +302,7 @@ function SignupForm({ onClose, toLogin }) {
 
       <div className="authm-switch">
         Already have an account?{' '}
-        <button type="button" onClick={toLogin}>Log in</button>
+        <button type="button" onClick={toLogin}>Sign in</button>
       </div>
     </form>
   );

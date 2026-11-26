@@ -142,7 +142,7 @@ export default function RegistrarStudents() {
               <thead>
                 <tr>
                   <th>Student</th>
-                  <th>ID number</th>
+                  <th>Student ID</th>
                   <th>Program &amp; year</th>
                   <th>Status</th>
                   <th className="r"></th>

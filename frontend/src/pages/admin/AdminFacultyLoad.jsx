@@ -144,7 +144,7 @@ export default function AdminFacultyLoad() {
           <button className="btn-sec" onClick={() => toast('Faculty load exported', { sub: 'CSV download started', type: 'success' })}>
             <i className="ti ti-file-export" /> Export load
           </button>
-          <button className="btn-pri" onClick={() => toast('Select a subject below and click Assign Faculty to get started.')}>
+          <button className="btn-pri" onClick={() => toast('Select a subject below and click Assign to get started.')}>
             <i className="ti ti-plus" /> Assign subject
           </button>
         </div>

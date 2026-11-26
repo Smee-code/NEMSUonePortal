@@ -112,7 +112,7 @@ def _button_label(url):
     if '/signup' in url or '/sign-up' in url:
         return 'Create my account'
     if '/login' in url:
-        return 'Log in to NEMSUOne'
+        return 'Sign in to NEMSUOne'
     return 'Open NEMSUOne'
 
 
@@ -222,7 +222,7 @@ def render_branded_html(subject, body, preheader=None):
         <img src="cid:{LOGO_CID}" width="48" height="48" alt="NEMSUOne logo" style="display:block;width:48px;height:48px;border-radius:50%;">
       </td>
       <td style="vertical-align:middle;">
-        <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:.3px;">NEMSU<span style="color:{GOLD};">one</span>Portal</div>
+        <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:.3px;">NEMSU<span style="color:{GOLD};">One</span></div>
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c7d2e0;letter-spacing:.6px;margin-top:4px;text-transform:uppercase;">{INSTITUTION} &middot; Cantilan Campus</div>
       </td>
     </tr></table>

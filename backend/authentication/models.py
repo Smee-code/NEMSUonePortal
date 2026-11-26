@@ -73,6 +73,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     # student; viewable by the registrar/admin. JSON to mirror the admission form.
     details = models.JSONField(default=dict, blank=True)
 
+    # When this person agreed to the Terms and Conditions and gave Data Privacy
+    # consent (RA 10173): at sign-up, at faculty account setup, or carried over
+    # from their admission application. Null for accounts created before consent
+    # was collected and for staff accounts created directly by an administrator.
+    privacy_consent_at = models.DateTimeField(null=True, blank=True)
+
     # Registrar validation of student self-registration.
     # 'approved' by default so existing rows and admin-created staff are unaffected;
     # only public student registration sets this to 'pending'.
@@ -167,6 +173,20 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f'{self.full_name} ({self.institutional_email})'
+
+    # A new password un-remembers every device: whoever set it (the user, a reset
+    # link, the registrar re-activating an account) the next login from any
+    # browser needs the emailed code again. Done here, at the one point every
+    # password change passes through, so no code path can forget to do it.
+    def set_password(self, raw_password):
+        super().set_password(raw_password)
+        self._forget_trusted_devices = True
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if getattr(self, '_forget_trusted_devices', False):
+            self._forget_trusted_devices = False
+            TrustedDevice.objects.filter(user=self).delete()
 
     @property
     def faculty_classification(self):
@@ -296,3 +316,67 @@ class PasswordResetToken(models.Model):
 
     def is_valid(self):
         return not self.used and timezone.now() < self.expires_at
+
+
+class TrustedDevice(models.Model):
+    """
+    A browser that has passed the emailed login code and asked to be remembered.
+
+    While a device's record is unexpired, a correct password on that device signs
+    the user in without another code. The record expires a fixed 30 days after the
+    code was verified (it is never extended by use), so every device is asked for
+    a code at least once every 30 days, and any device without a record is asked
+    every time.
+
+    Only the SHA-256 of the cookie value is stored: a leaked database does not
+    reveal usable tokens. All of a user's records are deleted when their password
+    changes or is reset.
+    """
+    LIFETIME = timedelta(days=30)
+    MAX_PER_USER = 10
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trusted_devices')
+    token_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'trusted_devices'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user_id} until {self.expires_at:%Y-%m-%d}'
+
+
+def student_document_path(instance, filename):
+    # Never trust the uploaded name for the path; keep only a fixed, safe one.
+    return f'student_docs/{instance.user_id}/{instance.kind}.pdf'
+
+
+class StudentDocument(models.Model):
+    """
+    A supporting document a student uploads to their own record after admission
+    (admission-time uploads live on enrollment.PreEnrollmentDocument). One file
+    per kind per student; uploading again replaces it.
+    """
+    KIND_MARRIAGE = 'marriage_certificate'
+    KIND_CHOICES = [(KIND_MARRIAGE, 'Marriage Certificate')]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents')
+    kind = models.CharField(max_length=40, choices=KIND_CHOICES)
+    file = models.FileField(upload_to=student_document_path)
+    file_name = models.CharField(max_length=255)
+    file_size = models.PositiveIntegerField(default=0)
+    uploaded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'student_documents'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'kind'], name='one_student_document_per_kind'),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id} {self.kind}'

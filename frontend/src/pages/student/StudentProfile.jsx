@@ -86,7 +86,7 @@ export default function StudentProfile() {
 
   const verified = !!profile?.is_verified;
   const facts = [
-    profile?.student_id   && { k: 'Student No.', v: profile.student_id, mono: true },
+    profile?.student_id   && { k: 'Student ID', v: profile.student_id, mono: true },
     profile?.program_name && { k: 'Program',     v: profile.program_code || profile.program_name },
     profile?.year_level   && { k: 'Year level',  v: YEAR_LABELS[profile.year_level] },
     profile?.department_name && { k: 'Department', v: profile.department_code || profile.department_name },
@@ -195,7 +195,7 @@ export default function StudentProfile() {
 
               <div className="pf-hint">
                 <i className="ti ti-info-circle" />
-                Your program and year level determine the courses offered to you during enrollment.
+                Your program and year level determine the subjects offered to you during enrollment.
               </div>
 
               <button type="submit" className="btn-pri" disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>

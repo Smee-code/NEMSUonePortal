@@ -22,7 +22,7 @@ export default function TermsConditions() {
       </ul>
 
       <h2>3. Academic records</h2>
-      <p>Grades, enrollment status, and other records displayed in the portal are for your reference. The University's official records prevail in case of any discrepancy. Physical release of documents remains subject to the procedures of the Office of the Registrar.</p>
+      <p>Grades, enrollment status, and other records displayed in the portal are for your reference. The University's official records prevail in case of any discrepancy. Physical release of documents remains subject to the procedures of the Registrar’s Office.</p>
 
       <h2>4. Availability</h2>
       <p>We aim to keep the portal available at all times but do not guarantee uninterrupted service. Access may be suspended for maintenance, upgrades, or reasons beyond our control.</p>
@@ -43,7 +43,7 @@ export default function TermsConditions() {
       <p>These Terms are governed by the laws of the Republic of the Philippines. Disputes are subject to the competent courts of Surigao del Sur.</p>
 
       <h2>10. Contact</h2>
-      <p>Questions about these Terms may be directed to the Office of the Registrar, NEMSU Cantilan Campus, Cantilan, Surigao del Sur.</p>
+      <p>Questions about these Terms may be directed to the Registrar’s Office, NEMSU Cantilan Campus, Cantilan, Surigao del Sur.</p>
     </LegalPage>
   );
 }

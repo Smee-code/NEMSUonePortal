@@ -54,7 +54,7 @@ export default function FacultyProfile() {
 
   const verified = !!profile?.is_verified;
   const facts = [
-    profile?.student_id     && { k: 'Faculty No.', v: profile.student_id, mono: true },
+    profile?.student_id     && { k: 'Faculty ID', v: profile.student_id, mono: true },
     profile?.rank           && { k: 'Academic rank', v: profile.rank },
     { k: 'Department', v: profile?.department_code || profile?.department_name || '—' },
     profile?.is_gec_faculty && { k: 'Classification', v: 'General Education' },
@@ -68,7 +68,7 @@ export default function FacultyProfile() {
       <div className="page-head">
         <div>
           <div className="eyebrow">Faculty · My account</div>
-          <h2>My <em>Profile</em></h2>
+          <h2>My <em>profile</em></h2>
           <div className="sub">Your faculty record and the department you’re assigned to.</div>
         </div>
       </div>

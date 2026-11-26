@@ -45,6 +45,12 @@ function initials(name) {
 function fmtDate(s) {
   return s ? new Date(s).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 }
+// A date with no time ("2026-12-03"). Built from its parts so it never shifts
+// a day through timezone conversion.
+function fmtDay(iso) {
+  const [y, m, d] = (iso || '').split('-').map(Number);
+  return y ? new Date(y, m - 1, d).toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+}
 
 export default function RegistrarDocuments() {
   const toast = useToast();
@@ -271,6 +277,7 @@ export default function RegistrarDocuments() {
                       <div className="dr-doc-type">{req.document_type_display}</div>
                       <div className="dr-doc-meta">
                         {req.copies} cop{req.copies > 1 ? 'ies' : 'y'} · requested {fmtDate(req.submitted_at)}
+                        {req.preferred_pickup_date && <> · pickup preferred {fmtDay(req.preferred_pickup_date)}</>}
                       </div>
                     </div>
                     <span className="dr-status" style={{ background: pill.bg, color: pill.color }}>
@@ -301,6 +308,10 @@ export default function RegistrarDocuments() {
                             <span className="dr-cell-val">{req.purpose}</span>
                           </div>
                         )}
+                        <div className="dr-cell">
+                          <span className="dr-cell-lbl">Preferred pickup date</span>
+                          <span className="dr-cell-val">{req.preferred_pickup_date ? fmtDay(req.preferred_pickup_date) : 'No preference given'}</span>
+                        </div>
                         {req.processed_by_name && (
                           <div className="dr-cell">
                             <span className="dr-cell-lbl">Last handled by</span>

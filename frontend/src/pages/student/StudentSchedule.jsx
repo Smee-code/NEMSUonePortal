@@ -100,7 +100,7 @@ export default function StudentSchedule() {
         <div>
           <div className="eyebrow">Academic · {termLabel}</div>
           <h2>My <em>schedule</em></h2>
-          <div className="sub">Your weekly timetable for the current term — the subjects your professors have added you to, with rooms, instructors, and class times.</div>
+          <div className="sub">Your weekly timetable for the current term — the subjects your instructors have added you to, with rooms, instructors, and class times.</div>
         </div>
       </div>
 
@@ -113,7 +113,7 @@ export default function StudentSchedule() {
       {!loading && schedule.length === 0 && !error && (
         <div className="stu-empty">
           <i className="ti ti-calendar-off" />
-          <p>You have no classes for {termLabel} yet. Your schedule will appear here once a professor adds you to a class.</p>
+          <p>You have no classes for {termLabel} yet. Your schedule will appear here once a instructor adds you to a class.</p>
         </div>
       )}
 
@@ -222,7 +222,7 @@ export default function StudentSchedule() {
           ) : (
             <div className="sch-notimes">
               <i className="ti ti-clock" />
-              Your classes for {termLabel} don’t have posted times yet. Room and time assignments will appear here once your professors set them.
+              Your classes for {termLabel} don’t have posted times yet. Room and time assignments will appear here once your instructors set them.
             </div>
           )}
         </>

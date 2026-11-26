@@ -16,12 +16,12 @@ export default function Unauthorized() {
     <div className="auth-page">
       <div className="auth-card" style={{ textAlign: 'center' }}>
         <h1>NEMSUOne</h1>
-        <h2 style={{ color: '#e02424', margin: '1rem 0' }}>Access Denied</h2>
+        <h2 style={{ color: '#e02424', margin: '1rem 0' }}>Access denied</h2>
         <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
           You don&apos;t have permission to view that page.
         </p>
         <Link to={home} className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none', textAlign: 'center' }}>
-          Go to My Dashboard
+          Go to my dashboard
         </Link>
       </div>
     </div>

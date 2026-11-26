@@ -34,6 +34,18 @@ input, select, textarea { max-width: 100%; }
   }
 }
 
+/* ── Required-field marker ────────────────────────────────────────────────── */
+/* Every label gets a red asterisk when the control it labels is required, so a
+   form only has to declare `required` on the input and the marker follows. Two
+   shapes are covered: the control right after the label, and the control inside
+   the wrapper right after the label (password fields, search pickers). */
+label:has(+ :is(input, select, textarea):required)::after,
+label:has(+ :not(label) :is(input, select, textarea):required)::after {
+  content: ' *';
+  color: #dc2626;
+  font-weight: 700;
+}
+
 :root {
   --color-primary:      #1e3a5f;
   --color-primary-h:    #162d4a;

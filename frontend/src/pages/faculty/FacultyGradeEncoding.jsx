@@ -421,7 +421,7 @@ export default function FacultyGradeEncoding() {
                 </div>
               )}
               {termAssignments.length === 0 ? (
-                <div className="ge-side-msg">No courses this term.</div>
+                <div className="ge-side-msg">No subjects this term.</div>
               ) : termAssignments.map(a => (
                 <button
                   key={a.id}
@@ -481,7 +481,7 @@ export default function FacultyGradeEncoding() {
             <div className="empty-state">
               <i className="ti ti-users" />
               <div className="t">No enrolled students</div>
-              <div className="d">No approved-enrolled students found for this assignment.</div>
+              <div className="d">No enrolled students found for this subject.</div>
             </div>
           ) : (
             <>
@@ -507,7 +507,7 @@ export default function FacultyGradeEncoding() {
             </div>
             <div className="ge-bar"><span style={{ width: `${pct}%` }} /></div>
             <div className="ge-status-counts">
-              <span><b>{encoded}</b> {stage === 'midterm' ? 'midterm' : 'final'} done</span>
+              <span><b>{encoded}</b> {stage === 'midterm' ? 'midterm' : 'final'} grade{encoded !== 1 ? 's' : ''} encoded</span>
               <span><b>{Math.max(activeStudents.length - encoded, 0)}</b> pending</span>
               <span><b>{students.length}</b> on roster</span>
               {droppedCount > 0 && <span><b>{droppedCount}</b> dropped</span>}

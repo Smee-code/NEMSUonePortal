@@ -97,7 +97,7 @@ export default function AdminReports() {
 
       <div className="page-head">
         <div className="page-head-l">
-          <div className="eyebrow">System · Real-time data</div>
+          <div className="eyebrow">System · Current data</div>
           <h2>Reports &amp; <em>export</em></h2>
           <div className="sub">View grade submission, document request, and user account summaries. Export to CSV.</div>
         </div>

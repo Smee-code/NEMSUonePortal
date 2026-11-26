@@ -181,7 +181,7 @@ export default function RoleUserManager({ role, config }) {
   async function handleDelete(u) {
     const ok = await confirm({
       title: `Remove ${u.full_name}?`,
-      message: `This permanently deletes the ${config.singular.toLowerCase()} account and cannot be undone.`,
+      message: `If this ${config.singular.toLowerCase()} account has linked records it is deactivated instead of deleted. Otherwise it is permanently deleted, which cannot be undone.`,
       confirmText: 'Remove',
     });
     if (!ok) return;
@@ -407,7 +407,7 @@ export default function RoleUserManager({ role, config }) {
                 {role === 'faculty' && (
                   <>
                     <div className="rum-field">
-                      <label htmlFor="rum-dob">Birthday</label>
+                      <label htmlFor="rum-dob">Date of birth</label>
                       <input id="rum-dob" name="bday" type="date" lang="en-US"
                         value={form.date_of_birth} onChange={e => setField('date_of_birth', e.target.value)} />
                     </div>
@@ -499,7 +499,7 @@ export default function RoleUserManager({ role, config }) {
               {importResult.created > 0 && (
                 <p style={{ fontSize: 12.5, color: 'var(--adm-muted,#64748b)', margin: '.9rem 0 0' }}>
                   <i className="ti ti-mail-forward" style={{ color: 'var(--adm-gold,#b89043)', marginRight: 5 }} />
-                  Each new faculty was emailed a setup link to create their password.
+                  Each new faculty member was emailed a setup link to create their password.
                 </p>
               )}
               {importResult.errors.length > 0 && (

@@ -92,9 +92,9 @@ def _delete_or_deactivate(user, request, *, kind):
             {'target_user': str(user.id), 'reason': 'has_linked_records'},
         )
         msg = (
-            f'{label} has linked records (grades, schedules, or announcements), '
+            f'{label} has linked records (teaching load, grades, enrollments, document requests, or announcements), '
             'so the account was deactivated instead of deleted. It can no longer '
-            'log in and is hidden from active lists.'
+            'sign in and is hidden from active lists.'
         ) if deactivated else (
             f'{label} has linked records and was already deactivated.'
         )
@@ -249,8 +249,8 @@ class RegistrationReviewView(APIView):
             subject = 'NEMSUOne — your account has been approved'
             body = (
                 f"Hello {user.full_name},\n\n"
-                "Your NEMSUOne registration has been approved by the Registrar. "
-                "You can now log in using your institutional email and the password "
+                "Your NEMSUOne registration has been approved by the registrar. "
+                "You can now sign in using your institutional email and the password "
                 "you set during registration.\n\n"
                 f"{settings.FRONTEND_URL}/login\n\n"
                 "Welcome to NEMSUOne."
@@ -260,7 +260,7 @@ class RegistrationReviewView(APIView):
             subject = 'NEMSUOne — registration not approved'
             body = (
                 f"Hello {user.full_name},\n\n"
-                "Your NEMSUOne registration was not approved by the Registrar."
+                "Your NEMSUOne registration was not approved by the registrar."
                 f"{reason}\n\n"
                 "If you believe this is a mistake, please contact the Registrar's Office."
             )
@@ -406,12 +406,12 @@ def _email_faculty_credentials(user, temp_password):
             (
                 f'Hi {user.full_name},\n\n'
                 f'A faculty account has been created for you on NEMSUOne. '
-                f'Use these details to log in:\n\n'
+                f'Use these details to sign in:\n\n'
                 f'Faculty ID: {user.student_id}\n'
-                f'Login email: {user.institutional_email}\n'
+                f'Sign-in email: {user.institutional_email}\n'
                 f'Temporary password: {temp_password}\n\n'
-                f'Log in at {settings.FRONTEND_URL}/login and change your password '
-                f'from your profile after your first login.\n\n'
+                f'Sign in at {settings.FRONTEND_URL}/login and change your password '
+                f'from your profile after you first sign in.\n\n'
                 f'— NEMSU Cantilan Campus'
             ),
             [user.institutional_email],
@@ -465,12 +465,12 @@ def _email_student_credentials(user, temp_password):
             (
                 f'Hi {user.full_name},\n\n'
                 f'A student account has been created for you on NEMSUOne. '
-                f'Use these details to log in:\n\n'
+                f'Use these details to sign in:\n\n'
                 f'Student ID: {user.student_id}\n'
-                f'Login email: {user.institutional_email}\n'
+                f'Sign-in email: {user.institutional_email}\n'
                 f'Temporary password: {temp_password}\n\n'
-                f'Log in at {settings.FRONTEND_URL}/login and change your password '
-                f'from your profile after your first login.\n\n'
+                f'Sign in at {settings.FRONTEND_URL}/login and change your password '
+                f'from your profile after you first sign in.\n\n'
                 f'— NEMSU Cantilan Campus'
             ),
             [user.institutional_email],
@@ -890,10 +890,30 @@ def seed_student_details(user):
     return user.details
 
 
+def marriage_certificate_record(user):
+    """The student's marriage certificate, wherever it was filed: uploaded from
+    their profile (StudentDocument) or with their admission application
+    (PreEnrollmentDocument). Returns the model instance (both expose .file,
+    .file_name and .uploaded_at) or None."""
+    from enrollment.models import MARRIAGE_CERTIFICATE_LABEL
+    from .models import StudentDocument
+    doc = StudentDocument.objects.filter(user=user, kind=StudentDocument.KIND_MARRIAGE).first()
+    if doc:
+        return doc
+    app = _matched_admission(user)
+    if app:
+        return (
+            app.documents.filter(requirement_label__iexact=MARRIAGE_CERTIFICATE_LABEL)
+            .order_by('-uploaded_at').first()
+        )
+    return None
+
+
 def student_profile_payload(user):
     """Full read-only profile dict for a student (shared by registrar/admin)."""
     seed_student_details(user)
     app = _matched_admission(user)
+    cert = marriage_certificate_record(user)
     return {
         'student': {
             'id': str(user.id),
@@ -915,6 +935,11 @@ def student_profile_payload(user):
             'curriculum_code': user.curriculum.code if user.curriculum_id else None,
             'date_joined': user.date_joined.isoformat() if user.date_joined else None,
             'details': user.details or {},
+            # Civil-status verification: present once a certificate is on file.
+            'marriage_certificate': ({
+                'file_name': cert.file_name,
+                'uploaded_at': cert.uploaded_at.isoformat() if cert.uploaded_at else None,
+            } if cert else None),
         },
         'admission': ({
             'reference_number': app.reference_number,

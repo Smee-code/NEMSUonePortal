@@ -123,7 +123,7 @@ export default function CurriculumManager() {
       <div className="page-head">
         <div className="eyebrow">Department · Curriculum management</div>
         <h2>Program <em>curriculum</em></h2>
-        <div className="sub">Define the curriculum of each program in your department. Add a new curriculum version when the program adopts one; courses shared with a previous version stay identical.</div>
+        <div className="sub">Define the curriculum of each program. Add a new curriculum version when the program adopts one; courses shared with a previous version stay identical.</div>
       </div>
 
       {flash && <div className="cu-flash cu-flash-ok">{flash}<button onClick={() => setFlash('')}><i className="ti ti-x" /></button></div>}
@@ -142,7 +142,7 @@ export default function CurriculumManager() {
             <label>Curriculum version</label>
             <div className="cu-cur-row">
               <select value={selId ?? ''} onChange={e => setSelId(Number(e.target.value))}>
-                {curricula.map(c => <option key={c.id} value={c.id}>{c.code} · effective {c.year_effective} ({c.subject_count} courses)</option>)}
+                {curricula.map(c => <option key={c.id} value={c.id}>{c.code} · effective {c.year_effective} ({c.subject_count} {c.subject_count === 1 ? 'course' : 'courses'})</option>)}
               </select>
               <button className="btn-sec" onClick={() => { setShowNewCur(true); setCurErr(''); setNewCur({ year_effective: '', code: '', duplicate_from: '' }); }}>
                 <i className="ti ti-plus" /> New curriculum
@@ -161,7 +161,7 @@ export default function CurriculumManager() {
           <div className="cu-detail-head">
             <div>
               <h3>{detail.code}</h3>
-              <div className="cu-sub">Effective {detail.year_effective} · {subjects.length} courses</div>
+              <div className="cu-sub">Effective {detail.year_effective} · {subjects.length} {subjects.length === 1 ? 'course' : 'courses'}</div>
             </div>
             <div className="cu-detail-actions">
               <button className="btn-pri" onClick={() => { setShowCourse(true); setCourseErr(''); setCourse(EMPTY_COURSE); }}>
