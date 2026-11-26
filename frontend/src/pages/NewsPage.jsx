@@ -102,12 +102,12 @@ export default function NewsPage() {
 }
 
 const CSS = `
-  .np{min-height:100vh;background:#f4f6fb;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0a1628;}
+  .np{min-height:100vh;background:#f4f6fb;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0b1b2e;}
   .np-top{display:flex;justify-content:space-between;align-items:center;padding:1rem 2rem;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10;}
-  .np-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#0a1628;font-weight:600;font-size:15px;}
+  .np-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#0b1b2e;font-weight:600;font-size:15px;}
   .np-brand img{width:34px;height:34px;border-radius:50%;object-fit:contain;}
   .np-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5a6478;text-decoration:none;font-weight:500;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
-  .np-back:hover{color:#0a1628;}
+  .np-back:hover{color:#0b1b2e;}
   .np-wrap{max-width:1100px;margin:0 auto;padding:2.5rem 2rem 4rem;}
   .np-head{margin-bottom:2rem;}
   .np-eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#b89043;font-weight:600;}
@@ -122,9 +122,9 @@ const CSS = `
   .np-card-body{padding:1.25rem;display:flex;flex-direction:column;gap:6px;}
   .np-card-tag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#b89043;font-weight:600;}
   .np-card-date{font-size:12px;color:#8a93a3;}
-  .np-card-body h3{font-size:17px;font-weight:600;line-height:1.3;color:#0a1628;}
+  .np-card-body h3{font-size:17px;font-weight:600;line-height:1.3;color:#0b1b2e;}
   .np-card-body p{font-size:13px;color:#5a6478;line-height:1.6;}
-  .np-read{font-size:12px;font-weight:600;color:#0a1628;display:inline-flex;align-items:center;gap:6px;margin-top:4px;}
+  .np-read{font-size:12px;font-weight:600;color:#0b1b2e;display:inline-flex;align-items:center;gap:6px;margin-top:4px;}
   .np-modal-back{position:fixed;inset:0;background:rgba(10,22,40,.55);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem;overflow-y:auto;}
   .np-modal{background:#fff;max-width:640px;width:100%;position:relative;max-height:calc(100vh - 3rem);overflow-y:auto;}
   .np-modal-x{position:absolute;top:12px;right:12px;width:36px;height:36px;border:none;background:rgba(255,255,255,.9);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}

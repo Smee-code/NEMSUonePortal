@@ -25,7 +25,7 @@ const SHIM = `
   --reg-green-tint:var(--adm-green-tint);
   --reg-red:var(--adm-red);
   --reg-red-tint:var(--adm-red-tint);
-  --reg-gold:var(--adm-gold,#b8860b);
+  --reg-gold:var(--adm-gold,#b89043);
   --reg-gold-tint:var(--adm-gold-tint,#f5eeda);
   --reg-amber-tint:var(--adm-amber-tint,#fdf3e2);
 }

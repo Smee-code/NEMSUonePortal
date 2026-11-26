@@ -73,7 +73,7 @@ export function ToastProvider({ children }) {
 const CSS = `
   .nemsu-toast-host{position:fixed;top:18px;right:18px;z-index:2200;display:flex;flex-direction:column;gap:10px;
     max-width:min(380px,calc(100vw - 32px));pointer-events:none;}
-  .nemsu-toast{pointer-events:auto;display:flex;align-items:flex-start;gap:11px;background:#fff;color:#0a1628;
+  .nemsu-toast{pointer-events:auto;display:flex;align-items:flex-start;gap:11px;background:#fff;color:#0b1b2e;
     padding:13px 14px 13px 15px;border:1px solid #e5e7eb;border-left:4px solid #5a6478;
     box-shadow:0 12px 32px -12px rgba(10,22,40,.35);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     animation:nemsu-toast-in .22s cubic-bezier(.22,1,.36,1);}
@@ -91,7 +91,7 @@ const CSS = `
   .nemsu-toast-msg{font-size:13.5px;font-weight:500;line-height:1.4;}
   .nemsu-toast-sub{font-size:12px;color:#5a6478;margin-top:2px;line-height:1.4;}
   .nemsu-toast-x{flex-shrink:0;background:none;border:none;cursor:pointer;color:#8a93a3;font-size:16px;padding:0 2px;line-height:1;}
-  .nemsu-toast-x:hover{color:#0a1628;}
+  .nemsu-toast-x:hover{color:#0b1b2e;}
   @media(max-width:520px){
     .nemsu-toast-host{top:auto;bottom:14px;left:14px;right:14px;max-width:none;}
     .nemsu-toast{animation:nemsu-toast-up .22s ease;}

@@ -1,7 +1,7 @@
 /* Reusable loading indicators. <Spinner/> is an inline ring; <PageLoader/>
    centers a spinner with an optional label for full-panel loading states. */
 
-export function Spinner({ size = 18, stroke = 2.5, color = '#C79A3B' }) {
+export function Spinner({ size = 18, stroke = 2.5, color = '#b89043' }) {
   return (
     <span
       className="nemsu-spin"

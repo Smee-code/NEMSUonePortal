@@ -197,6 +197,12 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.CustomTokenObtainPairSerializer',
 }
 
+# ── Login code (email one-time password) ──────────────────────────────────────
+# How long an emailed login code can be used, counted from when the email has
+# left the server. 60 seconds by default; set LOGIN_OTP_LIFETIME_SECONDS in .env
+# to change it without touching code (for example if email delivery is slow).
+LOGIN_OTP_LIFETIME_SECONDS = config('LOGIN_OTP_LIFETIME_SECONDS', default=60, cast=int)
+
 # ── CORS ──────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',

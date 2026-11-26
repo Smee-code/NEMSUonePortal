@@ -41,12 +41,12 @@ export default function PublicPageShell({ eyebrow, title, subtitle, children }) 
 }
 
 const CSS = `
-  .pp{min-height:100vh;background:#f4f6fb;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0a1628;}
+  .pp{min-height:100vh;background:#f4f6fb;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0b1b2e;}
   .pp-top{display:flex;justify-content:space-between;align-items:center;padding:1rem 2rem;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10;}
-  .pp-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#0a1628;font-weight:600;font-size:15px;}
+  .pp-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#0b1b2e;font-weight:600;font-size:15px;}
   .pp-brand img{width:34px;height:34px;border-radius:50%;object-fit:contain;}
   .pp-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5a6478;text-decoration:none;font-weight:500;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
-  .pp-back:hover{color:#0a1628;}
+  .pp-back:hover{color:#0b1b2e;}
   .pp-wrap{max-width:1100px;margin:0 auto;padding:2.5rem 2rem 4rem;}
   .pp-head{margin-bottom:2rem;}
   .pp-eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#b89043;font-weight:600;}

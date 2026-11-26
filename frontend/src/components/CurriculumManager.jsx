@@ -314,13 +314,13 @@ const CSS = `
   .cu-controls{display:flex;gap:1.25rem;flex-wrap:wrap;margin-bottom:1.5rem}
   .cu-field{display:flex;flex-direction:column;gap:5px;min-width:260px}
   .cu-field > label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a93a3;font-weight:600}
-  .cu-field select{padding:9px 11px;border:1px solid #e5e7eb;background:#fff;font:13px 'Inter',sans-serif;color:#0a1628;outline:none}
+  .cu-field select{padding:9px 11px;border:1px solid #e5e7eb;background:#fff;font:13px 'Inter',sans-serif;color:#0b1b2e;outline:none}
   .cu-cur-row{display:flex;gap:8px}
   .cu-cur-row select{flex:1}
   .cu-empty{padding:3rem;text-align:center;color:#5a6478;font-size:13px;background:#fff;border:1px solid #e5e7eb}
   .cu-detail{background:#fff;border:1px solid #e5e7eb}
   .cu-detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.25rem 1.5rem;border-bottom:1px solid #e5e7eb}
-  .cu-detail-head h3{font-size:18px;font-weight:600;color:#0a1628;margin:0}
+  .cu-detail-head h3{font-size:18px;font-weight:600;color:#0b1b2e;margin:0}
   .cu-sub{font-size:12px;color:#5a6478;margin-top:3px}
   .cu-detail-actions{display:flex;gap:8px;align-items:center}
   .cu-del{border:1px solid #e5e7eb;background:#fff;color:#a8331e;width:36px;height:36px;cursor:pointer}
@@ -332,16 +332,16 @@ const CSS = `
   .cu-table{width:100%;border-collapse:collapse;font-size:13px}
   .cu-table td{padding:8px 6px;border-bottom:1px solid #eef0f4;vertical-align:top}
   .cu-code{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#b89043;font-weight:600;width:110px}
-  .cu-name{color:#0a1628}
+  .cu-name{color:#0b1b2e}
   .cu-prereq{display:block;font-size:11px;color:#8a93a3;margin-top:2px}
   .cu-type{color:#5a6478;width:90px}
-  .cu-units{text-align:right;width:50px;color:#0a1628}
+  .cu-units{text-align:right;width:50px;color:#0b1b2e}
   .cu-rm{width:34px;text-align:right}
   .cu-rm button{background:none;border:none;cursor:pointer;color:#8a93a3}
   .cu-rm button:hover{color:#a8331e}
   .cu-overlay{position:fixed;inset:0;z-index:200;background:rgba(10,22,40,.45);display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow-y:auto}
   .cu-modal{background:#fff;width:100%;max-width:460px;border:1px solid #e5e7eb;padding:1.5rem;box-shadow:0 24px 60px -20px rgba(10,22,40,.4)}
-  .cu-modal h3{font-size:18px;color:#0a1628;font-weight:600;margin:0 0 .35rem}
+  .cu-modal h3{font-size:18px;color:#0b1b2e;font-weight:600;margin:0 0 .35rem}
   .cu-modal h3 em{font-style:normal;color:#b89043}
   .cu-modal-sub{font-size:12px;color:#5a6478;margin:0 0 1rem;line-height:1.5}
   .cu-lbl{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a93a3;font-weight:600;margin:10px 0 4px}

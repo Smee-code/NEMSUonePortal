@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { useToast } from '../../components/Toast';
 import { titleCase } from '../../utils/text';
 import { openPdf } from '../../utils/openPdf';
+import { lookupZip } from '../../utils/zipLookup';
 
 const MAX_CERT_BYTES = 2 * 1024 * 1024;
 
@@ -84,6 +85,21 @@ export default function StudentPersonalInfoCard() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: CAP_FIELDS.has(k) ? titleCase(v) : v }));
 
+  // ZIP code: filled in from the province and town when the town has exactly
+  // one. `zipAuto` remembers the value we filled, so a ZIP the student typed
+  // themselves is never overwritten.
+  const [zipAuto, setZipAuto] = useState('');
+  const fillZip = () => {
+    // Runs on blur, after the last keystroke has rendered, so `form` is current.
+    const { addr_province, addr_town, zip } = form;
+    if (zip && zip !== zipAuto) return;                 // typed by the student: keep it
+    lookupZip(addr_province, addr_town).then(found => {
+      if (!found) return;
+      setForm(f => ({ ...f, zip: found }));
+      setZipAuto(found);
+    });
+  };
+
   const pickCert = (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -132,10 +148,13 @@ export default function StudentPersonalInfoCard() {
 
   if (loading) return null;
 
-  const F = ({ label, k, type = 'text', opt }) => (
-    <div className="pi-field">
-      <label className="pi-label">{label}{opt && <span className="pi-opt"> (optional)</span>}</label>
-      <input className="pi-input" type={type} value={form[k]} onChange={e => set(k, e.target.value)} />
+  // One labelled text field. A plain function, not a component: a component
+  // defined here would be a new type on every render, so React would rebuild the
+  // input on each keystroke and the cursor would drop out of it.
+  const field = (label, k, extra = {}) => (
+    <div className="pi-field" key={k}>
+      <label className="pi-label" htmlFor={`pi-${k}`}>{label}</label>
+      <input id={`pi-${k}`} className="pi-input" type="text" value={form[k]} onChange={e => set(k, e.target.value)} {...extra} />
     </div>
   );
 
@@ -147,7 +166,7 @@ export default function StudentPersonalInfoCard() {
       </div>
       <form onSubmit={save}>
         <div className="pi-grid">
-          <F label="Birthplace" k="birthplace" />
+          {field('Birthplace', 'birthplace')}
           <div className="pi-field">
             <label className="pi-label">Sex</label>
             <select className="pi-input" value={form.sex} onChange={e => set('sex', e.target.value)}>
@@ -160,25 +179,33 @@ export default function StudentPersonalInfoCard() {
               {CIVIL.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
-          <F label="Citizenship" k="citizenship" />
-          <F label="Religion" k="religion" />
-          <F label="Ethnicity" k="ethnicity" />
+          {field('Citizenship', 'citizenship')}
+          {field('Religion', 'religion')}
+          {field('Ethnicity', 'ethnicity')}
         </div>
 
         <div className="pi-sec">Current address</div>
         <div className="pi-grid">
-          <F label="Province" k="addr_province" />
-          <F label="Town / City" k="addr_town" />
-          <F label="Barangay" k="addr_brgy" />
-          <F label="ZIP code" k="zip" />
+          {field('Province', 'addr_province', { onBlur: fillZip })}
+          {field('Town / City', 'addr_town', { onBlur: fillZip })}
+          {field('Barangay', 'addr_brgy')}
+          <div className="pi-field">
+            <label className="pi-label" htmlFor="pi-zip">ZIP code</label>
+            <input id="pi-zip" className="pi-input" type="text" inputMode="numeric" value={form.zip}
+              aria-describedby="pi-zip-help"
+              onChange={e => { set('zip', e.target.value.replace(/\D/g, '').slice(0, 4)); setZipAuto(''); }} />
+            <span id="pi-zip-help" className="pi-hint">
+              {zipAuto && form.zip === zipAuto ? 'Filled in from your town. Change it if yours is different.' : 'Fills in automatically from your province and town.'}
+            </span>
+          </div>
         </div>
 
         {form.civil_status === 'Married' && (
           <>
             <div className="pi-sec">Spouse</div>
             <div className="pi-grid">
-              <F label="Spouse name" k="spouse_name" />
-              <F label="Spouse address" k="spouse_address" />
+              {field('Spouse name', 'spouse_name')}
+              {field('Spouse address', 'spouse_address')}
             </div>
 
             <div className={`pi-cert${certErr ? ' is-invalid' : ''}`}>
@@ -211,19 +238,19 @@ export default function StudentPersonalInfoCard() {
 
         <div className="pi-sec">Parent / Guardian</div>
         <div className="pi-grid">
-          <F label="Father’s name" k="father" />
-          <F label="Mother’s name" k="mother" />
+          {field('Father’s name', 'father')}
+          {field('Mother’s name', 'mother')}
         </div>
-        <F label="Parent / Guardian address" k="parent_address" />
+        {field('Parent / Guardian address', 'parent_address')}
 
         <div className="pi-sec">Educational background</div>
         <div className="pi-grid">
-          <F label="Elementary school" k="elem_school" />
-          <F label="Year graduated" k="elem_year" />
-          <F label="Junior high school" k="jhs_school" />
-          <F label="Year graduated" k="jhs_year" />
-          <F label="Senior high school" k="shs_school" />
-          <F label="Year graduated" k="shs_year" />
+          {field('Elementary school', 'elem_school')}
+          {field('Year graduated', 'elem_year')}
+          {field('Junior high school', 'jhs_school')}
+          {field('Year graduated', 'jhs_year')}
+          {field('Senior high school', 'shs_school')}
+          {field('Year graduated', 'shs_year')}
         </div>
 
         <button type="submit" className="btn-pri" disabled={saving} style={{ marginTop: '1rem', opacity: saving ? 0.7 : 1 }}>
@@ -238,6 +265,7 @@ const CSS = `
   .pi-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem 1rem;}
   .pi-field{display:flex;flex-direction:column;gap:5px;margin-bottom:.4rem;}
   .pi-label{font-weight:600;font-size:12.5px;color:var(--ink);}
+  .pi-hint{font-size:11.5px;color:var(--muted);}
   .pi-opt{font-weight:400;color:var(--muted);}
   .pi-input{width:100%;padding:.5rem .7rem;border:1px solid var(--line);background:#fff;color:var(--ink);font:14px/1.4 'Inter',sans-serif;outline:none;box-sizing:border-box;}
   .pi-input:focus{border-color:var(--ink);}

@@ -54,7 +54,7 @@ export default function ConsentCheckbox({ checked, onChange, purpose = 'applicat
 const CSS = `
   .consent{border:1px solid #d0dcea;background:#f8fafc;padding:12px 14px;margin:12px 0;text-align:left;border-radius:6px;}
   .consent.is-invalid{border-color:#dc2626;background:#fef2f2;}
-  .consent-title{font-size:12px;font-weight:700;color:#0a1628;margin-bottom:6px;}
+  .consent-title{font-size:12px;font-weight:700;color:#0b1b2e;margin-bottom:6px;}
   .consent-row{display:flex;align-items:flex-start;gap:10px;font-size:12.5px;line-height:1.55;color:#334155;cursor:pointer;margin:0;font-weight:400;text-transform:none;letter-spacing:0;}
   .consent-row input{flex-shrink:0;width:18px;height:18px;margin:2px 0 0;accent-color:#0B1B2E;cursor:pointer;}
   .consent-row a{color:#1d4ed8;font-weight:600;text-decoration:underline;}

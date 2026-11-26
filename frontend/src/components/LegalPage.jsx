@@ -96,7 +96,7 @@ export default function LegalPage({ eyebrow, title, updated, children }) {
 }
 
 const INK = '#0B1B2E';
-const GOLD = '#b17f1e';
+const GOLD = '#8a6410';
 
 const PROSE = `
   .legal-draft{display:flex;gap:11px;align-items:flex-start;background:#fbf5e6;border:1px solid #e7d3a1;

@@ -277,7 +277,7 @@ export default function RegistrarShell() {
 const CSS = `
   /* ── Registrar design tokens ── */
   :root{
-    --reg-ink:#0a1628; --reg-ink-2:#1e3a5f; --reg-ink-3:#0f1f3a;
+    --reg-ink:#0b1b2e; --reg-ink-2:#1e3a5f; --reg-ink-3:#0f1f3a;
     --reg-muted:#5a6478; --reg-faint:#8a93a3;
     --reg-paper:#ffffff; --reg-warm:#f8f7f3; --reg-cool:#f4f6fa; --reg-cool-2:#eef1f7;
     --reg-line:#e5e7eb; --reg-line-soft:#eef0f4;
@@ -301,7 +301,7 @@ const CSS = `
     --amber:var(--reg-amber); --amber-tint:var(--reg-amber-tint);
 
     /* adm-* aliases so shared AnnouncementsPage CSS resolves */
-    --adm-ink:#0a1628; --adm-ink-2:#1e3a5f;
+    --adm-ink:#0b1b2e; --adm-ink-2:#1e3a5f;
     --adm-gold:#b89043; --adm-gold-soft:#d9b96b; --adm-gold-tint:#f5edd9;
     --adm-muted:#5a6478; --adm-faint:#8a93a3;
     --adm-line:#e5e7eb; --adm-line-soft:#eef0f4;

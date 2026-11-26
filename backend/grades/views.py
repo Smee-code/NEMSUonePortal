@@ -528,7 +528,7 @@ class GradeSubmitView(APIView):
                         f'Hi {name},\n\n'
                         f'Your {stage_word} grade for {subj_code} - {subj_name} ({term}) has been '
                         f'submitted by your instructor and is now available in your NEMSUOne '
-                        f'account. Sign in and open "My Grades" to view it.\n\n'
+                        f'account. Sign in and open "My grades" to view it.\n\n'
                         f'— NEMSU Cantilan Campus'
                     ),
                     settings.DEFAULT_FROM_EMAIL,
@@ -550,7 +550,7 @@ class GradeSubmitView(APIView):
                     body=(
                         f'Your {stage_word} grade for {assignment.subject.code} - '
                         f'{assignment.subject.name} ({assignment.academic_term}) is now '
-                        f'available. Open "My Grades" to view it.'
+                        f'available. Open "My grades" to view it.'
                     ),
                     category='grade',
                     link='/student/grades',

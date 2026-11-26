@@ -1,18 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
-
-const TARGET_META = {
-  all:     { label: 'All users',     color: '#1e40af', bg: '#dbeafe' },
-  student: { label: 'Students',      color: '#065f46', bg: '#d1fae5' },
-  faculty: { label: 'Faculty',       color: '#92400e', bg: '#fef3c7' },
-  public:  { label: 'Public',        color: '#6b21a8', bg: '#f3e8ff' },
-};
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('en-PH', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
-}
+import AnnouncementCard, { AnnouncementOverview, AnnouncementStyles, CATEGORY_META } from '../../components/AnnouncementCard';
 
 export default function StudentAnnouncements() {
   const [items, setItems]           = useState([]);
@@ -20,7 +8,7 @@ export default function StudentAnnouncements() {
   const [error, setError]           = useState('');
   const [search, setSearch]         = useState('');
   const [activeSearch, setActive]   = useState('');
-  const [expandedId, setExpanded]   = useState(null);
+  const [category, setCategory]     = useState('');   // '' = all
 
   function fetchAnnouncements(q = '') {
     setLoading(true);
@@ -38,6 +26,7 @@ export default function StudentAnnouncements() {
     e.preventDefault();
     const q = search.trim();
     setActive(q);
+    setCategory('');
     fetchAnnouncements(q);
   }
 
@@ -47,27 +36,29 @@ export default function StudentAnnouncements() {
     fetchAnnouncements('');
   }
 
-  const pinned  = items.filter(a => a.is_pinned);
-  const regular = items.filter(a => !a.is_pinned);
-  const ordered = [...pinned, ...regular];
+  // Pinned first (the server already sorts this way; kept explicit for clarity).
+  const ordered = [...items.filter(a => a.is_pinned), ...items.filter(a => !a.is_pinned)];
+  const shown = category ? ordered.filter(a => (a.category || 'general') === category) : ordered;
 
   return (
     <div className="page">
+      <AnnouncementStyles />
       <div className="page-head">
         <div>
           <h1>Announcements</h1>
-          <p className="sub">School-wide notices and updates</p>
+          <p className="sub">School-wide notices, events, and deadlines</p>
         </div>
       </div>
 
       {/* Search bar */}
-      <form onSubmit={handleSearch} style={{ display:'flex', gap:'0.5rem', marginBottom:'1.5rem' }}>
+      <form onSubmit={handleSearch} style={{ display:'flex', gap:'0.5rem', marginBottom:'1.25rem' }}>
         <div style={{ position:'relative', flex:1, maxWidth:420 }}>
-          <i className="ti ti-search" style={{ position:'absolute', left:'0.75rem', top:'50%', transform:'translateY(-50%)', color:'var(--muted)', pointerEvents:'none' }} />
+          <i className="ti ti-search" aria-hidden="true" style={{ position:'absolute', left:'0.75rem', top:'50%', transform:'translateY(-50%)', color:'var(--muted)', pointerEvents:'none' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search announcements…"
+            aria-label="Search announcements"
             style={{
               width:'100%', padding:'0.55rem 2.5rem 0.55rem 2.25rem',
               border:'1.5px solid var(--rule)', borderRadius:8,
@@ -76,11 +67,11 @@ export default function StudentAnnouncements() {
             }}
           />
           {activeSearch && (
-            <button type="button" onClick={clearSearch} style={{
+            <button type="button" onClick={clearSearch} aria-label="Clear search" style={{
               position:'absolute', right:'0.6rem', top:'50%', transform:'translateY(-50%)',
               background:'none', border:'none', cursor:'pointer', color:'var(--muted)', padding:0,
             }}>
-              <i className="ti ti-x" />
+              <i className="ti ti-x" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -104,47 +95,19 @@ export default function StudentAnnouncements() {
       )}
 
       {!loading && !error && ordered.length > 0 && (
-        <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
-          {ordered.map(ann => {
-            const meta = TARGET_META[ann.target_audience] ?? TARGET_META.all;
-            const isOpen = expandedId === ann.id;
-            return (
-              <div
-                key={ann.id}
-                className="card"
-                style={{
-                  borderLeft: ann.is_pinned ? '4px solid var(--gold)' : '4px solid transparent',
-                  cursor:'pointer',
-                }}
-                onClick={() => setExpanded(isOpen ? null : ann.id)}
-              >
-                <div style={{ display:'flex', alignItems:'flex-start', gap:'0.75rem' }}>
-                  {ann.is_pinned && (
-                    <i className="ti ti-pin" style={{ color:'var(--gold)', fontSize:'1.1rem', marginTop:2, flexShrink:0 }} />
-                  )}
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:'0.5rem', marginBottom:'0.35rem' }}>
-                      <span style={{ fontWeight:600, fontSize:'0.975rem', color:'var(--ink)' }}>{ann.title}</span>
-                      {ann.is_pinned && (
-                        <span className="tag" style={{ background:'#fef9ec', color:'#92400e', border:'1px solid #fbbf24' }}>Pinned</span>
-                      )}
-                      <span className="tag" style={{ background: meta.bg, color: meta.color }}>{meta.label}</span>
-                    </div>
-                    <p style={{ fontSize:'0.8rem', color:'var(--muted)', margin:0 }}>
-                      {ann.author_name ?? 'Administration'} · {formatDate(ann.created_at)}
-                    </p>
-                    {isOpen && (
-                      <p style={{ marginTop:'0.75rem', fontSize:'0.9rem', color:'var(--ink-2)', lineHeight:1.65, whiteSpace:'pre-wrap' }}>
-                        {ann.body}
-                      </p>
-                    )}
-                  </div>
-                  <i className={`ti ti-chevron-${isOpen ? 'up' : 'down'}`} style={{ color:'var(--muted)', flexShrink:0 }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <>
+          <AnnouncementOverview items={ordered} active={category} onChange={setCategory} />
+          {shown.length === 0 ? (
+            <div className="stu-empty">
+              <i className="ti ti-filter-off" />
+              <p>No {(CATEGORY_META[category]?.label || '').toLowerCase()} announcements right now.</p>
+            </div>
+          ) : (
+            <div className="anc-grid">
+              {shown.map(ann => <AnnouncementCard key={ann.id} ann={ann} showAudience={false} />)}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

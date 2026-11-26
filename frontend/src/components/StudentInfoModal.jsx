@@ -113,14 +113,14 @@ function Row({ k, v }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', fontSize: 12.5, borderBottom: '1px solid #f1f5f9' }}>
       <span style={{ color: '#6b7280', flexShrink: 0 }}>{k}</span>
-      <span style={{ color: '#0a1628', fontWeight: 500, textAlign: 'right' }}>{v}</span>
+      <span style={{ color: '#0b1b2e', fontWeight: 500, textAlign: 'right' }}>{v}</span>
     </div>
   );
 }
 function Sec({ t, children }) {
   return (
     <div style={{ marginBottom: '.75rem' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#b8860b', margin: '0 0 2px' }}>{t}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#b89043', margin: '0 0 2px' }}>{t}</div>
       {children}
     </div>
   );
@@ -130,15 +130,15 @@ const CSS = `
   .sim-overlay{position:fixed;inset:0;background:rgba(10,22,40,.5);z-index:1200;display:flex;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow-y:auto;overscroll-behavior:contain;}
   .sim-modal{background:#fff;width:100%;max-width:480px;border-radius:12px;box-shadow:0 24px 60px -20px rgba(10,22,40,.45);font-family:'Inter',-apple-system,sans-serif;}
   .sim-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.1rem 1.4rem;border-bottom:1px solid #e9edf3;}
-  .sim-head h3{font-size:16px;font-weight:700;color:#0a1628;margin:0;}
+  .sim-head h3{font-size:16px;font-weight:700;color:#0b1b2e;margin:0;}
   .sim-sub{font-size:12px;color:#6b7280;margin-top:3px;word-break:break-all;}
   .sim-x{background:none;border:none;color:#9aa4b2;font-size:18px;cursor:pointer;border-radius:4px;}
-  .sim-x:hover{color:#0a1628;}
+  .sim-x:hover{color:#0b1b2e;}
   .sim-body{padding:1.1rem 1.4rem;max-height:62vh;overflow-y:auto;}
   .sim-err{background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:.6rem .85rem;border-radius:6px;font-size:12.5px;margin-bottom:1rem;}
   .sim-foot{display:flex;justify-content:flex-end;padding:.9rem 1.4rem;border-top:1px solid #e9edf3;}
   .sim-btn{padding:9px 18px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font:600 13px 'Inter',sans-serif;cursor:pointer;}
-  .sim-btn:hover{border-color:#0a3a6e;color:#0a1628;}
+  .sim-btn:hover{border-color:#0b1b2e;color:#0b1b2e;}
   .sim-link{background:none;border:none;padding:0;color:#1d4ed8;font:600 12.5px 'Inter',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:4px;text-decoration:underline;}
   @media(max-width:768px){ .sim-overlay{padding:1.25rem .75rem;} }
 `;

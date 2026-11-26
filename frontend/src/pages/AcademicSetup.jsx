@@ -73,8 +73,8 @@ export default function AcademicSetup() {
       <style>{CSS}</style>
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <img src="/logo.png" alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #e0e7ff' }} />
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0a1628', margin: 0, textWrap: 'balance' }}>Set up your academic profile</h1>
+          <img src="/logo.png" alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #dbeafe' }} />
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0b1b2e', margin: 0, textWrap: 'balance' }}>Set up your academic profile</h1>
           <p style={{ fontSize: 13, color: '#6b7280', marginTop: 6, lineHeight: 1.6 }}>
             Welcome back{user?.full_name ? `, ${user.full_name}` : ''}. Before you continue, tell us your
             department, program, and year level. These drive the courses offered to you during enrollment.
@@ -151,13 +151,13 @@ const wrap = { minHeight: '100vh', background: '#f4f6fb', display: 'flex', align
 const card = { background: '#fff', borderRadius: 16, boxShadow: '0 4px 32px rgba(10,58,110,.1)', padding: '2.5rem 2rem', width: '100%', maxWidth: 440, boxSizing: 'border-box' };
 
 const CSS = `
-  .as-input{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;background:#fff;color:#0a1628;outline:none;}
-  .as-input:focus-visible{outline:2px solid #0a3a6e;outline-offset:1px;border-color:#0a3a6e;}
+  .as-input{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;background:#fff;color:#0b1b2e;outline:none;}
+  .as-input:focus-visible{outline:2px solid #0b1b2e;outline-offset:1px;border-color:#0b1b2e;}
   .as-input:disabled{background:#f3f4f6;color:#9aa4b2;cursor:not-allowed;}
-  .as-btn{width:100%;padding:11px;background:#0a3a6e;border:none;border-radius:8px;color:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:4px;}
+  .as-btn{width:100%;padding:11px;background:#0b1b2e;border:none;border-radius:8px;color:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:4px;}
   .as-btn:hover:not(:disabled){background:#0c4a8a;}
-  .as-btn:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
-  .as-btn:disabled{background:#93c5fd;cursor:not-allowed;}
+  .as-btn:focus-visible{outline:2px solid #0b1b2e;outline-offset:2px;}
+  .as-btn:disabled{background:#94a3b8;cursor:not-allowed;}
   .as-link{background:none;border:none;color:#1d4ed8;font-weight:600;cursor:pointer;padding:0;font-size:12px;}
   .as-link:hover{text-decoration:underline;}
   .as-link:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px;border-radius:2px;}

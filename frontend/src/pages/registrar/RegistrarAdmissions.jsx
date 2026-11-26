@@ -531,7 +531,7 @@ function PdfPreviewModal({ doc, onClose }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '.75rem 1.1rem', borderBottom: '1px solid #e9edf3' }}>
           <i className="ti ti-file-type-pdf" style={{ fontSize: 20, color: '#dc2626', flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '.9rem', fontWeight: 700, color: '#0a1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontSize: '.9rem', fontWeight: 700, color: '#0b1b2e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {doc.requirement_label || doc.file_name}
             </div>
             <div style={{ fontSize: '.72rem', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -544,7 +544,7 @@ function PdfPreviewModal({ doc, onClose }) {
             rel="noreferrer"
             aria-disabled={!blobUrl}
             onClick={e => { if (!blobUrl) e.preventDefault(); }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.78rem', fontWeight: 600, color: blobUrl ? '#0a3a6e' : '#9aa4b2', textDecoration: 'none', border: '1px solid #cdd7e5', padding: '5px 11px', borderRadius: 6, flexShrink: 0, pointerEvents: blobUrl ? 'auto' : 'none' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.78rem', fontWeight: 600, color: blobUrl ? '#0b1b2e' : '#9aa4b2', textDecoration: 'none', border: '1px solid #cdd7e5', padding: '5px 11px', borderRadius: 6, flexShrink: 0, pointerEvents: blobUrl ? 'auto' : 'none' }}
           >
             <i className="ti ti-external-link" style={{ fontSize: 14 }} /> Open
           </a>

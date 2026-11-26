@@ -433,10 +433,10 @@ function CurriculumRow({ s, studentId, reload, gradeColor, getStatus }) {
 const styles = {
   tabBar: { display: 'flex', gap: '0.5rem', margin: '1rem 0 0.25rem' },
   tab: { display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #e5e7eb', color: '#6b7280', padding: '0.45rem 0.9rem', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 },
-  tabActive: { display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0a3a6e', border: '1px solid #0a3a6e', color: '#fff', padding: '0.45rem 0.9rem', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 },
+  tabActive: { display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0b1b2e', border: '1px solid #0b1b2e', color: '#fff', padding: '0.45rem 0.9rem', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 },
   gradeInput: { width: 58, padding: '5px 6px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem', textAlign: 'center', boxSizing: 'border-box' },
   remarksInput: { width: '100%', minWidth: 120, padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.82rem', boxSizing: 'border-box' },
-  saveBtn: { background: '#0a3a6e', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' },
+  saveBtn: { background: '#0b1b2e', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' },
   removeBtn: { background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 6, padding: '5px 8px', fontSize: '0.8rem', cursor: 'pointer', marginLeft: 6 },
   backBtn: {
     display: 'inline-flex', alignItems: 'center', gap: 6,

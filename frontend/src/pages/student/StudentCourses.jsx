@@ -169,7 +169,7 @@ function EmptyState() {
         If you are a returning student, go to the <strong>Enrollment</strong> page to submit your enrollment for the current term.
         Your courses will appear here once the registrar approves your request.
       </p>
-      <Link to="/student/enrollment" style={{ display: 'inline-block', background: '#0a3a6e', color: '#fff', padding: '10px 24px', borderRadius: 8, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>
+      <Link to="/student/enrollment" style={{ display: 'inline-block', background: '#0b1b2e', color: '#fff', padding: '10px 24px', borderRadius: 8, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>
         Go to Enrollment
       </Link>
     </div>

@@ -54,7 +54,20 @@ def _send_announcement_email(announcement):
             return
 
         subject = f'NEMSUOne — {announcement.title}'
+        # The "when and where" goes first, as it does on the card.
+        facts = []
+        if announcement.event_date:
+            d = announcement.event_date
+            when = f'{d:%A}, {d:%B} {d.day}, {d.year}'
+            if announcement.event_time:
+                t = announcement.event_time
+                when += f' at {t.hour % 12 or 12}:{t.minute:02d} {"AM" if t.hour < 12 else "PM"}'
+            facts.append(f'When: {when}')
+        if announcement.location:
+            facts.append(f'Where: {announcement.location}')
+        facts_text = ('\n'.join(facts) + '\n\n') if facts else ''
         body = (
+            f'{facts_text}'
             f'{announcement.body}\n\n'
             f'— Posted by {announcement.posted_by.full_name}\n'
             f'Sign in at {settings.FRONTEND_URL} to view all announcements.'
@@ -113,6 +126,10 @@ class AnnouncementListCreateView(generics.ListCreateAPIView):
 
         if self.request.query_params.get('pinned') == 'true':
             qs = qs.filter(is_pinned=True)
+
+        category = self.request.query_params.get('category')
+        if category in dict(Announcement.CATEGORY_CHOICES):
+            qs = qs.filter(category=category)
 
         return qs.order_by('-is_pinned', '-created_at')
 

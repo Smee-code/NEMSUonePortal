@@ -63,14 +63,14 @@ const CSS = `
     box-shadow:0 16px 40px -12px rgba(0,0,0,.5);
     clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);}
   .cc-body{display:flex;align-items:flex-start;gap:12px;flex:1;min-width:230px;}
-  .cc-ic{font-size:22px;color:#C79A3B;flex-shrink:0;margin-top:1px;}
+  .cc-ic{font-size:22px;color:#b89043;flex-shrink:0;margin-top:1px;}
   .cc-text{margin:0;font-size:13px;line-height:1.55;}
   .cc-text a{color:#e3c477;text-decoration:underline;}
   .cc-text strong{color:#fff;}
   .cc-actions{display:flex;gap:10px;flex-shrink:0;}
   .cc-btn{cursor:pointer;font:600 13px 'Inter',sans-serif;padding:10px 22px;border:none;
     clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
-  .cc-primary{background:#C79A3B;color:#0B1B2E;}
+  .cc-primary{background:#b89043;color:#0B1B2E;}
   .cc-primary:hover{background:#d8ab4c;}
   @media(max-width:560px){.cc{padding:14px;}.cc-actions{width:100%;}.cc-btn{width:100%;}}
 `;

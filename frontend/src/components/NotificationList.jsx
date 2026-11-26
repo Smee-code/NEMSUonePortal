@@ -88,8 +88,8 @@ const CSS = `
   .ntf-dot{width:8px;height:8px;border-radius:50%;background:#d5dae3;margin-top:6px;flex-shrink:0;}
   .ntf-item.unread .ntf-dot{background:#b89043;}
   .ntf-body{min-width:0;flex:1;}
-  .ntf-title{font-size:13px;font-weight:600;color:#0a1628;line-height:1.4;}
-  .ntf-item.unread .ntf-title{color:#0a1628;}
+  .ntf-title{font-size:13px;font-weight:600;color:#0b1b2e;line-height:1.4;}
+  .ntf-item.unread .ntf-title{color:#0b1b2e;}
   .ntf-snippet{font-size:12.5px;color:#5a6478;line-height:1.5;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
   .ntf-snippet.full{display:block;-webkit-line-clamp:none;overflow:visible;}
   .ntf-meta{font-size:11px;color:#8a93a3;margin-top:4px;display:flex;gap:5px;align-items:center;}

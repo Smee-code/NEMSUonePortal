@@ -187,7 +187,7 @@ export default function AdminDocumentTypes() {
 }
 
 const CSS = `
-  .dt-form{background:#fff;border:1px solid var(--adm-line);border-top:3px solid var(--adm-gold,#b8860b);padding:1.25rem 1.4rem;margin-bottom:1.5rem;}
+  .dt-form{background:#fff;border:1px solid var(--adm-line);border-top:3px solid var(--adm-gold,#b89043);padding:1.25rem 1.4rem;margin-bottom:1.5rem;}
   .dt-form-head{font-size:13px;font-weight:700;color:var(--adm-ink);margin-bottom:1rem;letter-spacing:.01em;}
   .dt-err{background:#fee2e2;color:#991b1b;padding:.6rem .85rem;font-size:12.5px;margin-bottom:1rem;}
   .dt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}

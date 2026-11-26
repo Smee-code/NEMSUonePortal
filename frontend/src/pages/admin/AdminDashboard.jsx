@@ -305,7 +305,7 @@ function Kpi({ label, icon, value, sub, trend }) {
 
 function UserDist({ u }) {
   const data = [
-    { name: 'Students',   value: u?.student   ?? 0, color: '#0a1628', s: 'enrolled & active' },
+    { name: 'Students',   value: u?.student   ?? 0, color: '#0b1b2e', s: 'enrolled & active' },
     { name: 'Faculty',    value: u?.faculty    ?? 0, color: '#b89043', s: 'teaching staff' },
     { name: 'Registrars', value: u?.registrar  ?? 0, color: '#5a6478', s: 'administrative' },
   ];

@@ -1,8 +1,8 @@
 @echo off
-title NEMSUonePortal Launcher
+title NEMSUOne Launcher
 
 echo ============================================
-echo   NEMSUonePortal — Local Development
+echo   NEMSUOne — Local Development
 echo ============================================
 echo.
 
@@ -24,13 +24,13 @@ if not exist "%~dp0frontend\node_modules" (
 )
 
 echo Starting Django backend on http://localhost:8000 ...
-start "NEMSUonePortal — Backend" cmd /k "cd /d "%~dp0backend" && venv\Scripts\activate && python manage.py runserver"
+start "NEMSUOne — Backend" cmd /k "cd /d "%~dp0backend" && venv\Scripts\activate && python manage.py runserver"
 
 :: Small delay so backend window opens first
 timeout /t 2 /nobreak >nul
 
 echo Starting React frontend on http://localhost:5173 ...
-start "NEMSUonePortal — Frontend" cmd /k "cd /d "%~dp0frontend" && npm run dev"
+start "NEMSUOne — Frontend" cmd /k "cd /d "%~dp0frontend" && npm run dev"
 
 echo.
 echo ============================================

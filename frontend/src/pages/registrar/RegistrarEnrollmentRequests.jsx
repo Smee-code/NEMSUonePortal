@@ -304,7 +304,7 @@ export default function RegistrarEnrollmentRequests() {
         <div className="er-batch-bar">
           <input type="checkbox" checked ref={el => { if (el) el.indeterminate = true; }}
             onChange={() => setSelectedIds(new Set())} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-          <span style={{ color: '#e0e7ff', fontSize: '.88rem', fontWeight: 600, flex: 1 }}>
+          <span style={{ color: '#dbeafe', fontSize: '.88rem', fontWeight: 600, flex: 1 }}>
             {selectedIds.size} request{selectedIds.size !== 1 ? 's' : ''} selected
           </span>
           <button onClick={() => handleBatchAction('approved')} disabled={batchLoading} className="btn-sec"
@@ -316,7 +316,7 @@ export default function RegistrarEnrollmentRequests() {
             <i className="ti ti-x" /> Reject all
           </button>
           <button onClick={() => setSelectedIds(new Set())}
-            style={{ padding: '.35rem .7rem', border: '1px solid rgba(255,255,255,.3)', background: 'transparent', color: '#e0e7ff', fontSize: '.82rem', cursor: 'pointer' }}>
+            style={{ padding: '.35rem .7rem', border: '1px solid rgba(255,255,255,.3)', background: 'transparent', color: '#dbeafe', fontSize: '.82rem', cursor: 'pointer' }}>
             Clear
           </button>
         </div>

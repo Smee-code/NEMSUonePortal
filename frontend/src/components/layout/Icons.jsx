@@ -62,7 +62,7 @@ export function BuildingIllustration() {
       {/* Dome */}
       <ellipse cx="110" cy="26" rx="16" ry="8" fill="#c7d7f0" stroke="#1e3a5f" strokeWidth="1.2" strokeOpacity="0.6"/>
       <line x1="110" y1="18" x2="110" y2="10" stroke="#1e3a5f" strokeWidth="1.2" strokeOpacity="0.6"/>
-      <circle cx="110" cy="9" r="2.5" fill="#c9a94b" stroke="none"/>
+      <circle cx="110" cy="9" r="2.5" fill="#b89043" stroke="none"/>
 
       {/* Windows */}
       {[58, 88, 124, 148].map(x => (

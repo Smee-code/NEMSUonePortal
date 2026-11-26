@@ -152,8 +152,8 @@ const CSS = `
   .sbi-x{background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;line-height:1;}
   .sbi-x:hover{color:#0b1b2e;}
   .sbi-body{padding:1.2rem 1.4rem;}
-  .sbi-note{display:flex;gap:9px;align-items:flex-start;background:#fbf5e6;border:1px solid #e7d3a1;border-left:3px solid #b8860b;color:#7a5c16;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:1.1rem;}
-  .sbi-note i{font-size:16px;flex-shrink:0;color:#b8860b;margin-top:1px;}
+  .sbi-note{display:flex;gap:9px;align-items:flex-start;background:#fbf5e6;border:1px solid #e7d3a1;border-left:3px solid #b89043;color:#7a5c16;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:1.1rem;}
+  .sbi-note i{font-size:16px;flex-shrink:0;color:#b89043;margin-top:1px;}
   .sbi-note strong{color:#5c4410;}
   .sbi-err{background:#fee2e2;color:#991b1b;padding:.6rem .85rem;font-size:12.5px;margin-bottom:1rem;}
   .sbi-drop{width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;

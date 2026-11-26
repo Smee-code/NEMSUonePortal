@@ -239,7 +239,8 @@ class LoginView(TokenObtainPairView):
         # yet — we send a one-time code and require it at /login/verify-otp/.
         _issue_login_otp(user)
         _audit(user, user.role, 'login_otp_sent', request.path, ip, 'success')
-        return Response({'otp_required': True, 'email': user.institutional_email})
+        return Response({'otp_required': True, 'email': user.institutional_email,
+                         'expires_in': settings.LOGIN_OTP_LIFETIME_SECONDS})
 
 
 def _login_success_response(user):
@@ -276,9 +277,10 @@ def _issue_login_otp(user):
     code."""
     import secrets
     from datetime import timedelta as _td
+    lifetime = _td(seconds=settings.LOGIN_OTP_LIFETIME_SECONDS)
     otp = f'{secrets.randbelow(1000000):06d}'
     user.login_otp = otp
-    user.login_otp_expires = timezone.now() + _td(minutes=10)
+    user.login_otp_expires = timezone.now() + lifetime
     user.login_otp_attempts = 0
     user.save(update_fields=['login_otp', 'login_otp_expires', 'login_otp_attempts'])
 
@@ -290,15 +292,45 @@ def _issue_login_otp(user):
                 f'Hi {user.full_name},\n\n'
                 f'Use this one-time code to finish signing in:\n\n'
                 f'  {otp}\n\n'
-                f'The code expires in 10 minutes. If you did not try to sign in, '
-                f'you can ignore this email and your account stays secure.\n\n'
+                f'The code expires in {_duration_words(settings.LOGIN_OTP_LIFETIME_SECONDS)}. '
+                f'If it has expired, choose “Resend code” on the sign-in page. '
+                f'If you did not try to sign in, you can ignore this email and your '
+                f'account stays secure.\n\n'
                 f'— NEMSU Cantilan Campus'
             ),
             [user.institutional_email],
         )
     except Exception:
         logger.warning('Failed to send login OTP email', exc_info=True)
+
+    # The code's short life starts when the email has left the server, not when
+    # the send began: with a 60-second code, the few seconds SMTP takes would
+    # otherwise come straight out of the time the person has to type it.
+    user.login_otp_expires = timezone.now() + lifetime
+    user.save(update_fields=['login_otp_expires'])
     return otp
+
+
+def _duration_words(seconds):
+    """60 -> "60 seconds", 600 -> "10 minutes"; used in the emails."""
+    if seconds % 60 == 0 and seconds >= 120:
+        return f'{seconds // 60} minutes'
+    return f'{seconds} second{"s" if seconds != 1 else ""}'
+
+
+# After a code expires, the sign-in stays "pending" this long so the person can
+# ask for a new code without typing their password again.
+LOGIN_OTP_RESEND_WINDOW_SECONDS = 10 * 60
+
+
+def _login_pending(user):
+    """True while a password-verified sign-in is waiting for its code: a code is
+    set, and it expired no longer ago than the resend window."""
+    from datetime import timedelta as _td
+    return bool(
+        user.login_otp and user.login_otp_expires
+        and timezone.now() <= user.login_otp_expires + _td(seconds=LOGIN_OTP_RESEND_WINDOW_SECONDS)
+    )
 
 
 class LoginVerifyOTPView(APIView):
@@ -321,9 +353,18 @@ class LoginVerifyOTPView(APIView):
             return Response({'detail': 'No login code is pending. Please sign in again.'},
                             status=status.HTTP_400_BAD_REQUEST)
         if timezone.now() > user.login_otp_expires:
+            # An expired code can never be used, but the sign-in stays pending
+            # for a while so "Resend code" works without the password again.
+            if _login_pending(user):
+                return Response(
+                    {'detail': 'Your code has expired. Choose “Resend code” to get a new one.',
+                     'code': 'otp_expired', 'can_resend': True},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             user.login_otp = ''
             user.save(update_fields=['login_otp'])
-            return Response({'detail': 'Your code has expired. Please sign in again to get a new one.'},
+            return Response({'detail': 'Your code has expired. Please sign in again to get a new one.',
+                             'code': 'otp_expired', 'can_resend': False},
                             status=status.HTTP_400_BAD_REQUEST)
         if user.login_otp_attempts >= 5:
             user.login_otp = ''
@@ -371,11 +412,15 @@ class LoginResendOTPView(APIView):
             user = User.objects.get(institutional_email=email)
         except User.DoesNotExist:
             # Don't reveal whether the account exists.
-            return Response({'message': 'If a code was pending, a new one has been sent.'})
-        if user.login_otp:
+            return Response({'message': 'If a code was pending, a new one has been sent.',
+                             'expires_in': settings.LOGIN_OTP_LIFETIME_SECONDS})
+        # Only while a password-verified sign-in is still pending (see
+        # _login_pending); the reply is the same either way, so it reveals nothing.
+        if _login_pending(user):
             _issue_login_otp(user)
             _audit(user, user.role, 'login_otp_resent', request.path, ip, 'success')
-        return Response({'message': 'If a code was pending, a new one has been sent.'})
+        return Response({'message': 'If a code was pending, a new one has been sent.',
+                         'expires_in': settings.LOGIN_OTP_LIFETIME_SECONDS})
 
 
 class CookieTokenRefreshView(APIView):

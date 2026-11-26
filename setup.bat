@@ -1,9 +1,9 @@
 @echo off
 setlocal
-title NEMSUonePortal Setup
+title NEMSUOne Setup
 
 echo ================================================
-echo   NEMSUonePortal - One-click Setup
+echo   NEMSUOne - One-click Setup
 echo   Installs all backend and frontend dependencies
 echo ================================================
 echo.

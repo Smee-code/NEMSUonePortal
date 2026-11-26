@@ -6,6 +6,7 @@ import api from '../api/axios';
 import PasswordInput from './PasswordInput';
 import ConsentCheckbox from './ConsentCheckbox';
 import RememberDevice from './RememberDevice';
+import OtpClock from './OtpClock';
 import { useLockCountdown, formatLockWait } from '../hooks/useLockCountdown';
 
 const ROLE_HOME = {
@@ -65,6 +66,12 @@ function LoginForm({ onClose, toSignup }) {
   const lockRemaining = useLockCountdown(lockUntil);
   const locked = lockRemaining > 0;
 
+  // The emailed code is short-lived: count down to its expiry (see OtpClock).
+  const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+  const otpLeft = useLockCountdown(otpExpiresAt);
+  const otpExpired = !!otpExpiresAt && otpLeft === 0;
+  const startOtpClock = seconds => setOtpExpiresAt(new Date(Date.now() + (seconds || 60) * 1000));
+
   function finish(data) {
     onClose();
     navigate(data.user.needs_academic_setup ? '/setup-academic' : (ROLE_HOME[data.user.role] ?? '/'));
@@ -79,6 +86,7 @@ function LoginForm({ onClose, toSignup }) {
       if (data.otp_required) {
         setOtpEmail(data.email || form.institutional_email);
         setStep('otp'); setResendIn(30);
+        startOtpClock(data.expires_in);
       } else {
         finish(data);
       }
@@ -101,14 +109,21 @@ function LoginForm({ onClose, toSignup }) {
       const data = await verifyLoginOtp({ institutional_email: form.institutional_email, otp: otp.trim(), remember_device: rememberDevice });
       finish(data);
     } catch (err) {
-      setError(err.response?.data?.detail || 'That code is incorrect. Please try again.');
+      const d = err.response?.data;
+      // The server is the judge of expiry; if it says so, show the expired state.
+      if (d?.code === 'otp_expired') { setOtpExpiresAt(new Date(Date.now() - 1000)); setOtp(''); }
+      setError(d?.code === 'otp_expired' && d?.can_resend ? '' : (d?.detail || 'That code is incorrect. Please try again.'));
     } finally { setLoading(false); }
   };
 
   async function resend() {
-    if (resendIn > 0) return;
+    if (resendIn > 0 && !otpExpired) return;
     setError(''); setResent(false);
-    try { await resendLoginOtp(form.institutional_email); setResent(true); setResendIn(30); }
+    try {
+      const res = await resendLoginOtp(form.institutional_email);
+      setResent(true); setResendIn(30); setOtp('');
+      startOtpClock(res.data?.expires_in);
+    }
     catch { setError('Couldn’t resend the code. Please try again.'); }
   }
 
@@ -134,21 +149,23 @@ function LoginForm({ onClose, toSignup }) {
           onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
           placeholder="------" maxLength={6}
           style={{ letterSpacing: '.5em', textAlign: 'center', fontSize: 20, fontWeight: 600 }}
+          disabled={otpExpired} aria-describedby="authm-otp-clock"
         />
+        <OtpClock id="authm-otp-clock" secondsLeft={otpLeft} expired={otpExpired} />
 
         <RememberDevice checked={rememberDevice} onChange={setRememberDevice} id="authm-remember-device" />
 
-        {resent && <div style={{ color: '#15803d', fontSize: 12.5, margin: '.4rem 0 0' }}>A new code has been sent.</div>}
+        {resent && !otpExpired && <div style={{ color: '#15803d', fontSize: 12.5, margin: '.4rem 0 0' }}>A new code has been sent.</div>}
         {error && <div className="authm-err">{error}</div>}
 
-        <button type="submit" className="authm-submit" disabled={loading || otp.length < 6}>
+        <button type="submit" className="authm-submit" disabled={loading || otp.length < 6 || otpExpired}>
           {loading ? 'Verifying…' : 'Verify & sign in'}
         </button>
 
         <div className="authm-switch" style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <button type="button" onClick={() => { setStep('credentials'); setOtp(''); setError(''); }}>← Back</button>
-          <button type="button" onClick={resend} disabled={resendIn > 0} style={{ opacity: resendIn > 0 ? 0.5 : 1 }}>
-            {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+          <button type="button" onClick={() => { setStep('credentials'); setOtp(''); setError(''); setOtpExpiresAt(null); }}>← Back</button>
+          <button type="button" onClick={resend} disabled={resendIn > 0 && !otpExpired} style={{ opacity: resendIn > 0 && !otpExpired ? 0.5 : 1 }}>
+            {resendIn > 0 && !otpExpired ? `Resend in ${resendIn}s` : 'Resend code'}
           </button>
         </div>
       </form>
@@ -314,14 +331,14 @@ const CSS = `
   .authm{position:relative;background:#fff;width:100%;max-width:440px;padding:2.25rem 2rem;box-shadow:0 30px 70px -24px rgba(8,14,24,.5);animation:authm-pop .2s ease;clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);}
   @keyframes authm-pop{from{transform:translateY(10px);opacity:.5}to{transform:none;opacity:1}}
   .authm-x{position:absolute;top:14px;right:14px;width:36px;height:36px;border:none;background:#f4f6fa;color:#5a6478;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;}
-  .authm-x:hover{background:#e9edf3;color:#0a1628;}
+  .authm-x:hover{background:#e9edf3;color:#0b1b2e;}
   .authm-body{display:flex;flex-direction:column;}
   .authm-head{text-align:center;margin-bottom:1.5rem;}
   .authm-logo{display:block;width:52px;height:52px;border-radius:50%;object-fit:contain;background:#f4f6fa;padding:3px;margin:0 auto .75rem;}
-  .authm-head h2{font-size:20px;font-weight:700;color:#0a1628;margin:0 0 .25rem;}
+  .authm-head h2{font-size:20px;font-weight:700;color:#0b1b2e;margin:0 0 .25rem;}
   .authm-head p{font-size:13px;color:#5a6478;margin:0;line-height:1.5;}
   .authm-label{font-size:12px;font-weight:600;color:#374151;margin:.75rem 0 .35rem;display:block;}
-  .authm-input{width:100%;padding:10px 12px;border:1px solid #d1d5db;font:14px 'Inter',sans-serif;box-sizing:border-box;outline:none;color:#0a1628;background:#fff;}
+  .authm-input{width:100%;padding:10px 12px;border:1px solid #d1d5db;font:14px 'Inter',sans-serif;box-sizing:border-box;outline:none;color:#0b1b2e;background:#fff;}
   .authm-input:focus{border-color:#b89043;box-shadow:0 0 0 3px rgba(184,144,67,.15);}
   .authm-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
   .authm-err{background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;font-size:12.5px;padding:9px 12px;margin-top:.9rem;}
@@ -330,13 +347,13 @@ const CSS = `
   .authm-submit:disabled{opacity:.6;cursor:not-allowed;}
   .authm-forgot{text-align:center;margin-top:1rem;}
   .authm-forgot a{font-size:13px;color:#5a6478;text-decoration:none;}
-  .authm-forgot a:hover{color:#0a1628;}
+  .authm-forgot a:hover{color:#0b1b2e;}
   .authm-switch{text-align:center;margin-top:1rem;padding-top:1rem;border-top:1px solid #eef0f4;font-size:13px;color:#5a6478;}
-  .authm-switch button{background:none;border:none;color:#b17f1e;font:600 13px 'Inter',sans-serif;cursor:pointer;padding:0;}
+  .authm-switch button{background:none;border:none;color:#8a6410;font:600 13px 'Inter',sans-serif;cursor:pointer;padding:0;}
   .authm-switch button:hover{text-decoration:underline;}
   .authm-done{text-align:center;align-items:center;}
   .authm-done-ic{width:60px;height:60px;border-radius:50%;background:#dcfce7;color:#15803d;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 1rem;}
-  .authm-done h2{font-size:19px;font-weight:700;color:#0a1628;margin:0 0 .5rem;}
+  .authm-done h2{font-size:19px;font-weight:700;color:#0b1b2e;margin:0 0 .5rem;}
   .authm-done p{font-size:13.5px;color:#5a6478;line-height:1.7;margin:0;}
   @media(max-width:480px){.authm{padding:2rem 1.25rem;}.authm-grid{grid-template-columns:1fr;}}
 `;

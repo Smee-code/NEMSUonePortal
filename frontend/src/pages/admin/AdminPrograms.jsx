@@ -851,7 +851,7 @@ export default function AdminPrograms() {
           <div style={{ fontSize: '10px', letterSpacing: '.16em', textTransform: 'uppercase', color: '#b89043', fontWeight: 700, marginBottom: '.5rem', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
             <span style={{ width: 22, height: 1, background: '#b89043' }} /> Departments · Programs · Curriculum
           </div>
-          <h2 style={{ margin: 0, font: '600 24px/1.15 Inter, sans-serif', color: '#0a1628', letterSpacing: '-.015em' }}>Academic data</h2>
+          <h2 style={{ margin: 0, font: '600 24px/1.15 Inter, sans-serif', color: '#0b1b2e', letterSpacing: '-.015em' }}>Academic data</h2>
           <div className="sub" style={{ marginTop: '.35rem' }}>
             Manage departments, programs, and subjects, and build each program&rsquo;s curriculum.
           </div>
@@ -881,7 +881,7 @@ export default function AdminPrograms() {
             >
               {t.label}
               {t.count != null && (
-                <span style={{ ...s.tabbarCount, ...(on ? { background: '#fff', color: '#0a1628' } : {}) }}>{t.count}</span>
+                <span style={{ ...s.tabbarCount, ...(on ? { background: '#fff', color: '#0b1b2e' } : {}) }}>{t.count}</span>
               )}
             </button>
           );
@@ -1238,62 +1238,62 @@ const s = {
   alertSuccess: { background: '#e6f1ec', color: '#0a7c52', padding: '.65rem 1rem', fontSize: '13px' },
   section: { background: '#fff', border: '1px solid #e5e7eb', padding: '1.25rem' },
   sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' },
-  sectionTitle: { fontWeight: 600, fontSize: '16px', color: '#0a1628', letterSpacing: '-.01em' },
+  sectionTitle: { fontWeight: 600, fontSize: '16px', color: '#0b1b2e', letterSpacing: '-.01em' },
   sectionCount: { background: '#eef1f7', color: '#5a6478', padding: '2px 8px', fontSize: '12px', fontWeight: 600, marginLeft: '.55rem', fontVariantNumeric: 'tabular-nums' },
   filterRow: { display: 'flex', alignItems: 'center', gap: '.75rem', marginBottom: '.9rem', flexWrap: 'wrap' },
   filterLabel: { fontSize: '12.5px', fontWeight: 600, color: '#5a6478', whiteSpace: 'nowrap' },
-  filterSelect: { padding: '8px 11px', border: '1px solid #e5e7eb', fontSize: '13px', minWidth: 200, background: '#fff', color: '#0a1628', outline: 'none' },
+  filterSelect: { padding: '8px 11px', border: '1px solid #e5e7eb', fontSize: '13px', minWidth: 200, background: '#fff', color: '#0b1b2e', outline: 'none' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
   th: { textAlign: 'left', padding: '10px 12px', fontWeight: 600, color: '#5a6478', borderBottom: '1px solid #e5e7eb', fontSize: '11.5px', background: '#f8f7f3', whiteSpace: 'nowrap' },
   tr: { borderBottom: '1px solid #eef0f4' },
-  td: { padding: '10px 12px', color: '#0a1628', verticalAlign: 'middle' },
+  td: { padding: '10px 12px', color: '#0b1b2e', verticalAlign: 'middle' },
   code: { background: '#eef1f7', padding: '2px 7px', fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace', fontSize: '12px', color: '#1e3a5f', fontWeight: 600 },
   badgeActive: { background: '#e6f1ec', color: '#0a7c52', padding: '2px 9px', fontSize: '11px', fontWeight: 600 },
   badgeInactive: { background: '#eef1f7', color: '#5a6478', padding: '2px 9px', fontSize: '11px', fontWeight: 600 },
   loading: { color: '#8a93a3', fontSize: '13px', padding: '1rem 0' },
   empty: { color: '#5a6478', fontSize: '13px', padding: '1.25rem 0' },
   mutedSmall: { color: '#5a6478', fontSize: '11.5px', marginTop: '2px' },
-  btnPrimary: { background: '#0a1628', color: '#fff', border: '1px solid #0a1628', padding: '9px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 },
+  btnPrimary: { background: '#0b1b2e', color: '#fff', border: '1px solid #0b1b2e', padding: '9px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 },
   btnSecondary: { background: '#fff', color: '#5a6478', border: '1px solid #e5e7eb', padding: '9px 15px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 },
-  btnSm: { background: '#fff', color: '#0a1628', border: '1px solid #e5e7eb', padding: '5px 11px', fontSize: '12px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' },
+  btnSm: { background: '#fff', color: '#0b1b2e', border: '1px solid #e5e7eb', padding: '5px 11px', fontSize: '12px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' },
   // Keeps a row's action buttons on one line, in a fixed spot, whatever the other columns contain.
   rowActions: { display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', justifyContent: 'flex-end' },
-  tdActions: { padding: '10px 12px', color: '#0a1628', verticalAlign: 'middle', whiteSpace: 'nowrap', width: '1%', textAlign: 'right' },
+  tdActions: { padding: '10px 12px', color: '#0b1b2e', verticalAlign: 'middle', whiteSpace: 'nowrap', width: '1%', textAlign: 'right' },
   btnSmDanger: { color: '#b42318', border: '1px solid #f3c9c3', background: '#fff' },
   btnSmEdit: { color: '#1e3a5f', border: '1px solid #cdd6e3' },
-  btnSmPrimary: { background: '#0a1628', color: '#fff', border: '1px solid #0a1628' },
+  btnSmPrimary: { background: '#0b1b2e', color: '#fff', border: '1px solid #0b1b2e' },
   btnCurriculum: { color: '#8a6a12', border: '1px solid #e6d3a3', background: '#f8f3e6' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(10,22,40,.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '6vh 1rem', overflowY: 'auto' },
   modal: { background: '#fff', border: '1px solid #e5e7eb', padding: '1.6rem', width: '100%', maxWidth: 520, boxShadow: '0 24px 60px -20px rgba(10,22,40,.5)', maxHeight: '88vh', overflowY: 'auto' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' },
   modalEyebrow: { fontSize: '10px', letterSpacing: '.16em', textTransform: 'uppercase', color: '#b89043', fontWeight: 700, marginBottom: '.35rem' },
-  modalTitle: { margin: 0, fontSize: '19px', color: '#0a1628', fontWeight: 600 },
+  modalTitle: { margin: 0, fontSize: '19px', color: '#0b1b2e', fontWeight: 600 },
   modalClose: { background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#5a6478', lineHeight: 1 },
   modalActions: { display: 'flex', justifyContent: 'flex-end', gap: '.6rem', marginTop: '1.25rem' },
   tabs: { display: 'flex', gap: '.25rem', borderBottom: '1px solid #e5e7eb', marginBottom: '0' },
   tab: { background: 'none', border: 'none', borderBottom: '2px solid transparent', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#5a6478', fontWeight: 600, marginBottom: '-1px' },
-  tabActive: { borderBottomColor: '#b89043', color: '#0a1628' },
+  tabActive: { borderBottomColor: '#b89043', color: '#0b1b2e' },
   fieldGroup: { marginBottom: '1rem' },
-  label: { display: 'block', fontWeight: 600, fontSize: '12.5px', color: '#0a1628', marginBottom: '5px' },
-  checkLabel: { fontWeight: 500, fontSize: '13px', color: '#0a1628', display: 'flex', alignItems: 'center', cursor: 'pointer' },
-  input: { width: '100%', padding: '9px 11px', border: '1px solid #e5e7eb', fontSize: '13px', boxSizing: 'border-box', color: '#0a1628', outline: 'none' },
+  label: { display: 'block', fontWeight: 600, fontSize: '12.5px', color: '#0b1b2e', marginBottom: '5px' },
+  checkLabel: { fontWeight: 500, fontSize: '13px', color: '#0b1b2e', display: 'flex', alignItems: 'center', cursor: 'pointer' },
+  input: { width: '100%', padding: '9px 11px', border: '1px solid #e5e7eb', fontSize: '13px', boxSizing: 'border-box', color: '#0b1b2e', outline: 'none' },
   combo: { position: 'relative', width: '100%' },
-  comboButton: { position: 'absolute', right: 1, top: 1, bottom: 1, width: 34, border: 'none', borderLeft: '1px solid #e5e7eb', background: '#fff', color: '#0a1628', cursor: 'pointer', fontSize: '0.75rem' },
+  comboButton: { position: 'absolute', right: 1, top: 1, bottom: 1, width: 34, border: 'none', borderLeft: '1px solid #e5e7eb', background: '#fff', color: '#0b1b2e', cursor: 'pointer', fontSize: '0.75rem' },
   comboMenu: { position: 'absolute', zIndex: 1200, top: 'calc(100% + 4px)', left: 0, right: 0, maxHeight: 180, overflowY: 'auto', background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 12px 28px -12px rgba(10,22,40,.35)', padding: '0.25rem 0' },
-  comboOption: { display: 'block', width: '100%', border: 'none', background: '#fff', color: '#0a1628', textAlign: 'left', padding: '.45rem .75rem', fontSize: '13px', cursor: 'pointer' },
+  comboOption: { display: 'block', width: '100%', border: 'none', background: '#fff', color: '#0b1b2e', textAlign: 'left', padding: '.45rem .75rem', fontSize: '13px', cursor: 'pointer' },
   comboOptionActive: { background: '#eef1f7', color: '#1e3a5f', fontWeight: 600 },
   comboEmpty: { padding: '.5rem .75rem', color: '#8a93a3', fontSize: '13px' },
   inlineLabel: { display: 'block', fontSize: '11px', fontWeight: 600, color: '#5a6478', marginBottom: '.2rem' },
   inlineInput: { width: '100%', padding: '6px 9px', border: '1px solid #e5e7eb', fontSize: '12.5px', boxSizing: 'border-box', outline: 'none' },
   formError: { color: '#b42318', fontSize: '12.5px', marginTop: '.25rem' },
-  searchInput: { padding: '9px 11px', border: '1px solid #e5e7eb', fontSize: '13px', minWidth: 200, flex: 1, background: '#fff', color: '#0a1628', outline: 'none' },
+  searchInput: { padding: '9px 11px', border: '1px solid #e5e7eb', fontSize: '13px', minWidth: 200, flex: 1, background: '#fff', color: '#0b1b2e', outline: 'none' },
   tableInfo: { fontSize: '12px', color: '#5a6478', marginTop: '.6rem' },
   currYearBlock: { background: '#f8f7f3', border: '1px solid #e5e7eb', padding: '.85rem 1rem' },
-  currYearLabel: { fontWeight: 600, fontSize: '14px', color: '#0a1628', marginBottom: '.25rem' },
+  currYearLabel: { fontWeight: 600, fontSize: '14px', color: '#0b1b2e', marginBottom: '.25rem' },
   currSemLabel: { fontSize: '11.5px', fontWeight: 600, color: '#5a6478', marginBottom: '.35rem', marginTop: '.75rem' },
   // Section tab bar (Departments / Programs / Subjects / Landing page)
   tabbar: { display: 'inline-flex', border: '1px solid #e5e7eb', background: '#fff', marginBottom: '1.25rem', flexWrap: 'wrap' },
   tabbarBtn: { display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 16px', border: 'none', borderRight: '1px solid #e5e7eb', background: 'none', font: "500 13px 'Inter',sans-serif", color: '#5a6478', cursor: 'pointer' },
-  tabbarBtnActive: { background: '#0a1628', color: '#fff' },
+  tabbarBtnActive: { background: '#0b1b2e', color: '#fff' },
   tabbarCount: { font: "700 11px 'Inter',sans-serif", background: '#eef1f7', color: '#5a6478', padding: '1px 7px', borderRadius: 999, fontVariantNumeric: 'tabular-nums' },
 };

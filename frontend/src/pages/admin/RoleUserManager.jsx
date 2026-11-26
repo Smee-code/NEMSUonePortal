@@ -487,8 +487,8 @@ export default function RoleUserManager({ role, config }) {
               <div style={{ display: 'flex', gap: '.6rem' }}>
                 {[
                   { n: importResult.created, l: 'Created', c: 'var(--adm-green,#059669)' },
-                  { n: importResult.emailed, l: 'Setup emails sent', c: 'var(--adm-ink,#0a1628)' },
-                  { n: importResult.errors.length, l: 'Skipped', c: importResult.errors.length ? 'var(--adm-red,#dc2626)' : 'var(--adm-ink,#0a1628)' },
+                  { n: importResult.emailed, l: 'Setup emails sent', c: 'var(--adm-ink,#0b1b2e)' },
+                  { n: importResult.errors.length, l: 'Skipped', c: importResult.errors.length ? 'var(--adm-red,#dc2626)' : 'var(--adm-ink,#0b1b2e)' },
                 ].map((s, i) => (
                   <div key={i} style={{ flex: 1, border: '1px solid var(--adm-line,#e2e8f0)', borderRadius: 8, padding: '.7rem .85rem' }}>
                     <b style={{ display: 'block', font: "600 22px 'Inter',sans-serif", color: s.c, fontVariantNumeric: 'tabular-nums' }}>{s.n}</b>
@@ -546,7 +546,7 @@ const CSS = `
   .rum-user-id{min-width:0;}
   .rum-name{font-size:14px;font-weight:600;color:var(--adm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .rum-email{font-size:12px;color:var(--adm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .rum-sub{font-size:11px;color:var(--adm-gold,#b8860b);font-weight:600;margin-top:1px;}
+  .rum-sub{font-size:11px;color:var(--adm-gold,#b89043);font-weight:600;margin-top:1px;}
   .rum-c-meta{font-size:12.5px;color:var(--adm-ink-2);font-variant-numeric:tabular-nums;}
   .rum-tag{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;margin-right:5px;}
   .rum-tag.ok{background:var(--adm-green-tint,#e6f4ec);color:var(--adm-green,#0a6b48);}

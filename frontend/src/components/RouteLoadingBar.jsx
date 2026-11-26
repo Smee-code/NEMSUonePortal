@@ -26,7 +26,7 @@ export default function RouteLoadingBar() {
   return (
     <div className="routebar" aria-hidden="true">
       <style>{`.routebar{position:fixed;top:0;left:0;right:0;height:3px;z-index:1600;pointer-events:none;}
-        .routebar>span{display:block;height:100%;background:linear-gradient(90deg,#C79A3B,#e9d08a);
+        .routebar>span{display:block;height:100%;background:linear-gradient(90deg,#b89043,#e9d08a);
           box-shadow:0 0 8px rgba(199,154,59,.7);transition:width .25s ease,opacity .2s ease;}`}</style>
       <span style={{ width: `${pct}%`, opacity: visible ? 1 : 0 }} />
     </div>

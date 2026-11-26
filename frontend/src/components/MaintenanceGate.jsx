@@ -60,7 +60,7 @@ function MaintenanceBanner() {
 function MaintenanceNotice({ message }) {
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 2000, background: '#0a1628',
+      position: 'fixed', inset: 0, zIndex: 2000, background: '#0b1b2e',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem',
       fontFamily: "'Inter',-apple-system,sans-serif",
     }}>
@@ -72,7 +72,7 @@ function MaintenanceNotice({ message }) {
         }}>
           <i className="ti ti-tool" style={{ fontSize: 34 }} />
         </div>
-        <div style={{ fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase', color: '#b8860b', fontWeight: 700, marginBottom: 10 }}>
+        <div style={{ fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase', color: '#b89043', fontWeight: 700, marginBottom: 10 }}>
           NEMSUOne
         </div>
         <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 .7rem', letterSpacing: '-.01em' }}>

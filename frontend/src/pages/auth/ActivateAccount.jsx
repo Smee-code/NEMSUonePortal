@@ -76,8 +76,8 @@ export default function ActivateAccount() {
 
         {/* Logo + title */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <img src="/logo.png" alt="NEMSU" style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #e0e7ff' }} />
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0a1628', margin: 0 }}>Create your student account</h1>
+          <img src="/logo.png" alt="NEMSU" style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #dbeafe' }} />
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0b1b2e', margin: 0 }}>Create your student account</h1>
           <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>NEMSU Cantilan Campus · NEMSUOne</p>
         </div>
 
@@ -107,8 +107,8 @@ export default function ActivateAccount() {
         {step === STEP_WELCOME && info && (
           <form onSubmit={handleRequestOTP}>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <div style={iconCircle('#e0e7ff')}>
-                <i className="ti ti-user-check" style={{ fontSize: 28, color: '#3730a3' }} />
+              <div style={iconCircle('#dbeafe')}>
+                <i className="ti ti-user-check" style={{ fontSize: 28, color: '#1d4ed8' }} />
               </div>
               <h2 style={hStyle}>Welcome, {info.full_name.split(' ')[0]}!</h2>
               <p style={pStyle}>
@@ -229,12 +229,12 @@ function StepDots({ current }) {
         <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <div style={{
             width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700,
-            background: i < current ? '#3730a3' : i === current ? '#0a3a6e' : '#e5e7eb',
+            background: i < current ? '#1d4ed8' : i === current ? '#0b1b2e' : '#e5e7eb',
             color: i <= current ? '#fff' : '#9ca3af',
           }}>
             {i < current ? <i className="ti ti-check" style={{ fontSize: 12 }} /> : i + 1}
           </div>
-          <span style={{ fontSize: 9, color: i === current ? '#0a3a6e' : '#9ca3af', fontWeight: i === current ? 600 : 400, whiteSpace: 'nowrap' }}>{l}</span>
+          <span style={{ fontSize: 9, color: i === current ? '#0b1b2e' : '#9ca3af', fontWeight: i === current ? 600 : 400, whiteSpace: 'nowrap' }}>{l}</span>
         </div>
       ))}
     </div>
@@ -262,7 +262,7 @@ function iconCircle(bg) {
   return { width: 60, height: 60, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' };
 }
 
-const hStyle   = { fontSize: 17, fontWeight: 700, color: '#0a1628', margin: '0 0 .35rem' };
+const hStyle   = { fontSize: 17, fontWeight: 700, color: '#0b1b2e', margin: '0 0 .35rem' };
 const pStyle   = { fontSize: 13, color: '#6b7280', lineHeight: 1.7, margin: 0 };
 const inp      = { width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', outline: 'none' };
 const btnLink  = { display: 'inline-block', marginTop: '1.25rem', fontSize: 13, color: '#1d4ed8', textDecoration: 'none' };
@@ -270,7 +270,7 @@ const ghostBtn = { width: '100%', marginTop: 8, padding: '9px', background: 'non
 
 function primBtn(disabled) {
   return {
-    width: '100%', padding: '11px', background: disabled ? '#93c5fd' : '#0a3a6e', border: 'none',
+    width: '100%', padding: '11px', background: disabled ? '#94a3b8' : '#0b1b2e', border: 'none',
     borderRadius: 8, color: '#fff', fontWeight: 600, fontSize: 14,
     cursor: disabled ? 'not-allowed' : 'pointer', marginTop: 4,
   };

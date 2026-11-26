@@ -46,9 +46,31 @@ label:has(+ :not(label) :is(input, select, textarea):required)::after {
   font-weight: 700;
 }
 
+/* ── NEMSUOne palette ─────────────────────────────────────────────────────────
+   One palette for every screen, taken from the NEMSU seal: royal blue with gold.
+   Blue and gold sit opposite each other on the color wheel, so gold reads as
+   the accent against the blue family without a third hue competing.
+
+   How much of each (roughly 60 / 30 / 10):
+     neutrals   page and card backgrounds, body text
+     navy/blue  dark surfaces, headings, primary buttons, links
+     gold       the single accent: active markers, highlights, key calls to action
+
+   Green, amber and red are reserved for status (success, warning, error) and are
+   never used as decoration. Any new screen should use these values, not new ones. */
 :root {
-  --color-primary:      #1e3a5f;
-  --color-primary-h:    #162d4a;
+  --brand-navy:         #0b1b2e;   /* dark surfaces, headings, primary buttons */
+  --brand-navy-2:       #1e3a5f;   /* secondary navy */
+  --brand-navy-hover:   #13263d;
+  --brand-blue:         #1d4ed8;   /* links, focus rings, information */
+  --brand-blue-tint:    #dbeafe;
+  --brand-gold:         #b89043;   /* the accent */
+  --brand-gold-soft:    #d9b96b;   /* gold on dark backgrounds */
+  --brand-gold-tint:    #f5edd9;
+  --brand-gold-text:    #8a6410;   /* gold dark enough for small text on white */
+
+  --color-primary:      var(--brand-navy);
+  --color-primary-h:    var(--brand-navy-hover);
   --color-danger:       #e02424;
   --color-success:      #057a55;
   --color-bg:           #eef0f5;
@@ -56,9 +78,9 @@ label:has(+ :not(label) :is(input, select, textarea):required)::after {
   --color-text:         #0f1b2d;
   --color-muted:        #5a6478;
   --color-border:       #e5e7eb;
-  --color-gold:         #c9a94b;
-  --color-gold-light:   #f5ecd0;
-  --color-sidebar-bg:   #1e3a5f;
+  --color-gold:         var(--brand-gold);
+  --color-gold-light:   var(--brand-gold-tint);
+  --color-sidebar-bg:   var(--brand-navy);
   --color-sidebar-text: #e8edf5;
   --radius:             8px;
   --shadow:             0 2px 8px rgba(14,30,60,.08), 0 1px 3px rgba(14,30,60,.06);
@@ -262,7 +284,7 @@ body {
 
 .sidebar-brand-campus {
   font-size: 0.72rem;
-  color: #c9a94b;
+  color: #b89043;
   font-weight: 500;
   letter-spacing: 0.02em;
 }

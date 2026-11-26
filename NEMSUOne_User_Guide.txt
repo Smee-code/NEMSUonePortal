@@ -1,10 +1,10 @@
 ================================================================
-  NEMSU ONE PORTAL — COMPLETE USER GUIDE
-  NEMSUonePortal | NEMSU-Cantilan Campus
+  NEMSUOne — COMPLETE USER GUIDE
+  NEMSUOne | NEMSU-Cantilan Campus
   Cantilan, Surigao del Sur, Philippines
 ================================================================
   Version: 1.0   |   AY 2025–2026
-  System: NEMSUonePortal (Django 5 + React)
+  System: NEMSUOne (Django 5 + React)
 ================================================================
 
 TABLE OF CONTENTS
@@ -151,7 +151,7 @@ WHAT THIS PAGE IS FOR
 
 HOW TO USE IT
   Step 1. Open your email inbox and find the activation email
-          from NEMSUonePortal.
+          from NEMSUOne.
   Step 2. Click the activation link inside the email.
           Your browser will open the portal and show
           your name and program.
@@ -211,7 +211,7 @@ HOW TO USE IT
   Step 2. Enter your institutional email address.
   Step 3. Click "Send Reset Link".
   Step 4. Check your email inbox for a message from
-          NEMSUonePortal.
+          NEMSUOne.
   Step 5. Click the link in the email to open the
           Reset Password page.
 
@@ -255,7 +255,7 @@ WHAT THIS PAGE IS FOR
 
 HOW TO USE IT
   Step 1. Check your email inbox for a verification email
-          from NEMSUonePortal.
+          from NEMSUOne.
   Step 2. Click the verification link in the email.
   Step 3. The page will confirm that your email is verified.
           Click "Sign In" to log in.
@@ -1981,7 +1981,7 @@ HOW TO USE IT
   Step 2. Read the sections:
 
   Application Info
-    - System name: NEMSUonePortal
+    - System name: NEMSUOne
     - Institution: NEMSU-Cantilan Campus
     - Version and technology stack (Django 5, React)
     - Database: PostgreSQL
@@ -2056,7 +2056,7 @@ NOTES
 ================================================================
 END OF USER GUIDE
 ================================================================
-  NEMSUonePortal — NEMSU-Cantilan Campus
+  NEMSUOne — NEMSU-Cantilan Campus
   College of Information Technology Education
   Department of Computer Studies
   Cantilan, Surigao del Sur, Philippines

@@ -274,6 +274,34 @@ class PSGCProvinceView(APIView):
         return resp
 
 
+@lru_cache(maxsize=1)
+def _psgc_zipcodes():
+    """{province slug: {town name: ZIP}} for towns that have exactly one ZIP code.
+    Built from PHLPost's ZIP Code Locator data (via the MIT-licensed
+    `use-postal-ph` compilation) and keyed by the picker's own town names. Towns
+    with several ZIPs, such as the districts of large cities, are not listed."""
+    path = os.path.join(_PSGC_DIR, 'zipcodes.json')
+    if not os.path.isfile(path):
+        return {}
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)
+
+
+class PSGCProvinceZipView(APIView):
+    """GET /api/enrollment/psgc/province/<slug>/zip/ — {"Town": "ZIP"} for that
+    province, so the form can fill in the ZIP code once a town is chosen. A town
+    missing from the answer has no single ZIP on record and is typed by hand."""
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def get(self, request, slug):
+        if not _PSGC_SLUG_RE.match(slug):
+            return Response({'error': 'Invalid province.'}, status=status.HTTP_400_BAD_REQUEST)
+        resp = Response(_psgc_zipcodes().get(slug, {}))
+        resp['Cache-Control'] = 'public, max-age=86400'
+        return resp
+
+
 # ── Enrollment schedule CRUD (registrar / admin) ───────────────────────────────
 
 class EnrollmentScheduleListCreateView(generics.ListCreateAPIView):
@@ -945,7 +973,7 @@ class RegistrarReviewView(APIView):
         summary = (
             f'Your enrollment request for {term} was not approved. '
             + (f'Registrar’s note: {remarks} ' if remarks else '')
-            + 'Open "My Enrollment" to review and submit again.'
+            + 'Open "My enrollment" to review and submit again.'
         )
 
         # Email
@@ -958,7 +986,7 @@ class RegistrarReviewView(APIView):
                     f'Hi {student.full_name or "Student"},\n\n'
                     f'Your enrollment request for {term} was not approved by the registrar.\n'
                     + (f'\nReason: {remarks}\n' if remarks else '')
-                    + '\nPlease sign in to NEMSUOne, open "My Enrollment", review your '
+                    + '\nPlease sign in to NEMSUOne, open "My enrollment", review your '
                     'courses and submit your enrollment again.\n\n'
                     '— NEMSU Cantilan Campus'
                 )
@@ -1019,7 +1047,7 @@ class RegistrarReviewView(APIView):
         summary = (
             f'Your enrollment for {term} has been approved'
             + (f' — you are in {block}.' if block else '.')
-            + ' Open "My Enrollment" to view your Certificate of Registration.'
+            + ' Open "My enrollment" to view your Certificate of Registration.'
         )
 
         # Email
@@ -1032,7 +1060,7 @@ class RegistrarReviewView(APIView):
                     f'Hi {student.full_name or "Student"},\n\n'
                     f'Good news — your enrollment for {term} has been approved'
                     + (f' and you have been assigned to {block}.' if block else '.')
-                    + '\n\nLog in to NEMSUOne and open "My Enrollment" to view your '
+                    + '\n\nSign in to NEMSUOne and open "My enrollment" to view your '
                     'Certificate of Registration and class schedule.\n\n'
                     '— NEMSU Cantilan Campus'
                 )

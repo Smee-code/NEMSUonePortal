@@ -114,10 +114,10 @@ export default function AdminSettings() {
 
       <SettingsSection title="Enrollment window">
         <p className="ss-help">
-          Academic term management and enrollment window control have moved to the dedicated Academic Terms page.
+          Academic term management and enrollment window control have moved to the dedicated Academic terms page.
         </p>
         <Link to="/admin/terms" className="ss-link">
-          Manage Academic Terms <i className="ti ti-arrow-right" />
+          Manage academic terms <i className="ti ti-arrow-right" />
         </Link>
       </SettingsSection>
 
@@ -167,7 +167,7 @@ const CSS = `
   .ss-maint-ic{flex-shrink:0;width:42px;height:42px;border-radius:10px;background:var(--adm-amber-tint,#fef3c7);color:#b45309;display:flex;align-items:center;justify-content:center;font-size:21px;}
   .ss-maint.on .ss-maint-ic{background:#b45309;color:#fff;}
   .ss-maint-txt{flex:1;min-width:0;}
-  .ss-maint-txt h4{margin:0 0 .25rem;font:700 15px 'Inter',sans-serif;color:var(--adm-ink,#0a1628);display:flex;align-items:center;gap:8px;}
+  .ss-maint-txt h4{margin:0 0 .25rem;font:700 15px 'Inter',sans-serif;color:var(--adm-ink,#0b1b2e);display:flex;align-items:center;gap:8px;}
   .ss-maint-txt p{margin:0;font-size:12.5px;line-height:1.55;color:var(--adm-muted,#64748b);}
   .ss-maint-pill{font-size:10px;font-weight:800;letter-spacing:.06em;background:#b45309;color:#fff;padding:2px 8px;border-radius:999px;}
   .ss-switch{flex-shrink:0;width:50px;height:28px;border-radius:999px;border:none;background:#cbd5e1;position:relative;cursor:pointer;transition:background .18s;padding:0;}
@@ -175,10 +175,10 @@ const CSS = `
   .ss-switch:disabled{opacity:.6;cursor:default;}
   .ss-switch-knob{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .18s;}
   .ss-switch.on .ss-switch-knob{left:25px;}
-  .ss-maint-label{display:block;font-size:12px;font-weight:600;color:var(--adm-ink,#0a1628);margin:1.1rem 0 5px;}
+  .ss-maint-label{display:block;font-size:12px;font-weight:600;color:var(--adm-ink,#0b1b2e);margin:1.1rem 0 5px;}
   .ss-opt{font-weight:400;color:var(--adm-faint,#94a3b8);}
-  .ss-maint-msg{width:100%;box-sizing:border-box;border:1px solid var(--adm-line,#e2e8f0);border-radius:8px;padding:.6rem .8rem;font:13px/1.5 'Inter',sans-serif;color:var(--adm-ink,#0a1628);outline:none;resize:vertical;}
-  .ss-maint-msg:focus{border-color:var(--adm-ink,#0a1628);}
+  .ss-maint-msg{width:100%;box-sizing:border-box;border:1px solid var(--adm-line,#e2e8f0);border-radius:8px;padding:.6rem .8rem;font:13px/1.5 'Inter',sans-serif;color:var(--adm-ink,#0b1b2e);outline:none;resize:vertical;}
+  .ss-maint-msg:focus{border-color:var(--adm-ink,#0b1b2e);}
   .ss-maint-actions{display:flex;justify-content:flex-end;margin-top:.7rem;}
   .ss-loading{padding:1rem 1.5rem;font-size:13px;color:var(--adm-muted)}
   .ss-help{margin:0 0 .75rem;color:var(--adm-muted);font-size:13px;padding:0 1.5rem;padding-top:1rem}

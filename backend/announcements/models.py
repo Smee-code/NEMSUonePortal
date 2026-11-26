@@ -1,10 +1,28 @@
+import os
 import uuid
 
 from django.conf import settings
 from django.db import models
 
 
+def announcement_image_path(instance, filename):
+    # A random name: the uploaded one is never trusted for the path.
+    ext = os.path.splitext(filename)[1].lower()
+    return f'announcements/{uuid.uuid4().hex}{ext}'
+
+
 class Announcement(models.Model):
+    # What kind of notice this is. Drives the icon and color of its card, so
+    # readers can tell an event from a deadline at a glance.
+    CATEGORY_GENERAL = 'general'
+    CATEGORY_CHOICES = [
+        (CATEGORY_GENERAL, 'General'),
+        ('academic', 'Academic'),
+        ('event', 'Event'),
+        ('deadline', 'Deadline'),
+        ('advisory', 'Advisory'),
+    ]
+
     TARGET_ALL = 'all'
     TARGET_STUDENT = 'student'
     TARGET_FACULTY = 'faculty'
@@ -32,6 +50,16 @@ class Announcement(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # ── Graphic presentation (all optional except the category) ──────────────
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default=CATEGORY_GENERAL)
+    # A poster or infographic shown at the top of the card (JPG, PNG or WEBP).
+    image = models.FileField(upload_to=announcement_image_path, blank=True)
+    # The "when and where" of an event or deadline, shown as a date badge and
+    # fact chips instead of being buried in the text.
+    event_date = models.DateField(null=True, blank=True)
+    event_time = models.TimeField(null=True, blank=True)
+    location = models.CharField(max_length=150, blank=True)
 
     class Meta:
         ordering = ['-is_pinned', '-created_at']

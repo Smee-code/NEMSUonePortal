@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PasswordInput from '../components/PasswordInput';
 import RememberDevice from '../components/RememberDevice';
+import OtpClock from '../components/OtpClock';
 import { useLockCountdown, formatLockWait } from '../hooks/useLockCountdown';
 
 const ROLE_HOME = {
@@ -31,6 +32,13 @@ export default function Login() {
   const [lockUntil, setLockUntil] = useState(null);
   const lockRemaining = useLockCountdown(lockUntil);
   const locked = lockRemaining > 0;
+
+  // The emailed code is short-lived: count down to its expiry so the person
+  // knows how long they have, and can ask for a new one once it runs out.
+  const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+  const otpLeft = useLockCountdown(otpExpiresAt);
+  const otpExpired = !!otpExpiresAt && otpLeft === 0;
+  const startOtpClock = seconds => setOtpExpiresAt(new Date(Date.now() + (seconds || 60) * 1000));
 
   const { login, verifyLoginOtp, resendLoginOtp } = useAuth();
   const navigate = useNavigate();
@@ -65,6 +73,7 @@ export default function Login() {
         setOtpEmail(data.email || form.institutional_email);
         setStep('otp');
         setResendIn(30);
+        startOtpClock(data.expires_in);
       } else {
         goToDashboard(data); // 2FA somehow disabled — proceed as before
       }
@@ -83,19 +92,25 @@ export default function Login() {
       const data = await verifyLoginOtp({ institutional_email: form.institutional_email, otp: otp.trim(), remember_device: rememberDevice });
       goToDashboard(data);
     } catch (err) {
-      setError(err.response?.data?.detail || 'That code is incorrect. Please try again.');
+      const d = err.response?.data;
+      // The server is the judge of expiry; if it says so, show the expired state.
+      if (d?.code === 'otp_expired') { setOtpExpiresAt(new Date(Date.now() - 1000)); setOtp(''); }
+      setError(d?.code === 'otp_expired' && d?.can_resend ? '' : (d?.detail || 'That code is incorrect. Please try again.'));
     } finally {
       setLoading(false);
     }
   };
 
   async function handleResend() {
-    if (resendIn > 0) return;
+    if (resendIn > 0 && !otpExpired) return;
     setError(''); setResent(false);
     try {
-      await resendLoginOtp(form.institutional_email);
+      const res = await resendLoginOtp(form.institutional_email);
       setResent(true);
       setResendIn(30);
+      setOtp('');
+      startOtpClock(res.data?.expires_in);
+      otpRef.current?.focus();
     } catch {
       setError('Couldn’t resend the code. Please try again.');
     }
@@ -103,7 +118,7 @@ export default function Login() {
 
   function backToCredentials() {
     setStep('credentials');
-    setOtp(''); setError(''); setResent(false);
+    setOtp(''); setError(''); setResent(false); setOtpExpiresAt(null);
   }
 
   // Resend cooldown + autofocus the code box.
@@ -181,22 +196,25 @@ export default function Login() {
                 maxLength={6}
                 style={{ letterSpacing: '.5em', textAlign: 'center', fontSize: 20, fontWeight: 600 }}
                 required
+                disabled={otpExpired}
+                aria-describedby="otp-clock"
               />
+              <OtpClock id="otp-clock" secondsLeft={otpLeft} expired={otpExpired} />
             </div>
 
             <RememberDevice checked={rememberDevice} onChange={setRememberDevice} id="remember-device" />
 
-            {resent && <p style={{ fontSize: 12.5, color: '#15803d', margin: '0 0 .6rem' }}>A new code has been sent.</p>}
+            {resent && !otpExpired && <p style={{ fontSize: 12.5, color: '#15803d', margin: '0 0 .6rem' }}>A new code has been sent.</p>}
             {error && <p className="error-message" role="alert">{error}</p>}
 
-            <button type="submit" disabled={loading || otp.length < 6} className="btn-primary">
+            <button type="submit" disabled={loading || otp.length < 6 || otpExpired} className="btn-primary">
               {loading ? 'Verifying…' : 'Verify & sign in'}
             </button>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '.9rem', fontSize: 13 }}>
               <button type="button" onClick={backToCredentials} style={linkBtn}>← Use a different account</button>
-              <button type="button" onClick={handleResend} disabled={resendIn > 0} style={{ ...linkBtn, opacity: resendIn > 0 ? 0.5 : 1 }}>
-                {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+              <button type="button" onClick={handleResend} disabled={resendIn > 0 && !otpExpired} style={{ ...linkBtn, opacity: resendIn > 0 && !otpExpired ? 0.5 : 1 }}>
+                {resendIn > 0 && !otpExpired ? `Resend in ${resendIn}s` : 'Resend code'}
               </button>
             </div>
           </form>
@@ -219,5 +237,5 @@ export default function Login() {
 
 const linkBtn = {
   background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-  color: '#0a3a6e', fontWeight: 600, fontFamily: 'inherit', fontSize: 13,
+  color: '#0b1b2e', fontWeight: 600, fontFamily: 'inherit', fontSize: 13,
 };

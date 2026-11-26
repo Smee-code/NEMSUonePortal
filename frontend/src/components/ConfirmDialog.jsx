@@ -89,7 +89,7 @@ const CSS = `
   .cfm-actions{display:flex;gap:10px;justify-content:center;}
   .cfm-btn{cursor:pointer;font:600 14px 'Inter',sans-serif;padding:11px 22px;border:1px solid transparent;
     clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
-  .cfm-cancel{background:#fff;color:#0a1628;border-color:#d5dae3;}
+  .cfm-cancel{background:#fff;color:#0b1b2e;border-color:#d5dae3;}
   .cfm-cancel:hover{border-color:#0B1B2E;}
   .cfm-confirm{color:#fff;}
   .cfm-confirm-danger{background:#b8331e;}

@@ -153,11 +153,11 @@ const CSS = `
 .sched-meet-room{font-size:10.5px;color:#5c73a0;margin-top:2px;display:flex;align-items:center;gap:3px;line-height:1.2;word-break:break-word;}
 .sched-meet-room i{font-size:12px;flex-shrink:0;}
 .sched-meet.no-room{background:var(--reg-amber-tint,#fdf3e2);border-color:#f0dcae;}
-.sched-meet-assign{border:none;background:none;cursor:pointer;font-weight:700;color:var(--reg-warm,#b8860b);padding:0;font-family:inherit;}
+.sched-meet-assign{border:none;background:none;cursor:pointer;font-weight:700;color:var(--reg-warm,#b89043);padding:0;font-family:inherit;}
 .sched-meet-assign:hover{text-decoration:underline;}
 .sched-needroom-banner{display:flex;align-items:center;gap:9px;padding:.7rem 1rem;margin-bottom:.85rem;
   background:var(--reg-amber-tint,#fdf3e2);border:1px solid #f0dcae;border-radius:8px;font-size:13px;color:var(--reg-ink-2);}
-.sched-needroom-banner i{font-size:17px;color:var(--reg-warm,#b8860b);flex-shrink:0;}
+.sched-needroom-banner i{font-size:17px;color:var(--reg-warm,#b89043);flex-shrink:0;}
 .sched-time-ro{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:10px 12px;border:1px solid var(--reg-line);
   background:var(--reg-warm,#faf7f0);font-size:14px;font-weight:600;color:var(--reg-ink);}
 .sched-time-ro i{font-size:16px;color:var(--reg-faint);}
@@ -180,13 +180,13 @@ const CSS = `
 .sched-mtgs{display:flex;flex-direction:column;gap:6px;padding:.85rem 1.1rem;}
 .sched-mtg{display:flex;align-items:center;gap:12px;background:#f7f9fc;border:1px solid var(--reg-line-soft);
   border-left:3px solid #284a7a;border-radius:8px;padding:8px 11px;}
-.sched-mtg.no-room{background:var(--reg-amber-tint,#fdf3e2);border-color:#f0dcae;border-left-color:var(--reg-warm,#b8860b);}
+.sched-mtg.no-room{background:var(--reg-amber-tint,#fdf3e2);border-color:#f0dcae;border-left-color:var(--reg-warm,#b89043);}
 .sched-mtg-day{flex:0 0 38px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#284a7a;}
 .sched-mtg.no-room .sched-mtg-day{color:#8a6a12;}
 .sched-mtg-time{flex:0 0 auto;font-size:12.5px;font-weight:600;color:var(--reg-ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .sched-mtg-room{flex:1;min-width:0;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--reg-muted);}
 .sched-mtg-room i{font-size:13px;flex-shrink:0;}
-.sched-mtg-assign{border:none;background:none;cursor:pointer;font-weight:700;color:var(--reg-warm,#b8860b);font-family:inherit;padding:0;text-align:left;}
+.sched-mtg-assign{border:none;background:none;cursor:pointer;font-weight:700;color:var(--reg-warm,#b89043);font-family:inherit;padding:0;text-align:left;}
 .sched-mtg-assign:hover{text-decoration:underline;}
 .sched-mtg-acts{display:flex;gap:4px;flex-shrink:0;}
 .sched-mtg-none{font-size:12.5px;color:var(--reg-faint);padding:4px 2px;}

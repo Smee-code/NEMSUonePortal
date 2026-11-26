@@ -147,8 +147,8 @@ const CSS = `
   .sab-field label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#64748b;font-weight:600;}
   .sab-field input{padding:9px 12px;border:1px solid #e4e7ec;background:#fff;font:13.5px/1.4 'Inter',sans-serif;color:#0b1b2e;outline:none;}
   .sab-field input:focus{border-color:#0b1b2e;}
-  .sab-note{display:flex;gap:8px;align-items:flex-start;background:#fbf5e6;border:1px solid #e7d3a1;border-left:3px solid #b8860b;color:#7a5c16;padding:9px 12px;font-size:11.5px;line-height:1.5;margin-bottom:.4rem;}
-  .sab-note i{font-size:15px;flex-shrink:0;color:#b8860b;margin-top:1px;}
+  .sab-note{display:flex;gap:8px;align-items:flex-start;background:#fbf5e6;border:1px solid #e7d3a1;border-left:3px solid #b89043;color:#7a5c16;padding:9px 12px;font-size:11.5px;line-height:1.5;margin-bottom:.4rem;}
+  .sab-note i{font-size:15px;flex-shrink:0;color:#b89043;margin-top:1px;}
   .sab-banner{display:flex;align-items:center;gap:9px;padding:.7rem .9rem;margin-bottom:1rem;font-size:12.5px;background:#e6f4ec;color:#0a6b48;}
   .sab-banner.warn{background:#fdf3e2;color:#8a6a12;}
   .sab-banner i{font-size:17px;flex-shrink:0;}

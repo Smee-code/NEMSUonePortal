@@ -42,7 +42,7 @@ const CRUMB = {
 
 const CSS = `
   :root {
-    --ink:  #0a1628; --ink-2: #1e3a5f; --ink-3: #0f1f3a;
+    --ink:  #0b1b2e; --ink-2: #1e3a5f; --ink-3: #0f1f3a;
     --muted:#5a6478; --faint: #8a93a3;
     --warm: #f8f7f3; --cool:  #f4f6fa; --cool-2:#eef1f7;
     --line: #e5e7eb; --line-soft:#eef0f4;

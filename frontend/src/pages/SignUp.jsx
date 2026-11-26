@@ -71,8 +71,8 @@ export default function SignUp() {
       <style>{CSS}</style>
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <img src="/logo.png" alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #e0e7ff' }} />
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0a1628', margin: 0 }}>Create your student account</h1>
+          <img src="/logo.png" alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: '.75rem', border: '2px solid #dbeafe' }} />
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0b1b2e', margin: 0 }}>Create your student account</h1>
           <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>NEMSU Cantilan Campus · NEMSUOne</p>
         </div>
 
@@ -94,8 +94,8 @@ export default function SignUp() {
         ) : (
           <form onSubmit={handleSubmit}>
             <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-              <div style={iconCircle('#e0e7ff')}>
-                <i className="ti ti-user-plus" aria-hidden="true" style={{ fontSize: 28, color: '#3730a3' }} />
+              <div style={iconCircle('#dbeafe')}>
+                <i className="ti ti-user-plus" aria-hidden="true" style={{ fontSize: 28, color: '#1d4ed8' }} />
               </div>
               <p style={pStyle}>
                 Enter your Student ID, your institutional email, and a password. Your name is
@@ -171,8 +171,8 @@ const CSS = `
     /* 16px avoids iOS zoom-on-focus */
     .su-input{font-size:16px !important;padding-top:11px !important;padding-bottom:11px !important;}
   }
-  .su-input:focus-visible{outline:2px solid #0a3a6e;outline-offset:1px;}
-  .su-btn:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
+  .su-input:focus-visible{outline:2px solid #0b1b2e;outline-offset:1px;}
+  .su-btn:focus-visible{outline:2px solid #0b1b2e;outline-offset:2px;}
   .su-btn{filter:brightness(1);transition:filter .12s}
   .su-btn:hover:not(:disabled){filter:brightness(1.12)}
 `;
@@ -183,13 +183,13 @@ function iconCircle(bg) {
 
 const wrap    = { minHeight: '100vh', background: '#f4f6fb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" };
 const card    = { background: '#fff', borderRadius: 16, boxShadow: '0 4px 32px rgba(10,58,110,.1)', padding: '2.5rem 2rem', width: '100%', maxWidth: 440, boxSizing: 'border-box' };
-const hStyle  = { fontSize: 17, fontWeight: 700, color: '#0a1628', margin: '0 0 .35rem' };
+const hStyle  = { fontSize: 17, fontWeight: 700, color: '#0b1b2e', margin: '0 0 .35rem' };
 const pStyle  = { fontSize: 13, color: '#6b7280', lineHeight: 1.7, margin: 0 };
 const inp     = { width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', outline: 'none' };
 
 function primBtn(disabled) {
   return {
-    width: '100%', padding: '11px', background: disabled ? '#93c5fd' : '#0a3a6e', border: 'none',
+    width: '100%', padding: '11px', background: disabled ? '#94a3b8' : '#0b1b2e', border: 'none',
     borderRadius: 8, color: '#fff', fontWeight: 600, fontSize: 14,
     cursor: disabled ? 'not-allowed' : 'pointer', marginTop: 4,
   };

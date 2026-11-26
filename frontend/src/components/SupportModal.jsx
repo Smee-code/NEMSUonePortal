@@ -89,21 +89,21 @@ const CSS = `
   .sup-overlay{position:fixed;inset:0;background:rgba(10,22,40,.5);display:flex;align-items:center;
     justify-content:center;padding:1rem;z-index:3000;}
   .sup-modal{background:#fff;width:100%;max-width:440px;border:1px solid #e5e7eb;
-    box-shadow:0 24px 60px rgba(0,0,0,.25);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0a1628;}
+    box-shadow:0 24px 60px rgba(0,0,0,.25);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0b1b2e;}
   .sup-head{display:flex;justify-content:space-between;align-items:flex-start;padding:1.25rem 1.5rem;border-bottom:1px solid #eef1f5;}
   .sup-eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#b89043;font-weight:700;}
   .sup-title{font-size:19px;font-weight:600;margin:.25rem 0 0;letter-spacing:-.01em;}
   .sup-x{background:none;border:none;cursor:pointer;color:#5a6478;font-size:18px;line-height:1;padding:4px;}
-  .sup-x:hover{color:#0a1628;}
+  .sup-x:hover{color:#0b1b2e;}
   .sup-lead{font-size:13px;color:#5a6478;line-height:1.55;margin:0;padding:1rem 1.5rem 0;}
   .sup-list{padding:1rem 1.5rem;display:flex;flex-direction:column;gap:.85rem;}
   .sup-row{display:flex;gap:12px;align-items:center;}
   .sup-ico{width:38px;height:38px;flex-shrink:0;background:#f4f6fb;display:flex;align-items:center;justify-content:center;color:#1e3a5f;font-size:18px;}
   .sup-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a93a3;font-weight:600;}
-  .sup-val{font-size:14px;color:#0a1628;font-weight:500;margin-top:2px;}
+  .sup-val{font-size:14px;color:#0b1b2e;font-weight:500;margin-top:2px;}
   .sup-link{color:#1e3a5f;text-decoration:none;}
   .sup-link:hover{text-decoration:underline;}
   .sup-foot{padding:1rem 1.5rem;border-top:1px solid #eef1f5;display:flex;justify-content:flex-end;}
-  .sup-btn{background:#0a1628;color:#fff;border:none;padding:9px 20px;font:600 13px 'Inter',sans-serif;cursor:pointer;}
+  .sup-btn{background:#0b1b2e;color:#fff;border:none;padding:9px 20px;font:600 13px 'Inter',sans-serif;cursor:pointer;}
   .sup-btn:hover{background:#1e3a5f;}
 `;

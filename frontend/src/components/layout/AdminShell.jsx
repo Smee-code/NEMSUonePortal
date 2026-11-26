@@ -12,7 +12,7 @@ import NotificationList from '../NotificationList';
 const CSS = `
   /* Design tokens */
   :root{
-    --adm-ink:#0a1628;--adm-ink-2:#1e3a5f;--adm-muted:#5a6478;--adm-faint:#8a93a3;
+    --adm-ink:#0b1b2e;--adm-ink-2:#1e3a5f;--adm-muted:#5a6478;--adm-faint:#8a93a3;
     --adm-paper:#ffffff;--adm-warm:#f8f7f3;--adm-cool:#f4f6fa;--adm-cool-2:#eef1f7;
     --adm-line:#e5e7eb;--adm-line-soft:#eef0f4;
     --adm-gold:#b89043;--adm-gold-soft:#d9b96b;--adm-gold-tint:#f5edd9;
@@ -24,7 +24,7 @@ const CSS = `
   .adm-shell{display:flex;min-height:100vh;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
 
   /* Sidebar */
-  .adm-sb{flex:0 0 260px;background:#0a1628;color:#e8ecf2;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .adm-sb{flex:0 0 260px;background:#0b1b2e;color:#e8ecf2;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
   .adm-sb-brand{display:flex;align-items:center;gap:12px;padding:1.5rem 1.5rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08)}
   .adm-sb-brand img{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.04);padding:2px;object-fit:contain}
   .adm-sb-brand-name{font-size:20px;color:#fff;letter-spacing:-.01em;line-height:1.2;white-space:nowrap}
@@ -50,25 +50,25 @@ const CSS = `
   .adm-topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 2rem;height:72px;display:flex;align-items:center;gap:1.5rem;flex-shrink:0}
   .adm-crumbs{display:flex;align-items:center;gap:10px;font-size:12px;color:#5a6478;letter-spacing:.04em}
   .adm-crumbs i{font-size:11px;color:#8a93a3}
-  .adm-crumbs .here{color:#0a1628;font-weight:500}
+  .adm-crumbs .here{color:#0b1b2e;font-weight:500}
   .adm-search{flex:1;max-width:380px;margin-left:1rem;position:relative;display:flex;align-items:center}
   .adm-search i{position:absolute;left:12px;font-size:16px;color:#8a93a3;pointer-events:none}
-  .adm-search input{width:100%;padding:9px 14px 9px 36px;font:14px/1.4 'Inter',sans-serif;color:#0a1628;background:#f4f6fa;border:1px solid transparent;outline:none;transition:border-color .15s,background .15s}
+  .adm-search input{width:100%;padding:9px 14px 9px 36px;font:14px/1.4 'Inter',sans-serif;color:#0b1b2e;background:#f4f6fa;border:1px solid transparent;outline:none;transition:border-color .15s,background .15s}
   .adm-search input:focus{background:#fff;border-color:#e5e7eb}
   .adm-search input::placeholder{color:#8a93a3}
   .adm-search .adm-kbd{position:absolute;right:10px;font-size:10px;letter-spacing:.04em;padding:2px 6px;border:1px solid #e5e7eb;color:#8a93a3;background:#fff;font-weight:500}
   .adm-topbar-actions{display:flex;align-items:center;gap:.75rem;margin-left:auto}
-  .adm-term-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;font-size:12px;color:#0a1628;border:1px solid #e5e7eb;background:#fff;font-weight:500;cursor:pointer;white-space:nowrap}
+  .adm-term-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;font-size:12px;color:#0b1b2e;border:1px solid #e5e7eb;background:#fff;font-weight:500;cursor:pointer;white-space:nowrap}
   .adm-term-chip i{font-size:14px;color:#b89043}
-  .adm-icon-btn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #e5e7eb;background:#fff;cursor:pointer;color:#0a1628;position:relative;transition:border-color .15s}
+  .adm-icon-btn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #e5e7eb;background:#fff;cursor:pointer;color:#0b1b2e;position:relative;transition:border-color .15s}
   .adm-icon-btn i{font-size:18px}
-  .adm-icon-btn:hover{border-color:#0a1628}
+  .adm-icon-btn:hover{border-color:#0b1b2e}
   .adm-icon-btn .adm-dot{position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:#a8331e}
   .adm-user-chip{display:flex;align-items:center;gap:10px;padding:5px 14px 5px 5px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;transition:border-color .15s}
-  .adm-user-chip:hover{border-color:#0a1628}
-  .adm-user-avatar{width:30px;height:30px;background:#0a1628;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;letter-spacing:.05em;flex-shrink:0}
+  .adm-user-chip:hover{border-color:#0b1b2e}
+  .adm-user-avatar{width:30px;height:30px;background:#0b1b2e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;letter-spacing:.05em;flex-shrink:0}
   .adm-user-meta{line-height:1.2;text-align:left}
-  .adm-user-meta .adm-uname{font-size:12px;font-weight:600;color:#0a1628;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .adm-user-meta .adm-uname{font-size:12px;font-weight:600;color:#0b1b2e;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .adm-user-meta .adm-urole{font-size:10px;color:#5a6478;text-transform:capitalize;letter-spacing:.04em}
   .adm-user-chip > i{font-size:13px;color:#8a93a3}
 
@@ -77,7 +77,7 @@ const CSS = `
 
   /* Toast */
   .adm-toast-host{position:fixed;bottom:1.5rem;right:1.5rem;z-index:1100;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-  .adm-toast{pointer-events:auto;background:#0a1628;color:#fff;padding:12px 16px 12px 12px;min-width:280px;max-width:380px;display:flex;align-items:flex-start;gap:12px;border-left:3px solid #b89043;animation:adm-toast-in .25s cubic-bezier(.4,0,.2,1)}
+  .adm-toast{pointer-events:auto;background:#0b1b2e;color:#fff;padding:12px 16px 12px 12px;min-width:280px;max-width:380px;display:flex;align-items:flex-start;gap:12px;border-left:3px solid #b89043;animation:adm-toast-in .25s cubic-bezier(.4,0,.2,1)}
   .adm-toast.success{border-left-color:#0a7c52}
   .adm-toast.warn{border-left-color:#a06b16}
   .adm-toast.error{border-left-color:#a8331e}
@@ -97,7 +97,7 @@ const CSS = `
   @keyframes adm-drawer-in{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
   .adm-drawer{position:fixed;top:0;right:0;bottom:0;width:520px;max-width:92vw;background:#fff;z-index:1051;display:flex;flex-direction:column;animation:adm-drawer-in .28s cubic-bezier(.4,0,.2,1);box-shadow:-20px 0 40px -20px rgba(10,22,40,.25)}
   .adm-drawer-head{padding:1.5rem 1.75rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;flex-shrink:0}
-  .adm-drawer-head h3{font-weight:500;font-size:26px;letter-spacing:-.015em;color:#0a1628;line-height:1.1}
+  .adm-drawer-head h3{font-weight:500;font-size:26px;letter-spacing:-.015em;color:#0b1b2e;line-height:1.1}
   .adm-drawer-head h3 em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;color:#1e3a5f;font-weight:400}
   .adm-drawer-head .adm-drawer-sub{font-size:13px;color:#5a6478;margin-top:6px}
   .adm-drawer-body{padding:1.5rem 1.75rem;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:1.25rem}
@@ -108,13 +108,13 @@ const CSS = `
   .adm-notif-row:last-child{border-bottom:none}
   .adm-notif-dot{width:8px;height:8px;background:#b89043;border-radius:50%;margin-top:6px;flex-shrink:0}
   .adm-notif-dot.read{background:#e5e7eb}
-  .adm-notif-msg{font-size:13px;color:#0a1628;line-height:1.55}
+  .adm-notif-msg{font-size:13px;color:#0b1b2e;line-height:1.55}
   .adm-notif-meta{font-size:11px;color:#5a6478;margin-top:2px}
   .adm-notif-time{font-size:11px;color:#8a93a3;white-space:nowrap}
 
   /* Drawer — account menu */
   .adm-drawer-menu{display:flex;flex-direction:column}
-  .adm-drawer-menu-item{display:flex;align-items:center;gap:12px;padding:12px 0;font-size:13px;color:#0a1628;cursor:pointer;border-bottom:1px solid #eef0f4;transition:padding-left .15s;background:none;border-left:0;border-right:0;border-top:0;font-family:inherit;text-align:left;width:100%}
+  .adm-drawer-menu-item{display:flex;align-items:center;gap:12px;padding:12px 0;font-size:13px;color:#0b1b2e;cursor:pointer;border-bottom:1px solid #eef0f4;transition:padding-left .15s;background:none;border-left:0;border-right:0;border-top:0;font-family:inherit;text-align:left;width:100%}
   .adm-drawer-menu-item:hover{padding-left:8px;color:#1e3a5f}
   .adm-drawer-menu-item:last-child{border-bottom:none}
   .adm-drawer-menu-item i{font-size:16px;color:#5a6478;width:18px;text-align:center;flex-shrink:0}
@@ -126,21 +126,21 @@ const CSS = `
   @media(max-width:560px){.adm-form-grid{grid-template-columns:1fr}}
   .adm-form-field{display:flex;flex-direction:column;gap:6px}
   .adm-form-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5a6478;font-weight:600}
-  .adm-form-input,.adm-form-select,.adm-form-textarea{padding:10px 12px;font-size:13px;background:#fff;border:1px solid #e5e7eb;outline:none;color:#0a1628;font-family:inherit;border-radius:0}
-  .adm-form-input:focus,.adm-form-select:focus,.adm-form-textarea:focus{border-color:#0a1628}
+  .adm-form-input,.adm-form-select,.adm-form-textarea{padding:10px 12px;font-size:13px;background:#fff;border:1px solid #e5e7eb;outline:none;color:#0b1b2e;font-family:inherit;border-radius:0}
+  .adm-form-input:focus,.adm-form-select:focus,.adm-form-textarea:focus{border-color:#0b1b2e}
   .adm-form-textarea{min-height:120px;resize:vertical;line-height:1.55}
   .adm-toggle{position:relative;width:38px;height:22px;background:#e5e7eb;cursor:pointer;transition:background .15s;border:none;padding:0;flex-shrink:0}
-  .adm-toggle.on{background:#0a1628}
+  .adm-toggle.on{background:#0b1b2e}
   .adm-toggle::after{content:"";position:absolute;width:16px;height:16px;background:#fff;top:3px;left:3px;transition:left .15s}
   .adm-toggle.on::after{left:19px}
 
   /* Shared buttons used in drawers */
-  .adm-btn-pri{padding:9px 16px;background:#0a1628;color:#fff;border:1px solid #0a1628;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:background .15s}
+  .adm-btn-pri{padding:9px 16px;background:#0b1b2e;color:#fff;border:1px solid #0b1b2e;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:background .15s}
   .adm-btn-pri:hover{background:#000}
   .adm-btn-pri:disabled{opacity:.5;cursor:not-allowed}
   .adm-btn-pri i{font-size:14px}
-  .adm-btn-sec{padding:9px 14px;background:#fff;color:#0a1628;border:1px solid #e5e7eb;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:border-color .15s}
-  .adm-btn-sec:hover{border-color:#0a1628}
+  .adm-btn-sec{padding:9px 14px;background:#fff;color:#0b1b2e;border:1px solid #e5e7eb;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:border-color .15s}
+  .adm-btn-sec:hover{border-color:#0b1b2e}
   .adm-btn-sec i{font-size:14px}
   .adm-avatar-lg{width:48px;height:48px;background:#b89043;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0;letter-spacing:.04em}
 
@@ -642,7 +642,7 @@ function DrawerForm({ close, toast, title, sub, submitLabel = 'Save', toastMsg =
     );
     if (f.type === 'toggle') return (
       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid #eef0f4' }}>
-        <span style={{ fontSize: 13, color: '#0a1628' }}>{f.label}</span>
+        <span style={{ fontSize: 13, color: '#0b1b2e' }}>{f.label}</span>
         <ToggleField def={f.def} />
       </div>
     );

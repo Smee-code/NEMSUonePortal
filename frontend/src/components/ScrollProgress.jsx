@@ -20,7 +20,7 @@ export default function ScrollProgress() {
   return (
     <div className="scrollprog" aria-hidden="true">
       <style>{`.scrollprog{position:fixed;top:0;left:0;right:0;height:3px;z-index:1500;pointer-events:none;background:transparent;}
-        .scrollprog>span{display:block;height:100%;background:linear-gradient(90deg,#C79A3B,#e3c477);transition:width .08s linear;}`}</style>
+        .scrollprog>span{display:block;height:100%;background:linear-gradient(90deg,#b89043,#e3c477);transition:width .08s linear;}`}</style>
       <span style={{ width: `${pct}%` }} />
     </div>
   );

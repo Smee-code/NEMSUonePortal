@@ -21,17 +21,20 @@ import ScrollMemory from '../components/ScrollMemory';
 ══════════════════════════════════════════════════════════════ */
 const CSS = `
   :root{
-    /* First light — re-identity palette.
-       Sea-anchored, dawn as the single bold accent, tide for readable
-       labels/links on light. The gold vars are repointed (no longer gold)
-       so the whole page recolors coherently without touching every rule. */
-    --sea-deep:#071722;--sea:#0b1e2d;--tide:#2f6f68;--dawn:#f0a63c;--dawn-soft:#f6c877;--mist:#f4f7f6;
-    --ink:#0b1e2d;--ink-2:#215e57;--ink-3:#0b1e2d;
-    --muted:#51636a;--faint:#889aa0;
-    --paper:#ffffff;--warm:#eef3f1;--cool:#f1f5f4;
-    --line:#e2e8e5;--line-soft:#eef2f0;
+    /* NEMSUOne palette: the same navy, blue and gold as the signed-in app, taken
+       from the NEMSU seal (royal blue with gold). See index.css for the roles.
+         navy  = dark surfaces and headings      blue = links and labels on light
+         gold  = the one accent                  neutrals lean cool, toward the blue
+       The variable names are older than the palette; the values are what count:
+       --tide is the brand blue, --dawn the gold used on dark, --gold the gold
+       dark enough to read as small text on white. */
+    --sea-deep:#07111f;--sea:#0b1b2e;--tide:#1d4ed8;--dawn:#d9b96b;--dawn-soft:#e9d29a;--mist:#f4f6fa;
+    --ink:#0b1b2e;--ink-2:#1e3a8a;--ink-3:#0b1b2e;
+    --muted:#52607a;--faint:#8a94a6;
+    --paper:#ffffff;--warm:#f1f3f8;--cool:#f4f6fa;
+    --line:#e2e6ee;--line-soft:#eef1f6;
     --line-dark:rgba(255,255,255,.10);--line-dark-2:rgba(255,255,255,.20);
-    --gold:#2f6f68;--gold-soft:#f6c877;
+    --gold:#8a6410;--gold-soft:#d9b96b;
     --on-dark:#e8ecf2;--on-dark-mute:rgba(232,236,242,.66);--on-dark-faint:rgba(232,236,242,.44);
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -128,7 +131,7 @@ const CSS = `
   .nav-mobile-ic{font-size:19px;color:var(--faint);width:22px;text-align:center;flex-shrink:0;}
   .nav-mobile-chev{margin-left:auto;font-size:15px;color:var(--faint);}
   .nav-mobile-link:hover{background:var(--warm);}
-  .nav-mobile-link.active{color:var(--tide);border-left-color:var(--dawn);background:rgba(47,111,104,.09);}
+  .nav-mobile-link.active{color:var(--tide);border-left-color:var(--dawn);background:rgba(29,78,216,.09);}
   .nav-mobile-link.active .nav-mobile-ic{color:var(--gold);}
   .nav-mobile-foot{padding:1rem 1.25rem 1.5rem;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:.5rem;flex-shrink:0;}
   .nav-mobile-secondary{display:flex;align-items:center;gap:10px;padding:11px 12px;font:500 14px 'Inter',sans-serif;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:#fff;width:100%;text-align:left;cursor:pointer;}
@@ -144,9 +147,9 @@ const CSS = `
     background:linear-gradient(176deg,var(--sea-deep) 0%,var(--sea) 40%,#103236 62%,#1f5751 79%,#c9822f 106%);}
   .hero-sky{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
   .hero-sky::after{content:"";position:absolute;inset:0;
-    background:radial-gradient(120% 74% at 76% 100%,rgba(240,166,60,.5),rgba(240,166,60,.1) 42%,transparent 66%);}
+    background:radial-gradient(120% 74% at 76% 100%,rgba(217,185,107,.5),rgba(217,185,107,.1) 42%,transparent 66%);}
   .hero-sun{position:absolute;left:76%;bottom:-64px;width:340px;height:340px;margin-left:-170px;border-radius:50%;
-    background:radial-gradient(circle,rgba(246,200,119,.95),rgba(240,166,60,.5) 46%,transparent 70%);filter:blur(2px);
+    background:radial-gradient(circle,rgba(246,200,119,.95),rgba(217,185,107,.5) 46%,transparent 70%);filter:blur(2px);
     animation:heroRise 1.4s cubic-bezier(.22,1,.36,1) both;}
   .hero-horizon{position:absolute;left:0;right:0;bottom:17%;height:1px;
     background:linear-gradient(90deg,transparent,rgba(246,200,119,.45) 28%,rgba(246,200,119,.7) 76%,transparent);
@@ -236,7 +239,7 @@ const CSS = `
   .spot-tag{position:relative;z-index:2;font-family:'Figtree',sans-serif;font-size:12px;font-weight:600;color:var(--dawn-soft);
     background:rgba(246,200,119,.12);border:1px solid rgba(246,200,119,.32);padding:5px 12px;border-radius:999px}
   .spot-sun{position:absolute;left:50%;bottom:-96px;width:260px;height:260px;transform:translateX(-50%);border-radius:50%;
-    background:radial-gradient(circle,rgba(246,200,119,.85),rgba(240,166,60,.36) 48%,transparent 70%)}
+    background:radial-gradient(circle,rgba(246,200,119,.85),rgba(217,185,107,.36) 48%,transparent 70%)}
   .spot-feature-side.has-photo{background:none;padding:1.5rem}
   .spot-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
   .spot-body{padding:2.75rem 3rem;display:flex;flex-direction:column;justify-content:center}
@@ -276,7 +279,7 @@ const CSS = `
   .about-panel{position:relative;overflow:hidden;border-radius:6px;padding:2.5rem 2.25rem;color:#fff;
     background:linear-gradient(160deg,var(--sea-deep),var(--sea) 50%,#184a49);min-height:380px;display:flex;flex-direction:column;justify-content:flex-end;gap:1.5rem}
   .about-panel-sun{position:absolute;right:-70px;top:-70px;width:240px;height:240px;border-radius:50%;
-    background:radial-gradient(circle,rgba(246,200,119,.8),rgba(240,166,60,.32) 48%,transparent 70%)}
+    background:radial-gradient(circle,rgba(246,200,119,.8),rgba(217,185,107,.32) 48%,transparent 70%)}
   .about-panel-title{position:relative;z-index:2;font-family:'Fraunces',Georgia,serif;font-optical-sizing:auto;font-weight:500;font-size:26px;line-height:1.15;letter-spacing:-.01em}
   .about-facts{position:relative;z-index:2;display:flex;flex-direction:column;gap:0;border-top:1px solid rgba(255,255,255,.14)}
   .about-fact{display:flex;flex-direction:column;gap:2px;padding:.85rem 0;border-bottom:1px solid rgba(255,255,255,.14)}
@@ -303,7 +306,7 @@ const CSS = `
 
   /* ── Stats ── */
   .stats{background:var(--ink-3);color:#fff;padding:6rem 0;position:relative;overflow:hidden}
-  .stats::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 88% 8%,rgba(240,166,60,.14),transparent 52%);}
+  .stats::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 88% 8%,rgba(217,185,107,.14),transparent 52%);}
   .stats-inner{position:relative;z-index:2;max-width:1280px;margin:0 auto;padding:0 2rem}
   .stats-head{margin-bottom:3rem;max-width:680px}
   .stats-head .eyebrow{margin-bottom:1.25rem}
@@ -383,9 +386,9 @@ const CSS = `
     transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;}
   .life-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--dawn)}
   .life-item::after{content:"";position:absolute;right:-60px;top:-60px;width:150px;height:150px;border-radius:50%;
-    background:radial-gradient(circle,rgba(47,111,104,.12),transparent 70%);transition:background .2s}
+    background:radial-gradient(circle,rgba(29,78,216,.12),transparent 70%);transition:background .2s}
   .life-item:hover{transform:translateY(-4px);box-shadow:0 16px 34px -18px rgba(11,30,45,.32);border-color:var(--tide)}
-  .life-item:hover::after{background:radial-gradient(circle,rgba(240,166,60,.18),transparent 70%)}
+  .life-item:hover::after{background:radial-gradient(circle,rgba(217,185,107,.18),transparent 70%)}
   .life-item .tag{position:relative;z-index:2;font-family:'Figtree',sans-serif;font-size:12px;font-weight:600;color:var(--tide)}
   .life-item .title{position:relative;z-index:2;font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:20px;line-height:1.18;color:var(--ink);letter-spacing:-.01em;}
   .life-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:0}
@@ -1809,29 +1812,51 @@ function AddressCascade({ province, town, brgy, zip, onField, errors = {} }) {
   const [loadingBrgy, setLoading] = useState(false);
   const [manTown, setManTown]     = useState(false);
   const [manBrgy, setManBrgy]     = useState(false);
+  // ZIP codes for the selected province's towns ({ "Town": "8317" }). Towns
+  // with one ZIP are filled in automatically; `zipAuto` holds the value we
+  // filled, so it can be cleared again if the applicant picks another town.
+  const [zipMap, setZipMap]       = useState({});
+  const [zipAuto, setZipAuto]     = useState('');
 
   useEffect(() => {
     api.get('/enrollment/psgc/provinces/').then(r => setProvinces(r.data || [])).catch(() => {});
   }, []);
 
-  // Load the selected province's cities + barangays.
+  // Load the selected province's cities + barangays, and its ZIP codes.
   useEffect(() => {
     const p = provinces.find(x => x.name === province);
-    if (!p) { setCities({}); return; }
+    if (!p) { setCities({}); setZipMap({}); return; }
     setLoading(true);
     api.get(`/enrollment/psgc/province/${p.slug}/`)
       .then(r => setCities(r.data || {}))
       .catch(() => setCities({}))
       .finally(() => setLoading(false));
+    api.get(`/enrollment/psgc/province/${p.slug}/zip/`)
+      .then(r => setZipMap(r.data || {}))
+      .catch(() => setZipMap({}));
   }, [province, provinces]);
 
   const cityNames = Object.keys(cities);
   const brgyList  = (town && cities[town]) || [];
 
-  const onProvince = (v) => { onField('addr_province', v); onField('addr_town', ''); onField('addr_brgy', ''); setManTown(false); setManBrgy(false); };
+  // Fill the ZIP for a town that has exactly one. A ZIP we filled for the
+  // previous town is cleared; one the applicant typed themselves is left alone.
+  const fillZip = (townName) => {
+    const found = zipMap[townName] || '';
+    if (found) { onField('zip', found); setZipAuto(found); }
+    else if (zipAuto && zip === zipAuto) { onField('zip', ''); setZipAuto(''); }
+    else setZipAuto('');
+  };
+  // If the ZIP list arrives after the town was already chosen, fill it then.
+  useEffect(() => {
+    if (town && !zip && zipMap[town]) { onField('zip', zipMap[town]); setZipAuto(zipMap[town]); }
+  }, [zipMap]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onProvince = (v) => { onField('addr_province', v); onField('addr_town', ''); onField('addr_brgy', ''); setManTown(false); setManBrgy(false); fillZip(''); };
   const onTown = (v) => {
-    if (v === '__other__') { setManTown(true); setManBrgy(true); onField('addr_town', ''); onField('addr_brgy', ''); return; }
+    if (v === '__other__') { setManTown(true); setManBrgy(true); onField('addr_town', ''); onField('addr_brgy', ''); fillZip(''); return; }
     setManTown(false); setManBrgy(false); onField('addr_town', v); onField('addr_brgy', '');
+    fillZip(v);
   };
   const onBrgy = (v) => {
     if (v === '__other__') { setManBrgy(true); onField('addr_brgy', ''); return; }
@@ -1879,8 +1904,17 @@ function AddressCascade({ province, town, brgy, zip, onField, errors = {} }) {
         </div>
         <div className="flow-field">
           <label style={fLabel}>ZIP code</label>
-          <input style={st('zip')} required aria-invalid={bad('zip')} value={zip} onChange={e => onField('zip', e.target.value)} placeholder="8317" inputMode="numeric" />
+          <input style={st('zip')} required aria-invalid={bad('zip')} value={zip} placeholder="8317" inputMode="numeric"
+            aria-describedby="adm-zip-help"
+            onChange={e => { onField('zip', e.target.value.replace(/\D/g, '').slice(0, 4)); setZipAuto(''); }} />
           {msg('zip')}
+          <p id="adm-zip-help" style={{ fontSize: 11.5, color: 'var(--muted)', margin: '4px 0 0' }}>
+            {zipAuto && zip === zipAuto
+              ? <>Filled in from your town. Change it if yours is different.</>
+              : town && !manTown && !zipMap[town]
+                ? <>This town has more than one ZIP code, or none on record. Please type yours.</>
+                : <>Fills in automatically when you choose your town.</>}
+          </p>
         </div>
       </div>
       {(manTown || manBrgy) && (
@@ -2779,7 +2813,7 @@ const YEAR_LEVEL_MAP = { '1st Year':1, '2nd Year':2, '3rd Year':3, '4th Year':4 
 const panel      = dir => ({ display:'flex', flexDirection:'column', flex:1, animation:`${dir === 'back' ? 'lp-slideInLeft' : 'lp-slideInRight'} .22s cubic-bezier(.4,0,.2,1)` });
 const fLabel     = { fontSize:11, fontWeight:700, color:'#5a7a9a', display:'block', marginBottom:5, textTransform:'uppercase', letterSpacing:'.05em' };
 const optLbl     = { fontWeight:400, color:'var(--muted)', textTransform:'none', letterSpacing:0 };
-const fInput     = { width:'100%', padding:'9px 12px', border:'1px solid #d0dcea', borderRadius:8, fontSize:13, background:'#fff', color:'#0a1628', outline:'none', boxSizing:'border-box' };
+const fInput     = { width:'100%', padding:'9px 12px', border:'1px solid #d0dcea', borderRadius:8, fontSize:13, background:'#fff', color:'#0b1b2e', outline:'none', boxSizing:'border-box' };
 // A required field left empty or filled in wrongly, after the applicant tries to continue.
 const fInvalid   = { borderColor:'#dc2626', background:'#fef2f2' };
 const fErrMsg    = { color:'#dc2626', fontSize:11.5, margin:'4px 0 0', fontWeight:500 };
@@ -2790,6 +2824,6 @@ const REQ_NOTE   = (
   </p>
 );
 const progDrop   = { position:'absolute', top:'calc(100% + 4px)', left:0, right:0, zIndex:40, margin:0, padding:'4px 0', listStyle:'none', background:'#fff', border:'1px solid #d0dcea', borderRadius:8, boxShadow:'0 8px 24px rgba(10,58,110,.14)', maxHeight:220, overflowY:'auto' };
-const progOpt    = { padding:'8px 12px', fontSize:13, color:'#0a1628', cursor:'pointer', whiteSpace:'normal' };
+const progOpt    = { padding:'8px 12px', fontSize:13, color:'#0b1b2e', cursor:'pointer', whiteSpace:'normal' };
 const hintBox    = { padding:'12px 14px', border:'1px solid #c8d8f0', borderRadius:8, background:'#f0f6ff', fontSize:12, color:'#2a4a6e', display:'flex', gap:8, alignItems:'flex-start' };
 const unitPill   = { fontSize:12, padding:'4px 12px', borderRadius:99, background:'#eef3fb', border:'.5px solid #c8d8f0', color:'#5a7a9a' };

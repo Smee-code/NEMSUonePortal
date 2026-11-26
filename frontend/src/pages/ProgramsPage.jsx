@@ -62,6 +62,6 @@ const CSS = `
   .pg-dept ul{list-style:none;display:flex;flex-direction:column;gap:1rem;}
   .pg-dept li{display:flex;align-items:flex-start;gap:10px;}
   .pg-dot{width:6px;height:6px;background:#b89043;border-radius:50%;margin-top:7px;flex-shrink:0;}
-  .pg-name{font-size:15px;font-weight:500;color:#0a1628;line-height:1.35;}
+  .pg-name{font-size:15px;font-weight:500;color:#0b1b2e;line-height:1.35;}
   .pg-desc{font-size:12.5px;color:#5a6478;line-height:1.55;margin-top:3px;}
 `;

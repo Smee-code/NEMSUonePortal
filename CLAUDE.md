@@ -1,8 +1,8 @@
-# NEMSUonePortal — Project Context for Claude
+# NEMSUOne — Project Context for Claude
 
 ## Project Overview
 
-**NEMSUonePortal** is a web-based online student portal for **North Eastern Mindanao State University – Cantilan Campus (NEMSU-Cantilan)**. It centralizes all core academic service transactions into a single secure platform, replacing manual, paper-based, and face-to-face processes.
+**NEMSUOne** is a web-based online student portal for **North Eastern Mindanao State University – Cantilan Campus (NEMSU-Cantilan)**. It centralizes all core academic service transactions into a single secure platform, replacing manual, paper-based, and face-to-face processes.
 
 - **Type:** Capstone Project — Bachelor of Science in Information Technology
 - **Institution:** NEMSU-Cantilan Campus, Cantilan, Surigao del Sur, Philippines

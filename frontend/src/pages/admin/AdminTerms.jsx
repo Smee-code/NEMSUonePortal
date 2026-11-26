@@ -445,9 +445,9 @@ const CSS = `
   .at-form-actions{display:flex;justify-content:flex-end;gap:.5rem;padding-top:.25rem;border-top:1px solid var(--adm-line-soft)}
 
   /* Current-term hero */
-  .at-hero{background:var(--adm-ink);border:1px solid var(--adm-ink);border-top:3px solid var(--adm-gold,#b8860b);overflow:hidden;margin-bottom:1.75rem}
+  .at-hero{background:var(--adm-ink);border:1px solid var(--adm-ink);border-top:3px solid var(--adm-gold,#b89043);overflow:hidden;margin-bottom:1.75rem}
   .at-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.5rem 1.6rem}
-  .at-hero-eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--adm-gold,#b8860b);font-weight:700}
+  .at-hero-eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--adm-gold,#b89043);font-weight:700}
   .at-hero-sem{font-size:30px;font-weight:600;color:#fff;letter-spacing:-.02em;line-height:1.1;margin-top:9px}
   .at-hero-meta{font-size:13.5px;color:#aeb8c7;margin-top:9px;font-variant-numeric:tabular-nums}
   .at-hero-edit{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#dbe2ec;font-size:12px;font-weight:600;padding:7px 13px;cursor:pointer;font-family:inherit;flex-shrink:0}

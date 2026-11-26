@@ -379,7 +379,7 @@ function blockPreview(count) {
 
 const CSS = `
 :where(.bm-head,.bm-crumbs,.bm-grid,.bm-prog-list,.bm-year-list,.bm-h2,.bm-modal){
-  --bm-ink:#0a1628; --bm-ink2:#1e3a5f; --bm-gold:#b89043; --bm-line:#e5e7eb;
+  --bm-ink:#0b1b2e; --bm-ink2:#1e3a5f; --bm-gold:#b89043; --bm-line:#e5e7eb;
   --bm-muted:#5a6478; --bm-faint:#8a93a3; --bm-green:#1f7a4d; --bm-red:#b23b2e;
   --bm-warm:#f8f7f3; --bm-cool:#f4f6fa;
 }

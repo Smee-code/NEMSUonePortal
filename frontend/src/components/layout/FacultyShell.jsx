@@ -12,13 +12,13 @@ import NotificationList from '../NotificationList';
 const CSS = `
   /* Faculty design tokens */
   :root{
-    --ink:#0a1628;--ink-2:#1e3a5f;--gold:#b89043;--gold-soft:#d9b96b;
+    --ink:#0b1b2e;--ink-2:#1e3a5f;--gold:#b89043;--gold-soft:#d9b96b;
     --gold-tint:rgba(184,144,67,.12);--green:#059669;--green-tint:rgba(5,150,105,.1);
     --red:#dc2626;--red-tint:rgba(220,38,38,.1);--amber:#d97706;
     --amber-tint:rgba(251,191,36,.15);--muted:#64748b;--faint:#94a3b8;
     --line:#e2e8f0;--line-soft:#f1f5f9;--warm:#fafaf9;--cool:#f0f4f8;
     /* aliases so shared components using --adm-* tokens still resolve */
-    --adm-ink:#0a1628;--adm-ink-2:#1e3a5f;--adm-gold:#b89043;
+    --adm-ink:#0b1b2e;--adm-ink-2:#1e3a5f;--adm-gold:#b89043;
     --adm-gold-soft:#d9b96b;--adm-gold-tint:#f5edd9;
     --adm-muted:#64748b;--adm-faint:#94a3b8;
     --adm-line:#e2e8f0;--adm-line-soft:#f1f5f9;

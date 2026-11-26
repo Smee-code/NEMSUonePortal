@@ -25,6 +25,7 @@ urlpatterns = [
     path('public/email-available/', views.PublicEmailAvailableView.as_view(), name='public-email-available'),
     path('psgc/provinces/', views.PSGCProvincesView.as_view(), name='psgc-provinces'),
     path('psgc/province/<str:slug>/', views.PSGCProvinceView.as_view(), name='psgc-province'),
+    path('psgc/province/<str:slug>/zip/', views.PSGCProvinceZipView.as_view(), name='psgc-province-zip'),
 
     # Shared — any authenticated user
     path('terms/', views.AcademicTermListView.as_view(), name='enrollment-terms'),

@@ -195,35 +195,35 @@ const CSS = `
   .uem-overlay{position:fixed;inset:0;background:rgba(10,22,40,.5);z-index:1200;display:flex;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow-y:auto;overscroll-behavior:contain;}
   .uem-modal{background:#fff;width:100%;max-width:460px;border-radius:12px;box-shadow:0 24px 60px -20px rgba(10,22,40,.45);font-family:'Inter',-apple-system,sans-serif;}
   .uem-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.2rem 1.4rem;border-bottom:1px solid #e9edf3;}
-  .uem-head h3{font-size:16px;font-weight:700;color:#0a1628;margin:0;}
+  .uem-head h3{font-size:16px;font-weight:700;color:#0b1b2e;margin:0;}
   .uem-sub{font-size:12px;color:#6b7280;margin-top:3px;line-height:1.4;}
   .uem-x{background:none;border:none;color:#9aa4b2;font-size:18px;cursor:pointer;line-height:1;border-radius:4px;}
-  .uem-x:hover{color:#0a1628;}
-  .uem-x:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
+  .uem-x:hover{color:#0b1b2e;}
+  .uem-x:focus-visible{outline:2px solid #0b1b2e;outline-offset:2px;}
   .uem-body{padding:1.2rem 1.4rem;}
   .uem-err{background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:.6rem .85rem;border-radius:6px;font-size:12.5px;margin-bottom:1rem;}
   .uem-readonly{background:#f6f8fb;border:1px solid #e9edf3;border-radius:8px;padding:.5rem .85rem;margin-bottom:1.1rem;}
   .uem-readonly>div{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0;font-size:12.5px;}
   .uem-readonly span{color:#6b7280;}
-  .uem-readonly b{color:#0a1628;font-weight:600;text-align:right;word-break:break-all;}
+  .uem-readonly b{color:#0b1b2e;font-weight:600;text-align:right;word-break:break-all;}
   .uem-field{display:flex;flex-direction:column;gap:5px;margin-bottom:1rem;}
   .uem-field label,.uem-grouplabel{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;font-weight:600;}
   .uem-opt{text-transform:none;letter-spacing:0;font-weight:400;color:#9aa4b2;}
-  .uem-field input,.uem-field select{padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:13.5px/1.4 'Inter',sans-serif;color:#0a1628;outline:none;}
-  .uem-field input:focus-visible,.uem-field select:focus-visible{outline:2px solid #0a3a6e;outline-offset:1px;border-color:#0a3a6e;}
+  .uem-field input,.uem-field select{padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:13.5px/1.4 'Inter',sans-serif;color:#0b1b2e;outline:none;}
+  .uem-field input:focus-visible,.uem-field select:focus-visible{outline:2px solid #0b1b2e;outline-offset:1px;border-color:#0b1b2e;}
   .uem-choice{display:flex;gap:.5rem;}
   .uem-choice-btn{flex:1;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:13px/1 'Inter',sans-serif;color:#6b7280;font-weight:600;cursor:pointer;}
-  .uem-choice-btn:hover{border-color:#0a3a6e;color:#0a1628;}
-  .uem-choice-btn:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
-  .uem-choice-btn.on{background:#0a3a6e;border-color:#0a3a6e;color:#fff;}
+  .uem-choice-btn:hover{border-color:#0b1b2e;color:#0b1b2e;}
+  .uem-choice-btn:focus-visible{outline:2px solid #0b1b2e;outline-offset:2px;}
+  .uem-choice-btn.on{background:#0b1b2e;border-color:#0b1b2e;color:#fff;}
   .uem-foot{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.2rem;}
   .uem-btn-sec{padding:9px 16px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font:600 13px 'Inter',sans-serif;cursor:pointer;}
-  .uem-btn-sec:hover:not(:disabled){border-color:#0a3a6e;color:#0a1628;}
-  .uem-btn-sec:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
+  .uem-btn-sec:hover:not(:disabled){border-color:#0b1b2e;color:#0b1b2e;}
+  .uem-btn-sec:focus-visible{outline:2px solid #0b1b2e;outline-offset:2px;}
   .uem-btn-sec:disabled{opacity:.6;cursor:not-allowed;}
-  .uem-btn-pri{padding:9px 16px;border:none;border-radius:8px;background:#0a3a6e;color:#fff;font:600 13px 'Inter',sans-serif;cursor:pointer;}
+  .uem-btn-pri{padding:9px 16px;border:none;border-radius:8px;background:#0b1b2e;color:#fff;font:600 13px 'Inter',sans-serif;cursor:pointer;}
   .uem-btn-pri:hover:not(:disabled){background:#0c4a8a;}
-  .uem-btn-pri:focus-visible{outline:2px solid #0a3a6e;outline-offset:2px;}
+  .uem-btn-pri:focus-visible{outline:2px solid #0b1b2e;outline-offset:2px;}
   .uem-btn-pri:disabled{opacity:.6;cursor:not-allowed;}
   @media(max-width:768px){
     .uem-overlay{padding:1.25rem .75rem;}
